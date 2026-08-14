@@ -20,6 +20,11 @@ export async function checkSystem(): Promise<SystemStatus> {
   if (!healthResponse.ok) {
     throw new Error("Health check failed");
   }
+  const categoriesResponse = await fetch(`${API_URL}/api/categories`);
+  if (!categoriesResponse.ok) {
+    throw new Error("Failed to fetch categories");
+  }
+  const categories: Category[] = await categoriesResponse.json();
   // TODO(Issue 2 & 4): implement the two fetch calls described above.
-  return { online: true, categories: [] };
+  return { online: true, categories };
 }
