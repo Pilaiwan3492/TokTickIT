@@ -1047,17 +1047,6 @@ Download Failure (500 Internal Server Error):
 }
 ```
 
-Download Failure (500 Internal Server Error):
-
-```json
-{
-  "error": {
-    "code": "ATTACHMENT_DOWNLOAD_FAILED",
-    "message": "Unable to download the attachment. Please try again."
-  }
-}
-```
-
 ---
 
 ### 11.3 Remove Attachment
