@@ -141,6 +141,9 @@ Examples:
 
 API errors should be displayed using user-friendly messages.
 
+- **Global Feedback (Success/Error):** Display system-wide notifications (e.g., "Ticket created successfully", "Unable to load Requesters") using **Toast Notifications** or **Top Banner Alerts**.
+- **Field-Level Validation:** Display input-specific errors directly below the corresponding input field as **Inline Validation Text**.
+
 Do not display:
 
 - Stack traces
@@ -148,8 +151,6 @@ Do not display:
 - File paths
 - Internal IDs
 - Server implementation details
-
-Field validation errors should appear directly below the related field.
 
 ### 4.5 Button Hierarchy
 
@@ -221,7 +222,7 @@ Example:
 
 When clicked:
 
-1. Store `selectedRequesterId`.
+1. Store `selectedRequesterId` in LocalStorage.
 2. Continue to the requester workspace.
 
 ### 5.6 Change Requester
@@ -239,6 +240,16 @@ After entering the requester workspace:
 If requester loading fails:
 
 > Unable to load Requesters. Please try again.
+
+### 5.8 Empty State
+
+If no active Requesters exist:
+
+> No active Development Requesters are available.
+
+- The Requester dropdown must remain empty.
+- The Continue button must remain disabled.
+- The user must not be able to continue to the requester workspace.
 
 ---
 
@@ -310,7 +321,7 @@ or
 [ Choose Files ]
 
 Allowed: JPG, JPEG, PNG, WEBP, PDF
-Maximum: 5 MiB (5,242,880 bytes) per file
+Maximum: 5 MB per file
 Maximum: 5 active attachments
 
 [Cancel] [Create Ticket]
@@ -399,7 +410,7 @@ Display a drag-and-drop area:
 `Drag & Drop files here` or `[Choose Files]`
 
 - Allowed: JPG, JPEG, PNG, WEBP, PDF
-- Maximum 5 MiB per file
+- Maximum 5 MB / 5,242,880 bytes per file
 - Maximum 5 active attachments
 
 #### Client-side Validation
@@ -407,7 +418,7 @@ Display a drag-and-drop area:
 The UI should provide immediate feedback for:
 
 - Unsupported file type
-- File larger than 5 MiB
+- File larger than 5 MB
 - Missing file
 - More than 5 active attachments
 
@@ -441,6 +452,8 @@ If attachment upload fails after ticket creation:
 > Ticket created successfully, but one or more attachments could not be uploaded.
 
 The ticket must remain saved.
+
+The selected Requester context and relevant user-entered form data must be retained so the user does not need to re-enter information.
 
 ---
 
@@ -595,6 +608,13 @@ Supported UI options:
 | Ticket No Z to A | `ticketNo_desc` |
 
 Default sorting: `createdAt_desc`
+
+### Secondary Sort
+
+Sorting must use a deterministic secondary sort to ensure stable results when multiple tickets have the same primary sort value.
+
+- For `createdAt` sorting, use `id` ascending as the secondary sort.
+- The secondary sort must be deterministic and must not change between requests.
 
 ---
 
@@ -756,7 +776,7 @@ Display:
 The same attachment rules apply:
 
 - Allowed: JPG, JPEG, PNG, WEBP, PDF
-- Maximum 5 MiB (5,242,880 bytes) per file
+- Maximum 5 MB per file
 - Maximum 5 active attachments
 
 The UI must provide feedback for:
@@ -865,7 +885,7 @@ Display:
 ## 24. Attachment Error States
 
 - **Unsupported File Type:** `This file type is not supported.`
-- **File Too Large:** `File size must not exceed 5 MiB (5,242,880 bytes).`
+- **File Too Large:** `File size must not exceed 5 MB / 5,242,880 bytes.`
 - **Maximum Active Attachments:** `This ticket already has the maximum number of active attachments.`
 - **Upload Failure:** `Unable to upload the attachment. Please try again.`
 - **Download Failure:** `Unable to download the attachment. Please try again.`
@@ -887,6 +907,7 @@ Mapping:
 | `selectedRequesterId` | `requesterId` |
 
 The selected requester must be used consistently for requester-scoped operations.
+The selected requester ID must persist in LocalStorage for the duration of the Lab 2 testing context.
 
 ---
 
@@ -1062,7 +1083,7 @@ Every major screen should support the following states:
 - [ ] Removed attachments cannot be downloaded.
 - [ ] Removed attachment metadata remains visible.
 - [ ] Maximum 5 active attachments is enforced.
-- [ ] File size limit is 5 MiB.
+- [ ] File size limit is 5 MB.
 - [ ] Allowed file types match the API specification.
 - [ ] Search supports Ticket Number, Summary, and Description.
 - [ ] Search is case-insensitive.
