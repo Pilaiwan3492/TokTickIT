@@ -36,6 +36,7 @@ Lab 2 does not implement real authentication. The selected Development Requester
 | Read-only Field | `#F0F4F2` | Non-editable fields |
 | Error | `#B42318` | Error text, borders, validation |
 | Border | `#D5DDD8` | Input/card borders |
+| Warning | `#ff3939` | Warning callouts and badges |
 
 ### Typography
 
@@ -46,6 +47,20 @@ Lab 2 does not implement real authentication. The selected Development Requester
 - Labels should use medium weight.
 - Helper and error text should be smaller than body text.
 - Do not rely on color alone to communicate status.
+
+### Spacing
+
+Use a consistent spacing scale:
+
+- 4px — compact spacing
+- 8px — small spacing
+- 12px — field/control spacing
+- 16px — standard component spacing
+- 24px — section spacing
+- 32px — major section spacing
+- 48px — page-level spacing
+
+Labels, inputs, validation messages, cards, and sections should use this spacing scale consistently.
 
 ---
 
@@ -81,6 +96,8 @@ The header should contain:
   - My Tickets
   - Create Ticket
 - Development Mode indicator
+- The active page must have a clear visual indication.
+- Navigation must remain usable on mobile using a responsive navigation pattern.
 
 Example:
 
@@ -134,6 +151,35 @@ Do not display:
 
 Field validation errors should appear directly below the related field.
 
+### 4.5 Button Hierarchy
+
+**Primary**
+- Used for the main action.
+- Uses Primary Green.
+- Example: Create Ticket, Continue.
+
+**Secondary**
+- Used for supporting actions.
+- Uses a neutral or outlined style.
+- Example: Cancel, Back.
+
+**Tertiary**
+- Used for low-emphasis navigation/actions.
+- Uses text/button-link styling.
+
+**Destructive**
+- Used for irreversible or destructive actions.
+- Example: Remove Attachment.
+- Uses the Error color.
+
+**Disabled**
+- Reduced visual emphasis.
+- Cannot be activated.
+
+**Busy**
+- Shows a loading indicator and/or busy label.
+- Disabled while the operation is in progress.
+
 ---
 
 ## 5. Development Requester Selection Screen
@@ -178,7 +224,17 @@ When clicked:
 1. Store `selectedRequesterId`.
 2. Continue to the requester workspace.
 
-### 5.6 Error State
+### 5.6 Change Requester
+
+After entering the requester workspace:
+
+- Display the current Development Requester name in the application shell.
+- Provide a `Change Requester` action.
+- When the requester is changed, reload requester-specific data.
+- The new requester becomes the active testing context.
+- No real authentication is performed.
+
+### 5.7 Error State
 
 If requester loading fails:
 
@@ -186,9 +242,34 @@ If requester loading fails:
 
 ---
 
-## 6. Create Ticket Screen
+## 6. Screen Modes
 
-### 6.1 Page Structure
+### Create Mode
+
+Used when creating a new Ticket.
+
+The user can enter the required Ticket information and submit the form.
+
+### View Mode
+
+Used for viewing an existing Ticket in Ticket Detail.
+
+Ticket information is read-only.
+
+### Edit Mode
+
+Edit Mode is **not supported in Lab 2**.
+
+After a Ticket is created, Ticket fields cannot be edited by the Requester.
+
+Attachment actions such as adding or removing attachments are handled separately from Ticket field editing.
+
+---
+
+
+## 7. Create Ticket Screen
+
+### 7.1 Page Structure
 
 ```text
 Create Ticket
@@ -201,6 +282,9 @@ Auto-generated after submit
 
 Created Date
 Current Date
+
+Requester
+Alice Smith
 
 Category *
 [ Select Category ]
@@ -232,7 +316,7 @@ Maximum: 5 active attachments
 [Cancel] [Create Ticket]
 ```
 
-### 6.2 Ticket Number
+### 7.2 Ticket Number
 
 The Ticket Number is read-only.
 
@@ -246,7 +330,15 @@ After successful creation:
 
 The UI must not allow the user to manually enter or edit the Ticket Number.
 
-### 6.3 Category
+### 7.3 Requester
+
+The current Development Requester is displayed as read-only.
+
+The UI must use the selected `selectedRequesterId` as the requester context.
+
+The Requester cannot be edited directly from the Create Ticket form.
+
+### 7.4 Category
 
 Data source:
 
@@ -254,7 +346,7 @@ Data source:
 
 Only active Categories should be selectable. Required field.
 
-### 6.4 Related System
+### 7.5 Related System
 
 Data source:
 
@@ -262,7 +354,7 @@ Data source:
 
 Only active Related Systems should be selectable. Required field.
 
-### 6.5 Requested Priority
+### 7.6 Requested Priority
 
 Options:
 
@@ -272,7 +364,7 @@ Options:
 
 Required field. Use radio buttons or selectable badges.
 
-### 6.6 Summary
+### 7.7 Summary
 
 Required.
 
@@ -284,7 +376,7 @@ Rules:
 
 Display character counter: `0 / 150`
 
-### 6.7 Description
+### 7.8 Description
 
 Required.
 
@@ -298,9 +390,9 @@ Display character counter: `0 / 2000`
 
 ---
 
-## 7. Attachment UI
+## 8. Attachment UI
 
-### 7.1 Upload Area
+### 8.1 Upload Area
 
 Display a drag-and-drop area:
 
@@ -321,7 +413,7 @@ The UI should provide immediate feedback for:
 
 Backend validation remains authoritative.
 
-### 7.2 Attachment List
+### 8.2 Attachment List
 
 After selecting files, display:
 
@@ -331,7 +423,7 @@ After selecting files, display:
 
 The UI must not expose `filePath`.
 
-### 7.3 Attachment Upload Flow
+### 8.3 Attachment Upload Flow
 
 Ticket creation and attachment upload are separate API operations.
 
@@ -352,7 +444,7 @@ The ticket must remain saved.
 
 ---
 
-## 8. Create Ticket Validation
+## 9. Create Ticket Validation
 
 ### Summary
 
@@ -384,7 +476,7 @@ If Category, Related System, or Requester is invalid:
 
 ---
 
-## 9. Create Ticket Success
+## 10. Create Ticket Success
 
 After successful ticket creation:
 
@@ -412,12 +504,14 @@ After creation and attachment processing, navigate to **Ticket Detail**.
 
 ---
 
-## 10. My Tickets Screen
+## 11. My Tickets Screen
 
-### 10.1 Page Structure
+### 11.1 Page Structure
 
 ```text
 My Tickets
+
+[Create Ticket]
 
 [ Search tickets... ]
 
@@ -437,7 +531,7 @@ Priority | Status | Last Updated
 
 ---
 
-## 11. Search
+## 12. Search
 
 Search field:
 
@@ -459,7 +553,7 @@ Example search query: `email`
 
 ---
 
-## 12. Filters
+## 13. Filters
 
 ### Category
 Category options are loaded from: `GET /api/v1/categories`  
@@ -487,7 +581,7 @@ The Clear Filters button resets Search, Category, Priority, Status, and Page, th
 
 ---
 
-## 13. Sorting
+## 14. Sorting
 
 Supported UI options:
 
@@ -504,7 +598,7 @@ Default sorting: `createdAt_desc`
 
 ---
 
-## 14. Pagination
+## 15. Pagination
 
 Default settings:
 
@@ -520,7 +614,7 @@ A valid empty result must not be displayed as an error.
 
 ---
 
-## 15. Ticket List Status & Priority Badges
+## 16. Ticket List Status & Priority Badges
 
 Use badges for status and priority.
 
@@ -531,7 +625,13 @@ Badges must contain readable text and must not rely on color alone.
 
 ---
 
-## 16. Ticket Detail Screen
+## 17. Ticket Detail Screen
+
+The Ticket Detail screen is a read-only view of the current ticket.
+Ticket fields cannot be edited in Lab 2.
+
+Ticket Number, Requester, Category, Related System, Requested Priority,
+Created Date, Last Updated, Summary, and Description are read-only.
 
 ### Purpose
 Displays complete information for a ticket owned by the selected Development Requester.
@@ -584,7 +684,7 @@ Uploaded 25 Aug 2026
 
 ---
 
-## 17. Ticket Detail API Mapping
+## 18. Ticket Detail API Mapping
 
 Endpoint:
 
@@ -594,7 +694,7 @@ The UI must send the currently selected `requesterId`. The backend performs the 
 
 ---
 
-## 18. Ticket Detail Ownership
+## 19. Ticket Detail Ownership
 
 If the ticket belongs to another Requester:
 
@@ -608,9 +708,9 @@ If the ticket does not exist:
 
 ---
 
-## 19. Attachment Detail UI
+## 20. Attachment Detail UI
 
-### 19.1 Active Attachment
+### 20.1 Active Attachment
 
 Display:
 
@@ -628,7 +728,7 @@ Example:
 > Uploaded Aug 25, 2026  
 > `[Download]` `[Remove]`
 
-### 19.2 Soft-Removed Attachment
+### 20.2 Soft-Removed Attachment
 
 Metadata remains visible.
 
@@ -645,9 +745,37 @@ For a removed attachment:
 - Preview must be disabled or hidden.
 - Metadata remains visible.
 
+### 20.3 Add Attachment to Existing Ticket
+
+The Ticket Detail screen must allow the Requester to add a permitted attachment to an existing ticket.
+
+Display:
+
+`[Add Attachment]`
+
+The same attachment rules apply:
+
+- Allowed: JPG, JPEG, PNG, WEBP, PDF
+- Maximum 5 MiB (5,242,880 bytes) per file
+- Maximum 5 active attachments
+
+The UI must provide feedback for:
+
+- File selected
+- Uploading
+- Upload success
+- Upload failure
+- Unsupported file type
+- File too large
+- Maximum active attachments reached
+
+When the attachment is uploaded successfully, refresh the attachment list and display the new attachment metadata.
+
+If the ticket already has 5 active attachments, the Add Attachment action must be disabled and the user must be informed that the maximum active attachment limit has been reached.
+
 ---
 
-## 20. Download Attachment
+## 21. Download Attachment
 
 Endpoint:
 
@@ -670,7 +798,7 @@ If the attachment cannot be downloaded:
 
 ---
 
-## 21. Remove Attachment
+## 22. Remove Attachment
 
 When the user clicks Remove, display a confirmation dialog.
 
@@ -689,7 +817,7 @@ Removal reason *
 [Cancel] [Remove Attachment]
 ```
 
-### 21.1 Removal Reason
+### 22.1 Removal Reason
 
 Rules:
 
@@ -700,7 +828,7 @@ Rules:
 - Minimum 3 characters after trimming
 - Maximum 255 characters after trimming
 
-### 21.2 Remove Attachment API
+### 22.2 Remove Attachment API
 
 Endpoint:
 
@@ -718,7 +846,7 @@ The UI sends `requesterId` as a query parameter and `removalReason` as JSON requ
 
 ---
 
-## 22. Remove Attachment Success
+## 23. Remove Attachment Success
 
 After successful removal:
 
@@ -734,7 +862,7 @@ Display:
 
 ---
 
-## 23. Attachment Error States
+## 24. Attachment Error States
 
 - **Unsupported File Type:** `This file type is not supported.`
 - **File Too Large:** `File size must not exceed 5 MiB (5,242,880 bytes).`
@@ -747,7 +875,7 @@ Display:
 
 ---
 
-## 24. Requester Context
+## 25. Requester Context
 
 The UI maintains `selectedRequesterId`.  
 The API uses `requesterId`.
@@ -762,7 +890,7 @@ The selected requester must be used consistently for requester-scoped operations
 
 ---
 
-## 25. API to UI Mapping
+## 26. API to UI Mapping
 
 | UI Operation | API Endpoint | Method |
 |---|---|---|
@@ -778,7 +906,7 @@ The selected requester must be used consistently for requester-scoped operations
 
 ---
 
-## 26. Responsive UI
+## 27. Responsive UI
 
 ### Desktop >= 992px
 
@@ -828,7 +956,7 @@ Updated: 25 Aug 2026
 
 ---
 
-## 27. Accessibility
+## 28. Accessibility
 
 - **Required Fields:** Required fields must display `*`. The label must also communicate that the field is required.
 - **Validation:** Error messages must appear directly below the related field.
@@ -838,7 +966,7 @@ Updated: 25 Aug 2026
 
 ---
 
-## 28. UI State Checklist
+## 29. UI State Checklist
 
 Every major screen should support the following states:
 
@@ -893,7 +1021,7 @@ Every major screen should support the following states:
 
 ---
 
-## 29. Visual Inspection Checklist
+## 30. Visual Inspection Checklist
 
 ### Layout
 - [ ] Workspace is centered on desktop.
@@ -943,7 +1071,7 @@ Every major screen should support the following states:
 
 ---
 
-## 30. Artifact Screenshots
+## 31. Artifact Screenshots
 
 Store screenshots under:
 
@@ -966,7 +1094,7 @@ artifacts/lab-02/screenshots/
 
 ---
 
-## 31. Lab 2 Scope Boundary
+## 32. Lab 2 Scope Boundary
 
 The UI must not implement real authentication in Lab 2. Do not implement:
 
