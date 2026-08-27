@@ -36,7 +36,7 @@ Lab 2 does not implement real authentication. The selected Development Requester
 | Read-only Field | `#F0F4F2` | Non-editable fields |
 | Error | `#B42318` | Error text, borders, validation |
 | Border | `#D5DDD8` | Input/card borders |
-| Warning | `#ff3939` | Warning callouts and badges |
+| Warning | `#F59E0B` | Warning callouts and badges |
 
 ### Typography
 
@@ -410,7 +410,7 @@ Display a drag-and-drop area:
 `Drag & Drop files here` or `[Choose Files]`
 
 - Allowed: JPG, JPEG, PNG, WEBP, PDF
-- Maximum 5 MB / 5,242,880 bytes per file
+- Maximum 5 MB per file
 - Maximum 5 active attachments
 
 #### Client-side Validation
@@ -885,7 +885,7 @@ Display:
 ## 24. Attachment Error States
 
 - **Unsupported File Type:** `This file type is not supported.`
-- **File Too Large:** `File size must not exceed 5 MB / 5,242,880 bytes.`
+- **File Too Large:** `File size must not exceed 5 MB .`
 - **Maximum Active Attachments:** `This ticket already has the maximum number of active attachments.`
 - **Upload Failure:** `Unable to upload the attachment. Please try again.`
 - **Download Failure:** `Unable to download the attachment. Please try again.`
