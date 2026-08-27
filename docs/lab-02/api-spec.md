@@ -408,7 +408,7 @@ Conflict (409 Conflict):
 {
   "error": {
     "code": "TICKET_CREATION_CONFLICT",
-    "message": "The ticket could not be created because of a conflicting operation."
+    "message": "The ticket could not be created because of a concurrent or conflicting operation."
   }
 }
 ```
@@ -489,7 +489,8 @@ Example:
 Query parameter validation:
 - requesterId must be a valid positive integer.
 - requesterId must identify an existing active Development Requester.
-- categoryId must be a valid positive integer when provided.
+- categoryId must be a positive integer when provided and must reference an existing Category.
+- Inactive Category records may still be referenced by existing tickets; therefore, categoryId filtering does not require the referenced Category to be active.
 - page must be a positive integer.
 - limit must be one of 10, 20, or 50.
 - priority must be LOW, MEDIUM, or HIGH when provided.
@@ -728,6 +729,17 @@ Not Found (404 Not Found):
 }
 ```
 
+Server Error (500 Internal Server Error):
+
+```json
+{
+  "error": {
+    "code": "TICKET_DETAIL_FAILED",
+    "message": "Unable to load ticket details."
+  }
+}
+```
+
 ---
 
 ## 11. Attachment API
@@ -773,6 +785,16 @@ Form field: `file=<selected file>`
 Attachment filename handling:
 - `fileName` is the original filename after sanitization.
 - `filePath` is the internal storage path and must not be exposed in API responses.
+
+Filename sanitization must prevent path traversal and path separator characters.
+
+The sanitized fileName must not contain:
+- /
+- \
+- ../
+- ..\
+
+The client-provided filename must never be used directly as the physical storage path or storage filename. The backend must generate or control the internal storage path.
 
 Allowed File Types:
 JPG, JPEG, PNG, WEBP, PDF
@@ -1014,6 +1036,28 @@ Attachment Storage Error (500 Internal Server Error):
 }
 ```
 
+Download Failure (500 Internal Server Error):
+
+```json
+{
+  "error": {
+    "code": "ATTACHMENT_DOWNLOAD_FAILED",
+    "message": "Unable to download the attachment. Please try again."
+  }
+}
+```
+
+Download Failure (500 Internal Server Error):
+
+```json
+{
+  "error": {
+    "code": "ATTACHMENT_DOWNLOAD_FAILED",
+    "message": "Unable to download the attachment. Please try again."
+  }
+}
+```
+
 ---
 
 ### 11.3 Remove Attachment
@@ -1129,6 +1173,17 @@ Already Removed (409 Conflict):
 }
 ```
 
+Remove Failure (500 Internal Server Error):
+
+```json
+{
+  "error": {
+    "code": "ATTACHMENT_REMOVE_FAILED",
+    "message": "Unable to remove the attachment. Please try again."
+  }
+}
+```
+
 ---
 
 ## 12. Attachment Lifecycle & Rules
@@ -1165,7 +1220,7 @@ Already Removed (409 Conflict):
 | Ticket List Query | priority | Optional, Enum: LOW, MEDIUM, HIGH |
 | Ticket List Query | status | Optional, Must be NEW in Lab 2 |
 | Ticket List Query | sort | Optional, Must be one of the supported sorting values |
-| Ticket List Query | categoryId | Optional, Positive integer |
+| Ticket List Query | categoryId | Optional, Positive integer, must reference an existing Category |
 
 ---
 
@@ -1209,7 +1264,7 @@ Already Removed (409 Conflict):
 | `TICKET_NOT_FOUND` | 404 Not Found | Ticket ID does not exist |
 | `ATTACHMENT_NOT_FOUND` | 404 Not Found | Attachment ID does not exist |
 | `ATTACHMENT_NOT_AVAILABLE` | 404 Not Found | Attachment has been soft-removed |
-| `TICKET_CREATION_CONFLICT` | 409 Conflict | Race condition or duplicate conflict during creation |
+| `TICKET_CREATION_CONFLICT` | 409 Conflict | Concurrent or conflicting operation during ticket creation |
 | `ATTACHMENT_LIMIT_REACHED` | 409 Conflict | Ticket already has 5 active attachments |
 | `ATTACHMENT_ALREADY_REMOVED` | 409 Conflict | Attachment was previously soft-removed |
 | `FILE_TOO_LARGE` | 413 Payload Too Large | Attachment exceeds 5 MiB (5,242,880 bytes) limit |
@@ -1220,6 +1275,7 @@ Already Removed (409 Conflict):
 | `RELATED_SYSTEM_LIST_FAILED` | 500 Internal Server Error | Database failure retrieving Related Systems |
 | `TICKET_CREATION_FAILED` | 500 Internal Server Error | Database failure creating ticket |
 | `TICKET_LIST_FAILED` | 500 Internal Server Error | Database failure retrieving ticket list |
+| `TICKET_DETAIL_FAILED` | 500 Internal Server Error | Unexpected failure retrieving ticket detail |
 | `ATTACHMENT_UPLOAD_FAILED` | 500 Internal Server Error | File storage or database upload failure |
 | `ATTACHMENT_DOWNLOAD_FAILED` | 500 Internal Server Error | Unexpected failure while downloading an attachment |
 | `ATTACHMENT_REMOVE_FAILED` | 500 Internal Server Error | Database or storage failure while removing an attachment |
@@ -1268,7 +1324,7 @@ Status transitions are outside Lab 2 scope.
 `itPriority` is read-only in Lab 2 and is not accepted in ticket creation requests.
 For tickets created in Lab 2, `itPriority` must initially be `null`.
 
-### 18.2 Attachment Entity
+### 18.2 Attachment Database Entity
 
 ```json
 {
@@ -1301,22 +1357,60 @@ Supported values for `sort` query parameter in `GET /api/v1/tickets`:
 | `ticketNo_desc` | Ticket number descending |
 | `ticketNo_asc` | Ticket number ascending |
 
+The secondary `id_desc` sort must be applied when records have equal values for the primary sort field.
+
 ---
 
 ## 20. Testing Guidelines & Edge Cases
 
 - **Empty State:** Test ticket listing with a newly created Requester who has 0 tickets; expected response is `200 OK` with `"data": []`.
+
 - **Boundary Validation:** Test `summary` at exactly 4 chars (should fail 400) and 5 chars (should pass 201).
+
 - **Requester Scope and Ownership Test:** Try fetching a ticket owned by `requesterId=1` through the Ticket Detail API while passing `requesterId=2`. Also try downloading or removing an attachment belonging to a ticket owned by `requesterId=1` while passing `requesterId=2`. These resource access attempts must return `403 Forbidden`. For the ticket list API, create tickets for multiple Requesters and verify that each request returns only tickets whose `ticket.requesterId` matches the supplied requesterId.
+
 - **Soft Removal Verification:** Verify that after `DELETE /api/v1/attachments/:id`, attachment metadata remains accessible through `GET /api/v1/tickets/:id`, while the download endpoint returns `404 Not Found`.
+
 - **Attachment Size Boundary:** Test an attachment larger than 5 MiB, meaning greater than 5,242,880 bytes, and verify that the API returns `413 Payload Too Large`.
+
 - **Attachment Count Limit:** Verify that a ticket can contain at most 5 active attachments. Attempt to upload a 6th active attachment and verify that the API returns `409 Conflict`. After one attachment is soft-removed, verify that another attachment can be uploaded.
+
 - **Invalid Query Parameters:** Test invalid `page`, unsupported `limit`, invalid `priority`, invalid `status`, and unsupported `sort` values. Each invalid query must return `400 Bad Request`.
+
 - **Requester Isolation:** Create tickets for two different Requesters. Request the ticket list using each `requesterId` and verify that each Requester receives only their own tickets.
+
+- **Whitespace Trimming:** Test ticket creation with leading and trailing whitespace in summary and description. The backend must trim the values before validation and store the trimmed values.
+
+- **Invalid Reference Validation:** Test ticket creation with a non-existing or inactive Category, non-existing or inactive Related System, and invalid or inactive Requester. Each invalid reference must return 400 INVALID_REFERENCE.
+
+- **Invalid UUID Validation:** Test Ticket Detail and Attachment endpoints using invalid UUID path parameters. The API must return 400 VALIDATION_ERROR with the appropriate UUID validation message.
+
+- **Inactive Requester Validation:** Test requester-scoped endpoints using a requesterId that exists but has `isActive = false`. The API must return 400 INVALID_REFERENCE.
+
+- **Filename Sanitization:** Test attachment upload using filenames containing path traversal sequences or path separators, such as `../file.png` or `..\file.png`. The backend must sanitize the filename and must not use the client-provided filename as the physical storage path.
+
+- **Category Filtering:** Create tickets under multiple Categories and verify that `categoryId` filtering returns only tickets matching the requested Category while maintaining requester ownership scope.
+
+## 21. API Traceability
+
+The following table maps the API capabilities to their Acceptance Criteria and planned automated tests.
+
+| API Capability | Endpoint | Acceptance Criteria | Planned Test |
+|---|---|---|---|
+| Active Requesters | `GET /api/v1/requesters/active` | Requester selection loads active Requesters only | `server/tests/lab-02/requesters.api.test.ts` |
+| Active Categories | `GET /api/v1/categories` | Category lookup returns active Categories | `server/tests/lab-02/categories.api.test.ts` |
+| Active Related Systems | `GET /api/v1/related-systems` | Related System lookup returns active Related Systems | `server/tests/lab-02/related-systems.api.test.ts` |
+| Create Ticket | `POST /api/v1/tickets` | Valid Ticket is created for selected Requester | `server/tests/lab-02/create-ticket.api.test.ts` |
+| My Tickets | `GET /api/v1/tickets` | Only selected Requester's Tickets are returned | `server/tests/lab-02/my-tickets.api.test.ts` |
+| Ticket Detail | `GET /api/v1/tickets/:id` | Requester can access only owned Ticket | `server/tests/lab-02/ticket-detail.api.test.ts` |
+| Upload Attachment | `POST /api/v1/tickets/:id/attachments` | Valid Attachment can be uploaded within defined limits | `server/tests/lab-02/attachments.api.test.ts` |
+| Attachment Metadata | `GET /api/v1/tickets/:id` | Ticket Detail includes Attachment metadata | `server/tests/lab-02/ticket-detail.api.test.ts` |
+| Download Attachment | `GET /api/v1/attachments/:id/download` | Owned active Attachment can be downloaded | `server/tests/lab-02/attachments.api.test.ts` |
+| Remove Attachment | `DELETE /api/v1/attachments/:id` | Owned Attachment can be soft-removed | `server/tests/lab-02/attachments.api.test.ts` |
 
 ---
 
-## 21. Transition Plan to Lab 3 (Authentication)
+## 22. Transition Plan to Lab 3 (Authentication)
 
 - In **Lab 2**, requester context is passed explicitly via query params (`requesterId`) or request body. This requesterId is a testing context and is not an authenticated identity.
 - In Lab 3, authentication will be introduced using the standard HTTP header: `Authorization: Bearer <JWT_TOKEN>`
