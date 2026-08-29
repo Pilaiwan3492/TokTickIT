@@ -9,7 +9,7 @@ This document outlines the planned automated test suite for TokTickIT Requester 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **TEST-UNIT-01** | Unit | AC-01, BR-01 | Ticket number format generation (`TKT-YYYY-XXXXXX`) | Generates correct pattern with leading zeros | `src/utils/ticketNo.test.ts` | `[Pending]` |
 | **TEST-UNIT-02** | Unit | BR-05, BR-06 | File validation logic (type check & size check <= 5MB) | Rejects disallowed extensions and oversized files | `src/utils/attachment.test.ts` | `[Pending]` |
-| **TEST-API-01** | API | AC-02, BR-03, BR-04 | Requester context is required for requester-scoped ticket endpoints | Returns a validation error when requesterId is missing or invalid | `tests/api/requester-context.test.ts` | `[Pending]` |
+| **TEST-API-01** | API | AC-02, BR-03, BR-04 | Requester context validation for ticket endpoints | Returns HTTP 400 Bad Request when requesterId is missing and HTTP 403 Forbidden when unknown or inactive | `tests/api/requester-context.test.ts` | `[Pending]` |
 | **TEST-API-02** | API | AC-03, BR-04 | Requester B accessing Requester A's ticket details | Returns HTTP 403 Forbidden with standard error payload | `tests/api/ownership.test.ts` | `[Pending]` |
 | **TEST-API-03** | API | AC-01, FR-02 | Creating a new ticket via `POST /api/v1/tickets` | Creates ticket record with initial status `NEW` and ticket number | `tests/api/ticket-create.test.ts` | `[Pending]` |
 | **TEST-API-04** | API | FR-05, BR-04 | Filtering and searching tickets via `GET /api/v1/tickets` | Returns paginated list containing only requester's tickets | `tests/api/ticket-list.test.ts` | `[Pending]` |
