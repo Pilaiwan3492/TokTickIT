@@ -22,7 +22,7 @@ This document outlines the planned automated test suite for TokTickIT Requester 
 | **TEST-E2E-01** | E2E | AC-01 to AC-05 | Full Requester journey: Select User -> Create Ticket -> Upload Attachment -> View Ticket List -> View Ticket Detail -> Download Attachment -> Soft Remove Attachment | The complete requester journey completes successfully, including attachment upload, download, and soft removal, without cross-user leakage. | `e2e/requester-journey.spec.ts` | `[Pending]` |
 
 ## 3. Final Test Execution Results
-*Note: Terminal log outputs from Vitest/Playwright will be appended here upon completion of implementation in Phase 5.*[cite: 1]
+*Note: Terminal log outputs from Vitest/Playwright will be appended here upon completion of implementation in Phase 5.*
 
 ```text
 [Pending - To be executed after implementation]
