@@ -7,7 +7,7 @@ async function main() {
   for (const name of categories) {
     await prisma.category.upsert({
       where: { name },
-      update: {},
+      update: { isActive: true },
       create: { name, isActive: true }
     });
   }
@@ -16,14 +16,16 @@ async function main() {
   const requesters = [
     { email: "alice@example.com", name: "Alice Johnson" },
     { email: "bob@example.com", name: "Bob Smith" },
-    { email: "charlie@example.com", name: "Charlie Brown" }
+    { email: "charlie@example.com", name: "Charlie Brown" },
+    { email: "david@example.com", name: "David Miller", isActive: true },
+    { email: "eve@example.com", name: "Eve Inactive User", isActive: false }
   ];
 
   for (const user of requesters) {
     await prisma.requesterUser.upsert({
       where: { email: user.email },
-      update: { name: user.name, isActive: true },
-      create: { email: user.email, name: user.name, isActive: true }
+      update: { name: user.name, isActive: user.isActive ?? true },
+      create: { email: user.email, name: user.name, isActive: user.isActive ?? true }
     });
   }
 
@@ -32,7 +34,8 @@ async function main() {
     "HR Portal",
     "Email & Calendar",
     "VPN & Remote Access",
-    "Internal Wiki"
+    "Internal Wiki",
+    "Finance & Accounting"
   ];
 
   for (const name of relatedSystems) {
