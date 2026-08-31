@@ -30,19 +30,19 @@ async function main() {
   }
 
   const relatedSystems = [
-    "ERP System",
-    "HR Portal",
-    "Email & Calendar",
-    "VPN & Remote Access",
-    "Internal Wiki",
-    "Finance & Accounting"
+    { name: "ERP System", isActive: true },
+    { name: "HR Portal", isActive: true },
+    { name: "Email & Calendar", isActive: true },
+    { name: "VPN & Remote Access", isActive: true },
+    { name: "Internal Wiki", isActive: true },
+    { name: "Finance & Accounting", isActive: true }
   ];
 
-  for (const name of relatedSystems) {
+  for (const sys of relatedSystems) {
     await prisma.relatedSystem.upsert({
-      where: { name },
-      update: { isActive: true },
-      create: { name, isActive: true }
+      where: { name: sys.name },
+      update: { isActive: sys.isActive ?? true },
+      create: { name: sys.name, isActive: sys.isActive ?? true }
     });
   }
 
