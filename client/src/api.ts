@@ -10,11 +10,13 @@ export interface SystemStatus {
   categories: Category[];
 }
 
-// Issue 2 + Issue 4 — call the backend.
-// Steps: fetch `${API_URL}/api/health`; if not ok, throw.
-//        then fetch `${API_URL}/api/categories`; if not ok, throw.
-//        return { online: true, categories }.
-// Throwing on failure lets the UI show a single Offline/error state.
+export interface Requester {
+  id: number;
+  name: string;
+  email: string;
+  isActive: boolean;
+}
+
 export async function checkSystem(): Promise<SystemStatus> {
   const healthResponse = await fetch(`${API_URL}/api/health`);
   if (!healthResponse.ok) {
@@ -25,6 +27,13 @@ export async function checkSystem(): Promise<SystemStatus> {
     throw new Error("Failed to fetch categories");
   }
   const categories: Category[] = await categoriesResponse.json();
-  // TODO(Issue 2 & 4): implement the two fetch calls described above.
   return { online: true, categories };
+}
+
+export async function getActiveRequesters(): Promise<Requester[]> {
+  const response = await fetch(`${API_URL}/api/v1/requesters/active`);
+  if (!response.ok) {
+    throw new Error("Failed to load active requesters");
+  }
+  return response.json();
 }
