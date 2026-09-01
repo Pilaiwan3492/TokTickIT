@@ -146,13 +146,17 @@ app.post(
       const { categoryId, relatedSystemId, summary, description, requestedPriority } = req.body;
       const requesterId = req.requester?.id;
 
-      const trimmedSummary = summary?.trim() || "";
-      const trimmedDescription = description?.trim() || "";
+      const trimmedSummary = typeof summary === "string" ? summary.trim() : "";
+      const trimmedDescription = typeof description === "string" ? description.trim() : "";
       const fields: Record<string, string> = {};
 
-      // Server-side validation
-      if (!categoryId) fields.categoryId = "Category is required.";
-      if (!relatedSystemId) fields.relatedSystemId = "Related system is required.";
+      // 1. Validate Required & Enum: requestedPriority
+      const validPriorities = ["LOW", "MEDIUM", "HIGH"];
+      if (!requestedPriority || !validPriorities.includes(requestedPriority)) {
+        fields.requestedPriority = "Requested priority must be LOW, MEDIUM, or HIGH.";
+      }
+
+      // 2. Validate Summary & Description length (after trimming)
       if (trimmedSummary.length < 5 || trimmedSummary.length > 150) {
         fields.summary = "Summary must be between 5 and 150 characters.";
       }
@@ -160,6 +164,31 @@ app.post(
         fields.description = "Description must be between 10 and 2,000 characters.";
       }
 
+      // 3. Validate Category (must exist & be active)
+      if (!categoryId || isNaN(Number(categoryId))) {
+        fields.categoryId = "Category is required.";
+      } else {
+        const category = await prisma.category.findUnique({
+          where: { id: Number(categoryId) },
+        });
+        if (!category || !category.isActive) {
+          fields.categoryId = "Selected category is invalid or inactive.";
+        }
+      }
+
+      // 4. Validate Related System (must exist & be active)
+      if (!relatedSystemId || isNaN(Number(relatedSystemId))) {
+        fields.relatedSystemId = "Related system is required.";
+      } else {
+        const relatedSystem = await prisma.relatedSystem.findUnique({
+          where: { id: Number(relatedSystemId) },
+        });
+        if (!relatedSystem || !relatedSystem.isActive) {
+          fields.relatedSystemId = "Selected related system is invalid or inactive.";
+        }
+      }
+
+      // Return 400 Bad Request if validation fails
       if (Object.keys(fields).length > 0) {
         return res.status(400).json({
           error: {
@@ -184,7 +213,7 @@ app.post(
           relatedSystemId: Number(relatedSystemId),
           summary: trimmedSummary,
           description: trimmedDescription,
-          requestedPriority: requestedPriority || "MEDIUM",
+          requestedPriority,
           currentStatus: "NEW",
         },
       });
