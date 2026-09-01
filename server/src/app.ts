@@ -1,14 +1,8 @@
 import express, { Request, Response } from "express";
-
 import cors from "cors";
-
 import { getPrisma } from "./prisma.js";
+import { requireRequester, requireTicketOwnership, RequesterRequest, } from "./middleware/requesterGuard.js";
 
-import {
-  requireRequester,
-  requireTicketOwnership,
-  RequesterRequest,
-} from "./middleware/requesterGuard.js";
 
 void getPrisma;
 
@@ -56,8 +50,7 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
   }
 });
 
-// Lab 2 — Active Requesters Endpoint
-
+// Issue 12 — Active Requesters Endpoint
 // Used by the Development Requester Selector
 
 app.get(
@@ -95,8 +88,7 @@ app.get(
   }
 );
 
-// Lab 2 — Ticket Detail with Requester Ownership Check
-
+// Issue 12 — Ticket Detail with Requester Ownership Check
 app.get(
   "/api/v1/tickets/:id",
   requireRequester,
@@ -134,6 +126,74 @@ app.get(
     } catch (error) {
       console.error("Error fetching ticket:", error);
 
+      return res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Internal server error",
+        },
+      });
+    }
+  }
+);
+
+// Issue 13 — Create Ticket Endpoint
+app.post(
+  "/api/v1/tickets",
+  requireRequester,
+  async (req: RequesterRequest, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const { categoryId, relatedSystemId, summary, description, requestedPriority } = req.body;
+      const requesterId = req.requester?.id;
+
+      const trimmedSummary = summary?.trim() || "";
+      const trimmedDescription = description?.trim() || "";
+      const fields: Record<string, string> = {};
+
+      // Server-side validation
+      if (!categoryId) fields.categoryId = "Category is required.";
+      if (!relatedSystemId) fields.relatedSystemId = "Related system is required.";
+      if (trimmedSummary.length < 5 || trimmedSummary.length > 150) {
+        fields.summary = "Summary must be between 5 and 150 characters.";
+      }
+      if (trimmedDescription.length < 10 || trimmedDescription.length > 2000) {
+        fields.description = "Description must be between 10 and 2,000 characters.";
+      }
+
+      if (Object.keys(fields).length > 0) {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Please correct the highlighted fields.",
+            fields,
+          },
+        });
+      }
+
+      // Generate Ticket Number (TKT-YYYY-XXXXXX)
+      const year = new Date().getFullYear();
+      const count = await prisma.ticket.count();
+      const sequence = String(count + 1).padStart(6, "0");
+      const ticketNo = `TKT-${year}-${sequence}`;
+
+      const newTicket = await prisma.ticket.create({
+        data: {
+          ticketNo,
+          requesterId: Number(requesterId),
+          categoryId: Number(categoryId),
+          relatedSystemId: Number(relatedSystemId),
+          summary: trimmedSummary,
+          description: trimmedDescription,
+          requestedPriority: requestedPriority || "MEDIUM",
+          currentStatus: "NEW",
+        },
+      });
+
+      return res.status(201).json({
+        data: newTicket,
+      });
+    } catch (error) {
+      console.error("Error creating ticket:", error);
       return res.status(500).json({
         error: {
           code: "INTERNAL_SERVER_ERROR",
