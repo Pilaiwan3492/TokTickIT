@@ -34,6 +34,31 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
   }
 });
 
+// Lab 2 — Active Requesters Endpoint (สำหรับ Requester Selector)
+app.get("/api/v1/requesters/active", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    const activeRequesters = await prisma.requesterUser.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    res.status(200).json(activeRequesters);
+  } catch (error) {
+    console.error("Error fetching active requesters:", error);
+    res.status(500).json({
+      error: "Failed to fetch active requesters",
+    });
+  }
+});
+
 // Issue 12 — Ticket Ownership Guarded Endpoints
 app.get(
   "/api/v1/tickets/:id",
