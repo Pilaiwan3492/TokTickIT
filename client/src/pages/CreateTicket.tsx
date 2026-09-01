@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useRequester } from "../context/RequesterContext.js";
 
 interface Category {
   id: number;
@@ -15,6 +16,7 @@ interface RelatedSystem {
 
 export default function CreateTicket() {
   const navigate = useNavigate();
+  const { selectedRequester } = useRequester();
 
   // Reference Data State
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,6 +72,11 @@ export default function CreateTicket() {
     setFieldErrors({});
     setGeneralError("");
 
+    if (!selectedRequester?.id) {
+      setGeneralError("Please select a requester before creating a ticket.");
+      return;
+    }
+
     // ---------------------------------------------------------
     // Client-side Validation Checks
     // ---------------------------------------------------------
@@ -100,8 +107,6 @@ export default function CreateTicket() {
 
     setIsSubmitting(true);
 
-    const selectedRequesterId = localStorage.getItem("dev_selected_requester_id") || "1";
-
     try {
       const response = await fetch("/api/v1/tickets", {
         method: "POST",
@@ -109,7 +114,7 @@ export default function CreateTicket() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          requesterId: Number(selectedRequesterId),
+          requesterId: Number(selectedRequester.id),
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,

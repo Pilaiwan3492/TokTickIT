@@ -8,7 +8,7 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     const prisma = getPrisma();
     const { categoryId, relatedSystemId, summary, description, requestedPriority } = req.body;
     
-    // 1. pull requesterId from request body 
+    // 1. pull requesterId from request body or middleware context
     const requesterId = req.body?.requesterId || req.requester?.id;
 
     const trimmedSummary = typeof summary === "string" ? summary.trim() : "";
@@ -16,10 +16,17 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     const fields: Record<string, string> = {};
 
     // ---------------------------------------------------------
-    // Phase 1: Field Validation 
+    // Phase 1: Field Validation (Strict Integer & Boundary Checks)
     // ---------------------------------------------------------
-    if (!requesterId || isNaN(Number(requesterId))) {
-      fields.requesterId = "Requester ID is required.";
+    const requesterIdNum = Number(requesterId);
+    if (
+      requesterId === undefined ||
+      requesterId === null ||
+      typeof requesterId === "boolean" ||
+      !Number.isInteger(requesterIdNum) ||
+      requesterIdNum <= 0
+    ) {
+      fields.requesterId = "Requester ID is required and must be a positive integer.";
     }
 
     const validPriorities = ["LOW", "MEDIUM", "HIGH"];
@@ -35,11 +42,25 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
       fields.description = "Description must be between 10 and 2,000 characters.";
     }
 
-    if (!categoryId || isNaN(Number(categoryId))) {
+    const categoryIdNum = Number(categoryId);
+    if (
+      categoryId === undefined ||
+      categoryId === null ||
+      typeof categoryId === "boolean" ||
+      !Number.isInteger(categoryIdNum) ||
+      categoryIdNum <= 0
+    ) {
       fields.categoryId = "Category is required.";
     }
 
-    if (!relatedSystemId || isNaN(Number(relatedSystemId))) {
+    const relatedSystemIdNum = Number(relatedSystemId);
+    if (
+      relatedSystemId === undefined ||
+      relatedSystemId === null ||
+      typeof relatedSystemId === "boolean" ||
+      !Number.isInteger(relatedSystemIdNum) ||
+      relatedSystemIdNum <= 0
+    ) {
       fields.relatedSystemId = "Related system is required.";
     }
 
@@ -57,9 +78,9 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     // Phase 2: Reference Validation 
     // ---------------------------------------------------------
     const [requester, category, relatedSystem] = await Promise.all([
-      prisma.requesterUser.findUnique({ where: { id: Number(requesterId) } }),
-      prisma.category.findUnique({ where: { id: Number(categoryId) } }),
-      prisma.relatedSystem.findUnique({ where: { id: Number(relatedSystemId) } }),
+      prisma.requesterUser.findUnique({ where: { id: categoryIdNum ? requesterIdNum : 0 } }),
+      prisma.category.findUnique({ where: { id: categoryIdNum } }),
+      prisma.relatedSystem.findUnique({ where: { id: relatedSystemIdNum } }),
     ]);
 
     const isRequesterInvalid = !requester || (requester as any).isActive === false;
@@ -83,9 +104,9 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     const newTicket = await prisma.ticket.create({
       data: {
         ticketNo,
-        requesterId: Number(requesterId),
-        categoryId: Number(categoryId),
-        relatedSystemId: Number(relatedSystemId),
+        requesterId: requesterIdNum,
+        categoryId: categoryIdNum,
+        relatedSystemId: relatedSystemIdNum,
         summary: trimmedSummary,
         description: trimmedDescription,
         requestedPriority,
