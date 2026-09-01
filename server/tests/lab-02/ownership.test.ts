@@ -1,0 +1,95 @@
+import { describe, it, expect, beforeAll } from "vitest";
+import request from "supertest";
+import { app } from "../../src/app.js";
+import { getPrisma } from "../../src/prisma.js";
+
+describe("Ticket Ownership Guard & Requester Context Middleware", () => {
+  let activeRequesterAId: number;
+  let activeRequesterBId: number;
+  let inactiveRequesterId: number;
+  let ticketAId: string;
+
+  beforeAll(async () => {
+    const prisma = getPrisma();
+
+    const activeUsers = await prisma.requesterUser.findMany({
+      where: { isActive: true },
+      take: 2,
+    });
+
+    activeRequesterAId = activeUsers[0]?.id ?? 1;
+    activeRequesterBId = activeUsers[1]?.id ?? 2;
+
+    const inactiveUser = await prisma.requesterUser.findFirst({
+      where: { isActive: false },
+    });
+    inactiveRequesterId = inactiveUser?.id ?? 9999;
+
+    const existingTicket = await prisma.ticket.findFirst({
+      where: { requesterId: activeRequesterAId },
+    });
+
+    if (existingTicket) {
+      ticketAId = existingTicket.id;
+    } else {
+      const category = await prisma.category.findFirst();
+      const system = await prisma.relatedSystem.findFirst();
+
+      if (category && system) {
+        const newTicket = await prisma.ticket.create({
+          data: {
+            ticketNo: `TKT-TEST-${Date.now()}`,
+            requesterId: activeRequesterAId,
+            categoryId: category.id,
+            relatedSystemId: system.id,
+            summary: "Test Ticket for Guard",
+            description: "Ownership testing description",
+            requestedPriority: "LOW",
+          },
+        });
+        ticketAId = newTicket.id;
+      }
+    }
+  });
+
+  it("should return 400 Bad Request when requesterId is missing", async () => {
+    const res = await request(app).get(`/api/v1/tickets/${ticketAId}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Bad Request");
+  });
+
+  it("should return 400 Bad Request when requester is inactive or non-existent", async () => {
+    const res = await request(app).get(
+      `/api/v1/tickets/${ticketAId}?requesterId=${inactiveRequesterId}`
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Bad Request");
+  });
+
+  it("should return 404 Not Found when ticket does not exist", async () => {
+    const fakeUuid = "00000000-0000-0000-0000-000000000000";
+    const res = await request(app).get(
+      `/api/v1/tickets/${fakeUuid}?requesterId=${activeRequesterAId}`
+    );
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Not Found");
+  });
+
+  it("should return 403 Forbidden when Requester B attempts to access Requester A's ticket", async () => {
+    const res = await request(app).get(
+      `/api/v1/tickets/${ticketAId}?requesterId=${activeRequesterBId}`
+    );
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("Forbidden");
+  });
+
+  it("should return 200 OK with wrapped data when ticket owner accesses their own ticket", async () => {
+    const res = await request(app).get(
+      `/api/v1/tickets/${ticketAId}?requesterId=${activeRequesterAId}`
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.id).toBe(ticketAId);
+    expect(res.body.data.requesterId).toBe(activeRequesterAId);
+  });
+});
