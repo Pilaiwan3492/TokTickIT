@@ -52,37 +52,46 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
     }
   });
 
+  // 1. Missing Requester -> HTTP 400
   it("should return 400 Bad Request when requesterId is missing", async () => {
     const res = await request(app).get(`/api/v1/tickets/${ticketAId}`);
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Bad Request");
+    expect(res.body.error.code).toBe("INVALID_REQUESTER_CONTEXT");
   });
 
+  // 2. Inactive or Unknown Requester -> HTTP 400
   it("should return 400 Bad Request when requester is inactive or non-existent", async () => {
     const res = await request(app).get(
       `/api/v1/tickets/${ticketAId}?requesterId=${inactiveRequesterId}`
     );
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Bad Request");
+    expect(res.body.error.code).toBe("INVALID_REQUESTER_CONTEXT");
   });
 
+  // 3. Ticket Not Found -> HTTP 404
   it("should return 404 Not Found when ticket does not exist", async () => {
     const fakeUuid = "00000000-0000-0000-0000-000000000000";
     const res = await request(app).get(
       `/api/v1/tickets/${fakeUuid}?requesterId=${activeRequesterAId}`
     );
     expect(res.status).toBe(404);
-    expect(res.body.error).toBe("Not Found");
+    expect(res.body.error.code).toBe("TICKET_NOT_FOUND");
+    expect(res.body.error.message).toBe("Ticket not found.");
   });
 
+  // 4. Other Requester (Cross-user access) -> HTTP 403
   it("should return 403 Forbidden when Requester B attempts to access Requester A's ticket", async () => {
     const res = await request(app).get(
       `/api/v1/tickets/${ticketAId}?requesterId=${activeRequesterBId}`
     );
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe("Forbidden");
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(res.body.error.message).toBe(
+      "You do not have permission to access this ticket."
+    );
   });
 
+  // 5. Owner Access -> HTTP 200
   it("should return 200 OK with wrapped data when ticket owner accesses their own ticket", async () => {
     const res = await request(app).get(
       `/api/v1/tickets/${ticketAId}?requesterId=${activeRequesterAId}`
