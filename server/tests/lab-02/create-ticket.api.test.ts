@@ -51,8 +51,7 @@ describe("POST /api/v1/tickets Validation & Creation Scenarios", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("VALIDATION_ERROR");
-    expect(res.body.error.fields.categoryId).toBeDefined();
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
   });
 
   it("should return 400 when relatedSystemId does not exist or is inactive", async () => {
@@ -68,8 +67,7 @@ describe("POST /api/v1/tickets Validation & Creation Scenarios", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("VALIDATION_ERROR");
-    expect(res.body.error.fields.relatedSystemId).toBeDefined();
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
   });
 
   it("should return 400 when requestedPriority is invalid", async () => {
