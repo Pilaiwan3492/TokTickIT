@@ -1,104 +1,236 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-interface CreateTicketProps {
-  selectedRequesterId: number;
+interface Category {
+  id: number;
+  name: string;
+  isActive?: boolean;
 }
 
-export const CreateTicket: React.FC<CreateTicketProps> = ({ selectedRequesterId }) => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    categoryId: '1',
-    relatedSystemId: '1',
-    summary: '',
-    description: '',
-    requestedPriority: 'MEDIUM'
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+interface RelatedSystem {
+  id: number;
+  name: string;
+  isActive?: boolean;
+}
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (formData.summary.trim().length < 5 || formData.summary.trim().length > 150) {
-      newErrors.summary = 'Summary must be between 5 and 150 characters.';
-    }
-    if (formData.description.trim().length < 10 || formData.description.trim().length > 2000) {
-      newErrors.description = 'Description must be between 10 and 2,000 characters.';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+export default function CreateTicket() {
+  const navigate = useNavigate();
+
+  // Reference Data State
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
+
+  // Form Fields State (ไม่ hardcode ค่าเริ่มต้น เป็นค่าว่างเพื่อให้ผู้ใช้เลือกเอง)
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [relatedSystemId, setRelatedSystemId] = useState<string>("");
+  const [requestedPriority, setRequestedPriority] = useState<string>("MEDIUM");
+  const [summary, setSummary] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+
+  // Validation & Loading State
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Load Reference Data from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        let res = await fetch("/api/v1/categories");
+        if (!res.ok) res = await fetch("/api/categories");
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.data || []);
+          setCategories(list.filter((item: Category) => item.isActive !== false));
+        }
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
+    const fetchRelatedSystems = async () => {
+      try {
+        let res = await fetch("/api/v1/related-systems");
+        if (!res.ok) res = await fetch("/api/related-systems");
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.data || []);
+          setRelatedSystems(list.filter((item: RelatedSystem) => item.isActive !== false));
+        }
+      } catch (err) {
+        console.error("Error fetching related systems:", err);
+      }
+    };
+
+    fetchCategories();
+    fetchRelatedSystems();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-
+    setFieldErrors({});
+    setGeneralError("");
     setIsSubmitting(true);
+
     try {
-      const res = await fetch('/api/v1/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/v1/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          ...formData,
-          requesterId: selectedRequesterId,
-          categoryId: Number(formData.categoryId),
-          relatedSystemId: Number(formData.relatedSystemId)
-        })
+          categoryId: Number(categoryId),
+          relatedSystemId: Number(relatedSystemId),
+          requestedPriority,
+          summary,
+          description,
+        }),
       });
-      const data = await res.json();
-      if (res.status === 201) {
-        navigate(`/tickets/${data.data.id}`, {
-          state: { notification: `Ticket ${data.data.ticketNo} created successfully!` }
-        });
-      } else if (data.error?.fields) {
-        setErrors(data.error.fields);
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        if (resData.error?.fields) {
+          setFieldErrors(resData.error.fields);
+        } else {
+          setGeneralError(resData.error?.message || "Failed to create ticket");
+        }
+      } else {
+        navigate("/tickets");
       }
-    } catch {
-      alert('Network error occurred.');
+    } catch (error) {
+      setGeneralError("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={{ backgroundColor: '#F5F7F6', minHeight: '100vh', padding: '24px' }}>
-      <form onSubmit={handleSubmit} style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '8px', maxWidth: '700px', margin: '0 auto', border: '1px solid #E0E0E0' }}>
-        <h2 style={{ color: '#006B3C', marginTop: 0 }}>Create Ticket</h2>
+    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-6">
+      <h1 className="text-2xl font-bold text-emerald-800 mb-6">Create New Ticket</h1>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-            Summary <span style={{ color: '#D32F2F' }}>*</span>
+      {generalError && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {generalError}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Category Dropdown */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="">-- Select Category --</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.categoryId && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.categoryId}</p>
+          )}
+        </div>
+
+        {/* Related System Dropdown */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Related System <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={relatedSystemId}
+            onChange={(e) => setRelatedSystemId(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="">-- Select Related System --</option>
+            {relatedSystems.map((sys) => (
+              <option key={sys.id} value={sys.id}>
+                {sys.name}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.relatedSystemId && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.relatedSystemId}</p>
+          )}
+        </div>
+
+        {/* Requested Priority */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Requested Priority <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={requestedPriority}
+            onChange={(e) => setRequestedPriority(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="LOW">LOW</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+          </select>
+          {fieldErrors.requestedPriority && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.requestedPriority}</p>
+          )}
+        </div>
+
+        {/* Summary Input */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Summary <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            value={formData.summary}
-            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-            style={{ width: '100%', height: '40px', borderColor: errors.summary ? '#D32F2F' : '#CCC', borderRadius: '4px', padding: '0 8px' }}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="Brief summary (5-150 characters)"
+            className="w-full border border-gray-300 p-2 rounded focus:ring-emerald-500 focus:border-emerald-500"
           />
-          {errors.summary && <span style={{ color: '#D32F2F', fontSize: '13px' }}>{errors.summary}</span>}
+          {fieldErrors.summary && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.summary}</p>
+          )}
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-            Description <span style={{ color: '#D32F2F' }}>*</span>
+        {/* Description Textarea */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description <span className="text-red-500">*</span>
           </label>
           <textarea
-            rows={5}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            style={{ width: '100%', borderColor: errors.description ? '#D32F2F' : '#CCC', borderRadius: '4px', padding: '8px' }}
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Detailed description (10-2000 characters)"
+            className="w-full border border-gray-300 p-2 rounded focus:ring-emerald-500 focus:border-emerald-500"
           />
-          {errors.description && <span style={{ color: '#D32F2F', fontSize: '13px' }}>{errors.description}</span>}
+          {fieldErrors.description && (
+            <p className="text-red-500 text-xs mt-1">{fieldErrors.description}</p>
+          )}
         </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          style={{ backgroundColor: isSubmitting ? '#A0A0A0' : '#006B3C', color: '#FFF', border: 'none', padding: '12px 24px', borderRadius: '4px', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
-        </button>
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={() => navigate("/tickets")}
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {isSubmitting ? "Submitting..." : "Create Ticket"}
+          </button>
+        </div>
       </form>
     </div>
   );
-};
+}
