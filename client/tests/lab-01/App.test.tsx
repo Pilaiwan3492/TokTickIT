@@ -1,10 +1,22 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
 
 describe("App", () => {
+  beforeEach(() => {
+    localStorage.setItem(
+      "toktickit_selected_requester",
+      JSON.stringify({
+        id: 1,
+        name: "Alice Johnson",
+        email: "alice@example.com",
+        isActive: true,
+      })
+    );
+  });
+
   it("renders the TokTickIT heading", () => {
     render(<App />);
     expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();

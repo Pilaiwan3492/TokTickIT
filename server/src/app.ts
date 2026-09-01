@@ -14,12 +14,12 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Issue 2 — Health check
+// Issue 2 — Health Check Endpoint
 app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok", service: "TokTickIT API" });
 });
 
-// Issue 4 — Categories
+// Issue 4 — Categories Endpoint
 app.get("/api/categories", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
