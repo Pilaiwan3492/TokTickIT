@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { createTicket } from '../controllers/ticket.controller';
+import { createTicketHandler } from '../controllers/ticket.controller.js';
+import { requireRequester } from '../middleware/requesterGuard.js';
 
 const router = Router();
-router.post('/tickets', createTicket);
+router.post('/tickets', requireRequester, createTicketHandler);
 
 export default router;
