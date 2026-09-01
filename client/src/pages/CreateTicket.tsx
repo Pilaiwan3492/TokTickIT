@@ -20,7 +20,7 @@ export default function CreateTicket() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
 
-  // Form Fields State (ไม่ hardcode ค่าเริ่มต้น เป็นค่าว่างเพื่อให้ผู้ใช้เลือกเอง)
+  // Form Fields State
   const [categoryId, setCategoryId] = useState<string>("");
   const [relatedSystemId, setRelatedSystemId] = useState<string>("");
   const [requestedPriority, setRequestedPriority] = useState<string>("MEDIUM");
@@ -32,7 +32,7 @@ export default function CreateTicket() {
   const [generalError, setGeneralError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Load Reference Data from API
+  // Fetch Reference Data
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -70,6 +70,36 @@ export default function CreateTicket() {
     e.preventDefault();
     setFieldErrors({});
     setGeneralError("");
+
+    // ---------------------------------------------------------
+    // Client-side Validation Checks
+    // ---------------------------------------------------------
+    const errors: Record<string, string> = {};
+
+    if (!categoryId) {
+      errors.categoryId = "Please select a category";
+    }
+
+    if (!relatedSystemId) {
+      errors.relatedSystemId = "Please select a related system";
+    }
+
+    const trimmedSummary = summary.trim();
+    if (trimmedSummary.length < 5 || trimmedSummary.length > 150) {
+      errors.summary = "Summary must be between 5 and 150 characters.";
+    }
+
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 10 || trimmedDescription.length > 2000) {
+      errors.description = "Description must be between 10 and 2,000 characters.";
+    }
+
+    // if have Error  Client will stop and display the error without submitting the request
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -82,8 +112,8 @@ export default function CreateTicket() {
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,
-          summary,
-          description,
+          summary: trimmedSummary,
+          description: trimmedDescription,
         }),
       });
 
