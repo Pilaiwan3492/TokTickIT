@@ -15,12 +15,12 @@ export const requireRequester = async (
   res: Response,
   next: NextFunction
 ) => {
-  const rawId = req.headers["x-requester-id"] || req.query.requesterId || req.body?.requesterId;
+  const rawId = req.query.requesterId || req.body?.requesterId || req.headers["x-requester-id"];
 
   if (!rawId) {
     return res.status(400).json({
       error: "Bad Request",
-      message: "Missing requester ID context header (x-requester-id)",
+      message: "Missing requesterId in query parameter or request body",
     });
   }
 

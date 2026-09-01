@@ -14,12 +14,12 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Issue 2 — Health Check Endpoint
+// Issue 2 — Health check
 app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok", service: "TokTickIT API" });
 });
 
-// Issue 4 — Categories Endpoint
+// Issue 4 — Categories
 app.get("/api/categories", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
@@ -50,7 +50,10 @@ app.get(
           attachments: true,
         },
       });
-      res.status(200).json(ticket);
+
+      res.status(200).json({
+        data: ticket,
+      });
     } catch (error) {
       console.error("Error fetching ticket:", error);
       res.status(500).json({ error: "Internal server error" });
