@@ -17,13 +17,16 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
       take: 2,
     });
 
-    activeRequesterAId = activeUsers[0]?.id ?? 1;
-    activeRequesterBId = activeUsers[1]?.id ?? 2;
+    expect(activeUsers.length).toBeGreaterThanOrEqual(2);
+    activeRequesterAId = activeUsers[0].id;
+    activeRequesterBId = activeUsers[1].id;
 
     const inactiveUser = await prisma.requesterUser.findFirst({
       where: { isActive: false },
     });
-    inactiveRequesterId = inactiveUser?.id ?? 9999;
+
+    expect(inactiveUser).not.toBeNull();
+    inactiveRequesterId = inactiveUser!.id;
 
     const existingTicket = await prisma.ticket.findFirst({
       where: { requesterId: activeRequesterAId },
@@ -35,20 +38,21 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
       const category = await prisma.category.findFirst();
       const system = await prisma.relatedSystem.findFirst();
 
-      if (category && system) {
-        const newTicket = await prisma.ticket.create({
-          data: {
-            ticketNo: `TKT-TEST-${Date.now()}`,
-            requesterId: activeRequesterAId,
-            categoryId: category.id,
-            relatedSystemId: system.id,
-            summary: "Test Ticket for Guard",
-            description: "Ownership testing description",
-            requestedPriority: "LOW",
-          },
-        });
-        ticketAId = newTicket.id;
-      }
+      expect(category).not.toBeNull();
+      expect(system).not.toBeNull();
+
+      const newTicket = await prisma.ticket.create({
+        data: {
+          ticketNo: `TKT-TEST-${Date.now()}`,
+          requesterId: activeRequesterAId,
+          categoryId: category!.id,
+          relatedSystemId: system!.id,
+          summary: "Test Ticket for Guard",
+          description: "Ownership testing description",
+          requestedPriority: "LOW",
+        },
+      });
+      ticketAId = newTicket.id;
     }
   });
 
