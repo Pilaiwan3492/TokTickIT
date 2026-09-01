@@ -1,9 +1,27 @@
-import { getPrisma } from '../prisma';
+import { getPrisma } from '../prisma.js';
 
-export async function generateTicketNumber(): Promise<string> {
+export async function generateTicketNumber(prismaInstance?: any): Promise<string> {
   const year = new Date().getFullYear();
-  const prisma = getPrisma();
-  const count = await prisma.ticket.count();
-  const sequence = String(count + 1).padStart(6, '0');
-  return `TKT-${year}-${sequence}`;
+  const prisma = prismaInstance || getPrisma();
+  
+  let isUnique = false;
+  let ticketNo = '';
+  let attempts = 0;
+
+  while (!isUnique && attempts < 10) {
+    attempts++;
+    const count = await prisma.ticket.count();
+    const sequence = String(count + attempts).padStart(6, '0');
+    ticketNo = `TKT-${year}-${sequence}`;
+
+    const existing = await prisma.ticket.findUnique({
+      where: { ticketNo },
+    });
+
+    if (!existing) {
+      isUnique = true;
+    }
+  }
+
+  return ticketNo;
 }

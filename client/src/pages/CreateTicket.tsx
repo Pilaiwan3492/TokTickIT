@@ -31,13 +31,13 @@ export default function CreateTicket() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [createdTicketNo, setCreatedTicketNo] = useState<string | null>(null);
 
   // Fetch Reference Data
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        let res = await fetch("/api/v1/categories");
-        if (!res.ok) res = await fetch("/api/categories");
+        const res = await fetch("/api/v1/categories");
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : (data.data || []);
@@ -50,8 +50,7 @@ export default function CreateTicket() {
 
     const fetchRelatedSystems = async () => {
       try {
-        let res = await fetch("/api/v1/related-systems");
-        if (!res.ok) res = await fetch("/api/related-systems");
+        const res = await fetch("/api/v1/related-systems");
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : (data.data || []);
@@ -94,13 +93,14 @@ export default function CreateTicket() {
       errors.description = "Description must be between 10 and 2,000 characters.";
     }
 
-    // if have Error  Client will stop and display the error without submitting the request
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
 
     setIsSubmitting(true);
+
+    const selectedRequesterId = localStorage.getItem("dev_selected_requester_id") || "1";
 
     try {
       const response = await fetch("/api/v1/tickets", {
@@ -109,6 +109,7 @@ export default function CreateTicket() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          requesterId: Number(selectedRequesterId),
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,
@@ -126,7 +127,7 @@ export default function CreateTicket() {
           setGeneralError(resData.error?.message || "Failed to create ticket");
         }
       } else {
-        navigate("/tickets");
+        setCreatedTicketNo(resData.data?.ticketNo);
       }
     } catch (error) {
       setGeneralError("An unexpected error occurred. Please try again.");
@@ -134,6 +135,44 @@ export default function CreateTicket() {
       setIsSubmitting(false);
     }
   };
+
+  // ---------------------------------------------------------
+  // Success View Screen 
+  // ---------------------------------------------------------
+  if (createdTicketNo) {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md mt-10 text-center space-y-4">
+        <div className="text-emerald-600 text-5xl">✓</div>
+        <h2 className="text-2xl font-bold text-gray-800">Ticket Created Successfully!</h2>
+        <p className="text-sm text-gray-600">Your ticket has been submitted with reference number:</p>
+        <div className="text-2xl font-mono font-bold text-emerald-800 bg-emerald-50 py-3 rounded border border-emerald-200">
+          {createdTicketNo}
+        </div>
+        <div className="flex justify-center space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={() => navigate("/tickets")}
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+          >
+            View My Tickets
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCreatedTicketNo(null);
+              setSummary("");
+              setDescription("");
+              setCategoryId("");
+              setRelatedSystemId("");
+            }}
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+          >
+            Create Another Ticket
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-6">
