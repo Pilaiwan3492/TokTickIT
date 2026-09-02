@@ -1,7 +1,20 @@
 import "@testing-library/jest-dom";
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from "vitest";
+
+import {
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -27,8 +40,14 @@ const mockTicketsA = [
     currentStatus: "NEW",
     createdAt: "2026-09-01T10:00:00.000Z",
     updatedAt: "2026-09-01T10:00:00.000Z",
-    category: { id: 1, name: "Software" },
-    relatedSystem: { id: 1, name: "Email" },
+    category: {
+      id: 1,
+      name: "Software",
+    },
+    relatedSystem: {
+      id: 1,
+      name: "Email",
+    },
   },
   {
     id: 2,
@@ -39,8 +58,14 @@ const mockTicketsA = [
     currentStatus: "NEW",
     createdAt: "2026-09-02T10:00:00.000Z",
     updatedAt: "2026-09-02T10:00:00.000Z",
-    category: { id: 2, name: "Hardware" },
-    relatedSystem: { id: 2, name: "Laptop" },
+    category: {
+      id: 2,
+      name: "Hardware",
+    },
+    relatedSystem: {
+      id: 2,
+      name: "Laptop",
+    },
   },
 ];
 
@@ -54,8 +79,14 @@ const mockTicketsB = [
     currentStatus: "NEW",
     createdAt: "2026-09-03T10:00:00.000Z",
     updatedAt: "2026-09-03T10:00:00.000Z",
-    category: { id: 2, name: "Hardware" },
-    relatedSystem: { id: 2, name: "Network" },
+    category: {
+      id: 2,
+      name: "Hardware",
+    },
+    relatedSystem: {
+      id: 2,
+      name: "Network",
+    },
   },
 ];
 
@@ -79,10 +110,19 @@ function renderMyTickets() {
     <MemoryRouter initialEntries={["/tickets"]}>
       <RequesterProvider>
         <Routes>
-          <Route path="/tickets" element={<MyTickets />} />
+          <Route
+            path="/tickets"
+            element={<MyTickets />}
+          />
+
           <Route
             path="/create-ticket"
             element={<div>Create Ticket Page</div>}
+          />
+
+          <Route
+            path="/select-requester"
+            element={<RequesterSelector />}
           />
         </Routes>
       </RequesterProvider>
@@ -124,6 +164,16 @@ function renderMyTicketsWithLocation() {
               </>
             }
           />
+
+          <Route
+            path="/select-requester"
+            element={
+              <>
+                <RequesterSelector />
+                <LocationDisplay />
+              </>
+            }
+          />
         </Routes>
       </RequesterProvider>
     </MemoryRouter>
@@ -147,11 +197,19 @@ function mockFetch(
         return new Response(
           JSON.stringify({
             data: [
-              { id: 1, name: "Software" },
-              { id: 2, name: "Hardware" },
+              {
+                id: 1,
+                name: "Software",
+              },
+              {
+                id: 2,
+                name: "Hardware",
+              },
             ],
           }),
-          { status: 200 }
+          {
+            status: 200,
+          }
         );
       }
 
@@ -161,13 +219,38 @@ function mockFetch(
             data: tickets,
             meta,
           }),
-          { status: 200 }
+          {
+            status: 200,
+          }
         );
       }
 
-      return new Response(JSON.stringify({}), { status: 404 });
+      return new Response(
+        JSON.stringify({}),
+        {
+          status: 404,
+        }
+      );
     }
   );
+}
+
+function getTicketRequestUrls(): string[] {
+  return vi
+    .mocked(globalThis.fetch)
+    .mock.calls
+    .map((call) => String(call[0]))
+    .filter((url) => url.includes("/api/v1/tickets"));
+}
+
+function getLatestTicketRequestUrl(): string {
+  const requests = getTicketRequestUrls();
+
+  if (requests.length === 0) {
+    throw new Error("No ticket API request was made.");
+  }
+
+  return requests[requests.length - 1];
 }
 
 describe("MyTickets - Lab 2 UI Tests", () => {
@@ -195,7 +278,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    expect(screen.getByText("Loading tickets...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Loading tickets...")
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByText("TKT-2026-000001")
@@ -208,6 +293,20 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     expect(
       screen.getByText("Laptop problem")
     ).toBeInTheDocument();
+  });
+
+  it("sends the selected requesterId when loading tickets", async () => {
+    mockFetch();
+
+    renderMyTickets();
+
+    await screen.findByText("TKT-2026-000001");
+
+    await waitFor(() => {
+      expect(
+        getLatestTicketRequestUrl()
+      ).toContain("requesterId=1");
+    });
   });
 
   it("sends search parameter when searching tickets", async () => {
@@ -227,19 +326,13 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     await waitFor(
       () => {
-        const calls = vi.mocked(globalThis.fetch).mock.calls;
-
-        const ticketRequest = calls.find((call) =>
-          String(call[0]).includes("/api/v1/tickets")
-        );
-
-        expect(ticketRequest).toBeDefined();
-
-        expect(String(ticketRequest?.[0])).toContain(
-          "search=email"
-        );
+        expect(
+          getLatestTicketRequestUrl()
+        ).toContain("search=email");
       },
-      { timeout: 1000 }
+      {
+        timeout: 1500,
+      }
     );
   });
 
@@ -254,20 +347,18 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     const selects = screen.getAllByRole("combobox");
 
+    expect(selects).toHaveLength(3);
+
     await user.selectOptions(selects[0], "1");
     await user.selectOptions(selects[1], "HIGH");
     await user.selectOptions(selects[2], "NEW");
 
     await waitFor(() => {
-      const calls = vi.mocked(globalThis.fetch).mock.calls;
+      const requestUrl = getLatestTicketRequestUrl();
 
-      const ticketRequest = calls
-        .map((call) => String(call[0]))
-        .find((url) => url.includes("/api/v1/tickets"));
-
-      expect(ticketRequest).toContain("categoryId=1");
-      expect(ticketRequest).toContain("priority=HIGH");
-      expect(ticketRequest).toContain("status=NEW");
+      expect(requestUrl).toContain("categoryId=1");
+      expect(requestUrl).toContain("priority=HIGH");
+      expect(requestUrl).toContain("status=NEW");
     });
   });
 
@@ -280,28 +371,29 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     await screen.findByText("TKT-2026-000001");
 
-    await user.click(screen.getByText(/Ticket No/));
+    await user.click(
+      screen.getByText(/Ticket No/)
+    );
 
     await waitFor(() => {
-      const calls = vi.mocked(globalThis.fetch).mock.calls;
+      const requestUrl = getLatestTicketRequestUrl();
 
-      const ticketRequest = calls
-        .map((call) => String(call[0]))
-        .find((url) => url.includes("/api/v1/tickets"));
-
-      expect(ticketRequest).toMatch(
+      expect(requestUrl).toMatch(
         /sort=ticketNo_(asc|desc)/
       );
     });
   });
 
   it("changes page when pagination button is clicked", async () => {
-    mockFetch(mockTicketsA, {
-      page: 1,
-      limit: 10,
-      total: 20,
-      totalPages: 2,
-    });
+    mockFetch(
+      mockTicketsA,
+      {
+        page: 1,
+        limit: 10,
+        total: 20,
+        totalPages: 2,
+      }
+    );
 
     const user = userEvent.setup();
 
@@ -310,27 +402,33 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     await screen.findByText("TKT-2026-000001");
 
     await user.click(
-      screen.getByRole("button", { name: "2" })
+      screen.getByRole("button", {
+        name: "2",
+      })
     );
 
     await waitFor(() => {
-      const calls = vi.mocked(globalThis.fetch).mock.calls;
+      const requestUrls = getTicketRequestUrls();
 
-      const ticketRequest = calls
-        .map((call) => String(call[0]))
-        .find((url) => url.includes("/api/v1/tickets"));
+      expect(requestUrls.length).toBeGreaterThanOrEqual(2);
 
-      expect(ticketRequest).toContain("page=2");
+      const latestRequest =
+        requestUrls[requestUrls.length - 1];
+
+      expect(latestRequest).toContain("page=2");
     });
   });
 
   it("shows empty state when there are no tickets", async () => {
-    mockFetch([], {
-      page: 1,
-      limit: 10,
-      total: 0,
-      totalPages: 0,
-    });
+    mockFetch(
+      [],
+      {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+      }
+    );
 
     renderMyTickets();
 
@@ -343,32 +441,75 @@ describe("MyTickets - Lab 2 UI Tests", () => {
         "You haven't created any support tickets yet."
       )
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Create Your First Ticket",
+      })
+    ).toBeInTheDocument();
   });
 
   it("shows no-results state when filters return no tickets", async () => {
-    mockFetch([], {
+  mockFetch(
+    [],
+    {
       page: 1,
       limit: 10,
       total: 0,
       totalPages: 0,
-    });
+    }
+  );
 
-    const user = userEvent.setup();
+  const user = userEvent.setup();
 
-    renderMyTickets();
+  renderMyTickets();
 
-    await screen.findByText("No tickets found");
+  // Initial state: requester has no tickets.
+  expect(
+    await screen.findByText("No tickets found")
+  ).toBeInTheDocument();
 
-    const searchInput = screen.getByPlaceholderText(
-      "Search by ticket number, summary, or description..."
-    );
+  const searchInput = screen.getByPlaceholderText(
+    "Search by ticket number, summary, or description..."
+  );
 
-    await user.type(searchInput, "does-not-exist");
+  await user.type(
+    searchInput,
+    "does-not-exist"
+  );
 
-    expect(
-      await screen.findByText("No matching tickets found")
-    ).toBeInTheDocument();
-  });
+  // Wait for the debounced search request to be sent.
+  await waitFor(
+    () => {
+      const requestUrls = getTicketRequestUrls();
+
+      expect(requestUrls.length).toBeGreaterThanOrEqual(2);
+
+      const latestRequest =
+        requestUrls[requestUrls.length - 1];
+
+      expect(latestRequest).toContain(
+        "search=does-not-exist"
+      );
+    },
+    {
+      timeout: 1500,
+    }
+  );
+
+  expect(
+    await screen.findByText(
+      "No matching tickets found"
+    )
+  ).toBeInTheDocument();
+
+  // Clear Filters should be available.
+  expect(
+    screen.getAllByRole("button", {
+      name: "Clear Filters",
+    }).length
+  ).toBeGreaterThan(0);
+});
 
   it("shows an error message when ticket loading fails", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(
@@ -377,8 +518,12 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
         if (url.includes("/api/v1/categories")) {
           return new Response(
-            JSON.stringify({ data: [] }),
-            { status: 200 }
+            JSON.stringify({
+              data: [],
+            }),
+            {
+              status: 200,
+            }
           );
         }
 
@@ -386,17 +531,21 @@ describe("MyTickets - Lab 2 UI Tests", () => {
           return new Response(
             JSON.stringify({
               error: {
-                code: "INTERNAL_ERROR",
+                code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to fetch tickets.",
               },
             }),
-            { status: 500 }
+            {
+              status: 500,
+            }
           );
         }
 
         return new Response(
           JSON.stringify({}),
-          { status: 404 }
+          {
+            status: 404,
+          }
         );
       }
     );
@@ -404,7 +553,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     renderMyTickets();
 
     expect(
-      await screen.findByText("Failed to fetch tickets.")
+      await screen.findByText(
+        "Failed to fetch tickets."
+      )
     ).toBeInTheDocument();
   });
 
@@ -430,7 +581,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     await waitFor(() => {
       expect(
         screen.getByTestId("current-route")
-      ).toHaveTextContent("/create-ticket");
+      ).toHaveTextContent(
+        "/create-ticket"
+      );
     });
 
     expect(
@@ -447,20 +600,36 @@ describe("MyTickets - Lab 2 UI Tests", () => {
           return new Response(
             JSON.stringify({
               data: [
-                { id: 1, name: "Software" },
-                { id: 2, name: "Hardware" },
+                {
+                  id: 1,
+                  name: "Software",
+                },
+                {
+                  id: 2,
+                  name: "Hardware",
+                },
               ],
             }),
-            { status: 200 }
+            {
+              status: 200,
+            }
           );
         }
 
-        if (url.includes("/api/v1/requesters/active")) {
+        if (
+          url.includes(
+            "/api/v1/requesters/active"
+          )
+        ) {
+          /*
+           * getActiveRequesters() returns response.json()
+           * directly, so this endpoint must return an array.
+           */
           return new Response(
-            JSON.stringify({
-              data: mockRequesters,
-            }),
-            { status: 200 }
+            JSON.stringify(mockRequesters),
+            {
+              status: 200,
+            }
           );
         }
 
@@ -468,7 +637,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
           const requesterId = new URL(
             url,
             window.location.origin
-          ).searchParams.get("requesterId");
+          ).searchParams.get(
+            "requesterId"
+          );
 
           if (requesterId === "1") {
             return new Response(
@@ -481,7 +652,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
                   totalPages: 1,
                 },
               }),
-              { status: 200 }
+              {
+                status: 200,
+              }
             );
           }
 
@@ -496,14 +669,18 @@ describe("MyTickets - Lab 2 UI Tests", () => {
                   totalPages: 1,
                 },
               }),
-              { status: 200 }
+              {
+                status: 200,
+              }
             );
           }
         }
 
         return new Response(
           JSON.stringify({}),
-          { status: 404 }
+          {
+            status: 404,
+          }
         );
       }
     );
@@ -514,30 +691,47 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       <MemoryRouter initialEntries={["/tickets"]}>
         <RequesterProvider>
           <RequesterSelector />
-          <MyTickets />
+
+          <Routes>
+            <Route
+              path="/tickets"
+              element={<MyTickets />}
+            />
+          </Routes>
         </RequesterProvider>
       </MemoryRouter>
     );
 
     // Requester A is initially selected.
     expect(
-      await screen.findByText("TKT-2026-000001")
+      await screen.findByText(
+        "TKT-2026-000001"
+      )
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Cannot access email")
+      screen.getByText(
+        "Cannot access email"
+      )
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Laptop problem")
+      screen.getByText(
+        "Laptop problem"
+      )
     ).toBeInTheDocument();
+
+    // The Requester Selector has a labelled combobox.
+    const requesterSelect =
+      screen.getByRole("combobox", {
+        name: /Development Requester/i,
+      });
 
     // Switch from Requester A to Requester B.
-    const requesterSelect = await screen.findByLabelText(
-      /Development Requester/i
+    await user.selectOptions(
+      requesterSelect,
+      "2"
     );
-
-    await user.selectOptions(requesterSelect, "2");
 
     await user.click(
       screen.getByRole("button", {
@@ -547,24 +741,34 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     // Requester B's ticket should appear.
     expect(
-      await screen.findByText("TKT-2026-000003")
+      await screen.findByText(
+        "TKT-2026-000003"
+      )
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Network connection problem")
+      screen.getByText(
+        "Network connection problem"
+      )
     ).toBeInTheDocument();
 
     // Requester A's tickets must no longer be visible.
     expect(
-      screen.queryByText("TKT-2026-000001")
+      screen.queryByText(
+        "TKT-2026-000001"
+      )
     ).not.toBeInTheDocument();
 
     expect(
-      screen.queryByText("Cannot access email")
+      screen.queryByText(
+        "Cannot access email"
+      )
     ).not.toBeInTheDocument();
 
     expect(
-      screen.queryByText("Laptop problem")
+      screen.queryByText(
+        "Laptop problem"
+      )
     ).not.toBeInTheDocument();
   });
 });
