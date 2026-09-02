@@ -429,6 +429,7 @@ export const getTicketDetailHandler = async (
         id,
       },
       include: {
+        requester: true,
         category: true,
         relatedSystem: true,
         attachments: true,
