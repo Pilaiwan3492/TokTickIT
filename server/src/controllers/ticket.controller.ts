@@ -8,16 +8,12 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     const prisma = getPrisma();
     const { categoryId, relatedSystemId, summary, description, requestedPriority } = req.body;
     
-    // 1. pull requesterId from request body or middleware context
     const requesterId = req.body?.requesterId || req.requester?.id;
 
     const trimmedSummary = typeof summary === "string" ? summary.trim() : "";
     const trimmedDescription = typeof description === "string" ? description.trim() : "";
     const fields: Record<string, string> = {};
 
-    // ---------------------------------------------------------
-    // Phase 1: Field Validation (Strict Integer & Boundary Checks)
-    // ---------------------------------------------------------
     const requesterIdNum = Number(requesterId);
     if (
       requesterId === undefined ||
@@ -74,9 +70,6 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
       });
     }
 
-    // ---------------------------------------------------------
-    // Phase 2: Reference Validation 
-    // ---------------------------------------------------------
     const [requester, category, relatedSystem] = await Promise.all([
       prisma.requesterUser.findUnique({ where: { id: requesterIdNum } }),
       prisma.category.findUnique({ where: { id: categoryIdNum } }),
@@ -96,9 +89,6 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
       });
     }
 
-    // ---------------------------------------------------------
-    // Phase 3: Unique Ticket Generation & Database Creation
-    // ---------------------------------------------------------
     const ticketNo = await generateTicketNumber(prisma);
 
     const newTicket = await prisma.ticket.create({
@@ -128,14 +118,10 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
   }
 };
 
-// ---------------------------------------------------------
-// Issue 14: Get Paginated Tickets by Requester Ownership
-// ---------------------------------------------------------
 export const getTicketsHandler = async (req: RequesterRequest, res: Response) => {
   try {
     const prisma = getPrisma();
 
-    // 1. Ownership check - strict filter by Requester context or query parameter
     const rawRequesterId = req.query.requesterId || req.requester?.id;
 
     if (
@@ -146,14 +132,13 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
     ) {
       return res.status(400).json({
         error: {
-          code: "INVALID_QUERY",
+          code: "INVALID_REFERENCE",
           message: "Requester ID is required and must be a positive integer.",
         },
       });
     }
     const requesterIdNum = Number(rawRequesterId);
 
-    // [จุดที่แก้ 2]: ตรวจสอบว่า Requester มีตัวตนอยู่จริงและ Active อยู่หรือไม่
     const requester = await prisma.requesterUser.findUnique({
       where: { id: requesterIdNum },
     });
@@ -167,10 +152,8 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       });
     }
 
-    // 2. Strict Query Parameter Validation (Lab 2 Spec)
     const { search, categoryId, priority, status, page, limit, sort } = req.query;
 
-    // Validation: page (must be positive integer, default: 1)
     let pageNum = 1;
     if (page !== undefined) {
       if (typeof page !== "string" || !/^\d+$/.test(page) || parseInt(page, 10) < 1) {
@@ -184,7 +167,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       pageNum = parseInt(page, 10);
     }
 
-    // Validation: limit (strictly 10, 20, or 50, default: 10)
     let limitNum = 10;
     if (limit !== undefined) {
       if (typeof limit !== "string" || !/^\d+$/.test(limit)) {
@@ -207,7 +189,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       limitNum = parsedLimit;
     }
 
-    // Validation: sort (Strict Whitelist, default: createdAt_desc)
     const allowedSorts = [
       "createdAt_desc",
       "createdAt_asc",
@@ -229,7 +210,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       sortOption = sort;
     }
 
-    // Validation: categoryId
     let categoryIdNum: number | undefined;
     if (categoryId !== undefined) {
       if (typeof categoryId !== "string" || !/^\d+$/.test(categoryId) || parseInt(categoryId, 10) < 1) {
@@ -242,22 +222,20 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
       categoryIdNum = parseInt(categoryId, 10);
 
-      // [จุดที่แก้ 3 - ส่วน Category]: ตรวจสอบว่า Category มีตัวตนอยู่จริงและ Active อยู่หรือไม่
       const category = await prisma.category.findUnique({
         where: { id: categoryIdNum },
       });
 
-      if (!category || (category as any).isActive === false) {
+      if (!category) {
         return res.status(400).json({
           error: {
             code: "INVALID_REFERENCE",
-            message: "Category not found or inactive.",
+            message: "Category not found.",
           },
         });
       }
     }
 
-    // Validation: priority
     const allowedPriorities = ["LOW", "MEDIUM", "HIGH"];
     if (priority !== undefined) {
       if (typeof priority !== "string" || !allowedPriorities.includes(priority.toUpperCase())) {
@@ -270,7 +248,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
     }
 
-    // [จุดที่แก้ 1]: ปรับ status ให้รับเฉพาะ "NEW" สำหรับ Lab 2
     const allowedStatuses = ["NEW"];
     if (status !== undefined) {
       if (typeof status !== "string" || !allowedStatuses.includes(status.toUpperCase())) {
@@ -283,7 +260,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
     }
 
-    // [จุดที่แก้ 3 - ส่วน Search]: ตรวจความยาว Search ไม่เกิน 100 ตัวอักษร
     if (search !== undefined) {
       if (typeof search !== "string") {
         return res.status(400).json({
@@ -303,7 +279,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
     }
 
-    // 3. Build Prisma filter conditions
     const where: any = {
       requesterId: requesterIdNum,
     };
@@ -329,7 +304,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       ];
     }
 
-    // Primary sort + Secondary sort (id: desc) for deterministic order
     let orderBy: any[] = [];
     switch (sortOption) {
       case "createdAt_asc":
@@ -356,7 +330,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
 
     const skip = (pageNum - 1) * limitNum;
 
-    // 4. Query execution
     const [total, tickets] = await Promise.all([
       prisma.ticket.count({ where }),
       prisma.ticket.findMany({
@@ -371,7 +344,7 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }),
     ]);
 
-    const totalPages = Math.ceil(total / limitNum) || 1;
+    const totalPages = Math.ceil(total / limitNum);
 
     return res.status(200).json({
       data: tickets,

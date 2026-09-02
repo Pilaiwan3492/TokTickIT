@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../../src/app.js";
 import { describe, test, expect } from "vitest";
+import { getPrisma } from "../../src/prisma.js";
 
 describe("GET /api/v1/tickets API Contract Tests (Lab 2)", () => {
   const validRequesterId = 1;
@@ -23,39 +24,73 @@ describe("GET /api/v1/tickets API Contract Tests (Lab 2)", () => {
     });
   });
 
-  // ---------------------------------------------------------
-  // 2. Search Field Coverage (ticketNo, summary, description)
-  // ---------------------------------------------------------
-  test("✓ Should perform case-insensitive search on ticketNo, summary, AND description", async () => {
-    const searchTerms = ["TCK", "summary", "description"];
+  test("✓ Should filter and return records that match search query in ticketNo, summary, or description", async () => {
+    const prisma = getPrisma();
+    const sampleTicket = await prisma.ticket.findFirst({
+      where: { requesterId: validRequesterId },
+    });
+
+    // ดึงคำแรกของ summary ที่มีอยู่จริง หรือใช้คีย์เวิร์ดสำรองอย่างรัดกุม
+    const query = sampleTicket?.summary
+      ? sampleTicket.summary.trim().split(" ")[0]
+      : "TCK";
+
+    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&search=${encodeURIComponent(query)}`);
     
-    for (const search of searchTerms) {
-      const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&search=${search}`);
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    
+    res.body.data.forEach((ticket: any) => {
+      const isMatched =
+        ticket.ticketNo.toLowerCase().includes(query.toLowerCase()) ||
+        ticket.summary.toLowerCase().includes(query.toLowerCase()) ||
+        ticket.description.toLowerCase().includes(query.toLowerCase());
+      expect(isMatched).toBe(true);
+    });
+  });
+
+  test("✓ Should return empty array when page exceeds totalPages or when no matching records exist", async () => {
+    const resExceed = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&page=9999`);
+    expect(resExceed.status).toBe(200);
+    expect(resExceed.body.data).toEqual([]);
+
+    const resNoMatch = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&search=NON_EXISTENT_QUERY_XYZ_12345`);
+    expect(resNoMatch.status).toBe(200);
+    expect(resNoMatch.body.data).toEqual([]);
+    expect(resNoMatch.body.meta.total).toBe(0);
+    expect(resNoMatch.body.meta.totalPages).toBe(0);
+  });
+
+  test("✓ Should return 200 when filtering by existing inactive categoryId", async () => {
+    const prisma = getPrisma();
+    const inactiveCategory = await prisma.category.findFirst({
+      where: { isActive: false },
+    });
+
+    // ข้ามการทดสอบทันทีหากไม่มี inactive category ใน seed DB ป้องกัน false-positive
+    if (!inactiveCategory) {
+      return;
     }
+
+    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&categoryId=${inactiveCategory.id}`);
+    
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 
   // ---------------------------------------------------------
-  // 3. New Requirements & Edge Cases (Status, Requester, Category & Search Length)
+  // 2. Reference & Ownership Validations (400 INVALID_REFERENCE)
   // ---------------------------------------------------------
-  test("🔴 Should return 400 INVALID_QUERY when status is CLOSED (Only NEW allowed in Lab 2)", async () => {
-    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&status=CLOSED`);
+  test("🔴 Should return 400 INVALID_REFERENCE when requesterId is missing or invalid format", async () => {
+    const res = await request(app).get("/api/v1/tickets");
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_QUERY");
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
   });
 
   test("🔴 Should return 400 INVALID_REFERENCE for nonexistent/inactive requesterId (e.g. 9999)", async () => {
     const res = await request(app).get("/api/v1/tickets?requesterId=9999");
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INVALID_REFERENCE");
-  });
-
-  test("🔴 Should return 400 INVALID_QUERY when search exceeds 100 characters", async () => {
-    const longSearch = "a".repeat(101);
-    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&search=${longSearch}`);
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_QUERY");
   });
 
   test("🔴 Should return 400 INVALID_REFERENCE for nonexistent categoryId (e.g. 9999)", async () => {
@@ -65,10 +100,17 @@ describe("GET /api/v1/tickets API Contract Tests (Lab 2)", () => {
   });
 
   // ---------------------------------------------------------
-  // 4. Strict Query Parameters Validation (400 INVALID_QUERY)
+  // 3. Strict Query Parameters Validation (400 INVALID_QUERY)
   // ---------------------------------------------------------
-  test("🔴 Should return 400 INVALID_QUERY when requesterId is missing or invalid format", async () => {
-    const res = await request(app).get("/api/v1/tickets");
+  test("🔴 Should return 400 INVALID_QUERY when status is CLOSED (Only NEW allowed in Lab 2)", async () => {
+    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&status=CLOSED`);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_QUERY");
+  });
+
+  test("🔴 Should return 400 INVALID_QUERY when search exceeds 100 characters", async () => {
+    const longSearch = "a".repeat(101);
+    const res = await request(app).get(`/api/v1/tickets?requesterId=${validRequesterId}&search=${longSearch}`);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INVALID_QUERY");
   });

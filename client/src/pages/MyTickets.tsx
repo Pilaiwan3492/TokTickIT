@@ -39,7 +39,7 @@ export default function MyTickets() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Status states
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +51,7 @@ export default function MyTickets() {
   // BR-22: Redirect to selection screen if no requester is selected
   useEffect(() => {
     if (!selectedRequester?.id) {
-      navigate("/select-requester"); // ปรับ path ให้ตรงกับระบบของคุณ เช่น / หรือ /select-requester
+      navigate("/select-requester");
     }
   }, [selectedRequester, navigate]);
 
@@ -108,8 +108,9 @@ export default function MyTickets() {
         if (res.ok) {
           setTickets(result.data || []);
           if (result.meta) {
-            setTotal(result.meta.total || 0);
-            setTotalPages(result.meta.totalPages || 1);
+            setTotal(result.meta.total ?? 0);
+            // จุดแก้ที่ 2: ใช้ Nullish coalescing (??) เพื่อรักษาค่า 0 เมื่อไม่มีข้อมูล
+            setTotalPages(result.meta.totalPages ?? 0);
           }
         } else {
           setError(result.error?.message || "Failed to fetch tickets.");
@@ -210,7 +211,7 @@ export default function MyTickets() {
               </span>
               <input
                 type="text"
-                placeholder="Search by ticket number or summary..."
+                placeholder="Search by ticket number, summary, or description..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="form-control border-start-0 border-light-subtle rounded-end-2 small py-2"
@@ -269,10 +270,6 @@ export default function MyTickets() {
             >
               <option value="">All Statuses</option>
               <option value="NEW">New</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="PENDING">Pending</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="CLOSED">Closed</option>
             </select>
           </div>
         </div>
@@ -294,7 +291,7 @@ export default function MyTickets() {
           </div>
         ) : tickets.length === 0 ? (
           isFiltered ? (
-            /* BR-25: No-Results State (เมื่อค้นหา/กรองแล้วไม่พบตั๋ว) */
+            /* BR-25: No-Results State */
             <div className="text-center py-5 text-secondary">
               <div className="fs-2 mb-2">🔍</div>
               <p className="fw-medium text-dark mb-1">No matching tickets found</p>
@@ -307,7 +304,7 @@ export default function MyTickets() {
               </button>
             </div>
           ) : (
-            /* BR-25: Empty State (เมื่อ Requester รายนี้ยังไม่มีตั๋วเลย) */
+            /* BR-25: Empty State  */
             <div className="text-center py-5 text-secondary">
               <div className="fs-2 mb-2">🎫</div>
               <p className="fw-medium text-dark mb-1">No tickets found</p>
