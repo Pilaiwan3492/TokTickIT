@@ -78,7 +78,7 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     // Phase 2: Reference Validation 
     // ---------------------------------------------------------
     const [requester, category, relatedSystem] = await Promise.all([
-      prisma.requesterUser.findUnique({ where: { id: categoryIdNum ? requesterIdNum : 0 } }),
+      prisma.requesterUser.findUnique({ where: { id: requesterIdNum } }),
       prisma.category.findUnique({ where: { id: categoryIdNum } }),
       prisma.relatedSystem.findUnique({ where: { id: relatedSystemIdNum } }),
     ]);
@@ -137,47 +137,131 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
 
     // 1. Ownership check - strict filter by Requester context or query parameter
     const rawRequesterId = req.query.requesterId || req.requester?.id;
-    const requesterIdNum = Number(rawRequesterId);
 
     if (
       !rawRequesterId ||
       typeof rawRequesterId === "boolean" ||
-      !Number.isInteger(requesterIdNum) ||
-      requesterIdNum <= 0
+      !/^\d+$/.test(String(rawRequesterId)) ||
+      Number(rawRequesterId) <= 0
     ) {
       return res.status(400).json({
         error: {
-          code: "VALIDATION_ERROR",
+          code: "INVALID_QUERY",
           message: "Requester ID is required and must be a positive integer.",
         },
       });
     }
+    const requesterIdNum = Number(rawRequesterId);
 
-    // 2. Parse query parameters
-    const {
-      search,
-      categoryId,
-      priority,
-      status,
-      page = "1",
-      limit = "10",
-      sort = "createdAt_desc",
-    } = req.query;
+    // 2. Strict Query Parameter Validation (Lab 2 Spec)
+    const { search, categoryId, priority, status, page, limit, sort } = req.query;
 
-    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(String(limit), 10) || 10));
-    const skip = (pageNum - 1) * limitNum;
+    // Validation: page (must be positive integer, default: 1)
+    let pageNum = 1;
+    if (page !== undefined) {
+      if (typeof page !== "string" || !/^\d+$/.test(page) || parseInt(page, 10) < 1) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Page must be a positive integer.",
+          },
+        });
+      }
+      pageNum = parseInt(page, 10);
+    }
 
-    // 3. Build Prisma filter conditions (Strict Requester Ownership)
+    // Validation: limit (strictly 10, 20, or 50, default: 10)
+    let limitNum = 10;
+    if (limit !== undefined) {
+      if (typeof limit !== "string" || !/^\d+$/.test(limit)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Limit must be an integer.",
+          },
+        });
+      }
+      const parsedLimit = parseInt(limit, 10);
+      if (![10, 20, 50].includes(parsedLimit)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Limit must be 10, 20, or 50.",
+          },
+        });
+      }
+      limitNum = parsedLimit;
+    }
+
+    // Validation: sort (Strict Whitelist, default: createdAt_desc)
+    const allowedSorts = [
+      "createdAt_desc",
+      "createdAt_asc",
+      "priority_desc",
+      "priority_asc",
+      "ticketNo_asc",
+      "ticketNo_desc",
+    ];
+    let sortOption = "createdAt_desc";
+    if (sort !== undefined) {
+      if (typeof sort !== "string" || !allowedSorts.includes(sort)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Invalid sort parameter.",
+          },
+        });
+      }
+      sortOption = sort;
+    }
+
+    // Validation: categoryId
+    let categoryIdNum: number | undefined;
+    if (categoryId !== undefined) {
+      if (typeof categoryId !== "string" || !/^\d+$/.test(categoryId) || parseInt(categoryId, 10) < 1) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Category ID must be a positive integer.",
+          },
+        });
+      }
+      categoryIdNum = parseInt(categoryId, 10);
+    }
+
+    // Validation: priority
+    const allowedPriorities = ["LOW", "MEDIUM", "HIGH"];
+    if (priority !== undefined) {
+      if (typeof priority !== "string" || !allowedPriorities.includes(priority.toUpperCase())) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Priority must be LOW, MEDIUM, or HIGH.",
+          },
+        });
+      }
+    }
+
+    // Validation: status
+    const allowedStatuses = ["NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"];
+    if (status !== undefined) {
+      if (typeof status !== "string" || !allowedStatuses.includes(status.toUpperCase())) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Invalid status filter.",
+          },
+        });
+      }
+    }
+
+    // 3. Build Prisma filter conditions
     const where: any = {
       requesterId: requesterIdNum,
     };
 
-    if (categoryId) {
-      const catIdNum = Number(categoryId);
-      if (Number.isInteger(catIdNum) && catIdNum > 0) {
-        where.categoryId = catIdNum;
-      }
+    if (categoryIdNum) {
+      where.categoryId = categoryIdNum;
     }
 
     if (priority && typeof priority === "string") {
@@ -188,28 +272,44 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       where.currentStatus = status.toUpperCase();
     }
 
+    // MUST FIX 1: Search ticketNo, summary, AND description (case-insensitive)
     if (search && typeof search === "string" && search.trim() !== "") {
       const queryStr = search.trim();
       where.OR = [
         { ticketNo: { contains: queryStr, mode: "insensitive" } },
         { summary: { contains: queryStr, mode: "insensitive" } },
+        { description: { contains: queryStr, mode: "insensitive" } },
       ];
     }
 
-    // 4. Sorting logic
-    let orderBy: any = { createdAt: "desc" };
-    if (typeof sort === "string") {
-      const [field, order] = sort.split("_");
-      const validOrder = order?.toLowerCase() === "asc" ? "asc" : "desc";
-
-      if (field === "ticketNo") orderBy = { ticketNo: validOrder };
-      else if (field === "createdAt" || field === "createdDate") orderBy = { createdAt: validOrder };
-      else if (field === "summary") orderBy = { summary: validOrder };
-      else if (field === "priority") orderBy = { requestedPriority: validOrder };
-      else if (field === "status") orderBy = { currentStatus: validOrder };
+    // MUST FIX 4: Primary sort + Secondary sort (id: desc) for deterministic order
+    let orderBy: any[] = [];
+    switch (sortOption) {
+      case "createdAt_asc":
+        orderBy = [{ createdAt: "asc" }, { id: "desc" }];
+        break;
+      case "createdAt_desc":
+        orderBy = [{ createdAt: "desc" }, { id: "desc" }];
+        break;
+      case "priority_asc":
+        orderBy = [{ requestedPriority: "asc" }, { id: "desc" }];
+        break;
+      case "priority_desc":
+        orderBy = [{ requestedPriority: "desc" }, { id: "desc" }];
+        break;
+      case "ticketNo_asc":
+        orderBy = [{ ticketNo: "asc" }, { id: "desc" }];
+        break;
+      case "ticketNo_desc":
+        orderBy = [{ ticketNo: "desc" }, { id: "desc" }];
+        break;
+      default:
+        orderBy = [{ createdAt: "desc" }, { id: "desc" }];
     }
 
-    // 5. Query execution with relational data
+    const skip = (pageNum - 1) * limitNum;
+
+    // 4. Query execution
     const [total, tickets] = await Promise.all([
       prisma.ticket.count({ where }),
       prisma.ticket.findMany({
@@ -224,7 +324,7 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }),
     ]);
 
-    const totalPages = Math.ceil(total / limitNum);
+    const totalPages = Math.ceil(total / limitNum) || 1;
 
     return res.status(200).json({
       data: tickets,
