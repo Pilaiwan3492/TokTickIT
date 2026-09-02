@@ -153,6 +153,20 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
     }
     const requesterIdNum = Number(rawRequesterId);
 
+    // [จุดที่แก้ 2]: ตรวจสอบว่า Requester มีตัวตนอยู่จริงและ Active อยู่หรือไม่
+    const requester = await prisma.requesterUser.findUnique({
+      where: { id: requesterIdNum },
+    });
+
+    if (!requester || (requester as any).isActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "Requester not found or inactive.",
+        },
+      });
+    }
+
     // 2. Strict Query Parameter Validation (Lab 2 Spec)
     const { search, categoryId, priority, status, page, limit, sort } = req.query;
 
@@ -227,6 +241,20 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
         });
       }
       categoryIdNum = parseInt(categoryId, 10);
+
+      // [จุดที่แก้ 3 - ส่วน Category]: ตรวจสอบว่า Category มีตัวตนอยู่จริงและ Active อยู่หรือไม่
+      const category = await prisma.category.findUnique({
+        where: { id: categoryIdNum },
+      });
+
+      if (!category || (category as any).isActive === false) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_REFERENCE",
+            message: "Category not found or inactive.",
+          },
+        });
+      }
     }
 
     // Validation: priority
@@ -242,14 +270,34 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
     }
 
-    // Validation: status
-    const allowedStatuses = ["NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"];
+    // [จุดที่แก้ 1]: ปรับ status ให้รับเฉพาะ "NEW" สำหรับ Lab 2
+    const allowedStatuses = ["NEW"];
     if (status !== undefined) {
       if (typeof status !== "string" || !allowedStatuses.includes(status.toUpperCase())) {
         return res.status(400).json({
           error: {
             code: "INVALID_QUERY",
-            message: "Invalid status filter.",
+            message: "Invalid status filter. Only NEW is supported.",
+          },
+        });
+      }
+    }
+
+    // [จุดที่แก้ 3 - ส่วน Search]: ตรวจความยาว Search ไม่เกิน 100 ตัวอักษร
+    if (search !== undefined) {
+      if (typeof search !== "string") {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Search query must be a string.",
+          },
+        });
+      }
+      if (search.trim().length > 100) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Search query must not exceed 100 characters.",
           },
         });
       }
@@ -272,7 +320,6 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       where.currentStatus = status.toUpperCase();
     }
 
-    // MUST FIX 1: Search ticketNo, summary, AND description (case-insensitive)
     if (search && typeof search === "string" && search.trim() !== "") {
       const queryStr = search.trim();
       where.OR = [
@@ -282,7 +329,7 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       ];
     }
 
-    // MUST FIX 4: Primary sort + Secondary sort (id: desc) for deterministic order
+    // Primary sort + Secondary sort (id: desc) for deterministic order
     let orderBy: any[] = [];
     switch (sortOption) {
       case "createdAt_asc":
