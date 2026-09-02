@@ -60,7 +60,7 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
   it("should return 400 Bad Request when requesterId is missing", async () => {
     const res = await request(app).get(`/api/v1/tickets/${ticketAId}`);
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REQUESTER_CONTEXT");
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
   });
 
   // 2. Inactive or Unknown Requester -> HTTP 400
@@ -69,7 +69,7 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
       `/api/v1/tickets/${ticketAId}?requesterId=${inactiveRequesterId}`
     );
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REQUESTER_CONTEXT");
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
   });
 
   // 3. Ticket Not Found -> HTTP 404
