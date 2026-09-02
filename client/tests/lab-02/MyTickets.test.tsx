@@ -240,14 +240,18 @@ function getTicketRequestUrls(): string[] {
     .mocked(globalThis.fetch)
     .mock.calls
     .map((call) => String(call[0]))
-    .filter((url) => url.includes("/api/v1/tickets"));
+    .filter((url) =>
+      url.includes("/api/v1/tickets")
+    );
 }
 
 function getLatestTicketRequestUrl(): string {
   const requests = getTicketRequestUrls();
 
   if (requests.length === 0) {
-    throw new Error("No ticket API request was made.");
+    throw new Error(
+      "No ticket API request was made."
+    );
   }
 
   return requests[requests.length - 1];
@@ -283,7 +287,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByText("TKT-2026-000001")
+      await screen.findByText(
+        "TKT-2026-000001"
+      )
     ).toBeInTheDocument();
 
     expect(
@@ -300,7 +306,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     await waitFor(() => {
       expect(
@@ -316,13 +324,19 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
-
-    const searchInput = screen.getByPlaceholderText(
-      "Search by ticket number, summary, or description..."
+    await screen.findByText(
+      "TKT-2026-000001"
     );
 
-    await user.type(searchInput, "email");
+    const searchInput =
+      screen.getByPlaceholderText(
+        "Search by ticket number, summary, or description..."
+      );
+
+    await user.type(
+      searchInput,
+      "email"
+    );
 
     await waitFor(
       () => {
@@ -343,22 +357,45 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
-    const selects = screen.getAllByRole("combobox");
+    const selects =
+      screen.getAllByRole("combobox");
 
     expect(selects).toHaveLength(3);
 
-    await user.selectOptions(selects[0], "1");
-    await user.selectOptions(selects[1], "HIGH");
-    await user.selectOptions(selects[2], "NEW");
+    await user.selectOptions(
+      selects[0],
+      "1"
+    );
+
+    await user.selectOptions(
+      selects[1],
+      "HIGH"
+    );
+
+    await user.selectOptions(
+      selects[2],
+      "NEW"
+    );
 
     await waitFor(() => {
-      const requestUrl = getLatestTicketRequestUrl();
+      const requestUrl =
+        getLatestTicketRequestUrl();
 
-      expect(requestUrl).toContain("categoryId=1");
-      expect(requestUrl).toContain("priority=HIGH");
-      expect(requestUrl).toContain("status=NEW");
+      expect(requestUrl).toContain(
+        "categoryId=1"
+      );
+
+      expect(requestUrl).toContain(
+        "priority=HIGH"
+      );
+
+      expect(requestUrl).toContain(
+        "status=NEW"
+      );
     });
   });
 
@@ -369,14 +406,17 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     await user.click(
       screen.getByText(/Ticket No/)
     );
 
     await waitFor(() => {
-      const requestUrl = getLatestTicketRequestUrl();
+      const requestUrl =
+        getLatestTicketRequestUrl();
 
       expect(requestUrl).toMatch(
         /sort=ticketNo_(asc|desc)/
@@ -399,7 +439,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     await user.click(
       screen.getByRole("button", {
@@ -408,14 +450,21 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     );
 
     await waitFor(() => {
-      const requestUrls = getTicketRequestUrls();
+      const requestUrls =
+        getTicketRequestUrls();
 
-      expect(requestUrls.length).toBeGreaterThanOrEqual(2);
+      expect(
+        requestUrls.length
+      ).toBeGreaterThanOrEqual(2);
 
       const latestRequest =
-        requestUrls[requestUrls.length - 1];
+        requestUrls[
+          requestUrls.length - 1
+        ];
 
-      expect(latestRequest).toContain("page=2");
+      expect(latestRequest).toContain(
+        "page=2"
+      );
     });
   });
 
@@ -433,7 +482,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     renderMyTickets();
 
     expect(
-      await screen.findByText("No tickets found")
+      await screen.findByText(
+        "No tickets found"
+      )
     ).toBeInTheDocument();
 
     expect(
@@ -449,74 +500,79 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows no-results state when filters return no tickets", async () => {
-  mockFetch(
-    [],
-    {
-      page: 1,
-      limit: 10,
-      total: 0,
-      totalPages: 0,
-    }
-  );
+  it("shows no-results state when a filter returns no tickets", async () => {
+    mockFetch(
+      [],
+      {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+      }
+    );
 
-  const user = userEvent.setup();
+    const user = userEvent.setup();
 
-  renderMyTickets();
+    renderMyTickets();
 
-  // Initial state: requester has no tickets.
-  expect(
-    await screen.findByText("No tickets found")
-  ).toBeInTheDocument();
-
-  const searchInput = screen.getByPlaceholderText(
-    "Search by ticket number, summary, or description..."
-  );
-
-  await user.type(
-    searchInput,
-    "does-not-exist"
-  );
-
-  // Wait for the debounced search request to be sent.
-  await waitFor(
-    () => {
-      const requestUrls = getTicketRequestUrls();
-
-      expect(requestUrls.length).toBeGreaterThanOrEqual(2);
-
-      const latestRequest =
-        requestUrls[requestUrls.length - 1];
-
-      expect(latestRequest).toContain(
-        "search=does-not-exist"
-      );
-    },
-    {
-      timeout: 1500,
-    }
-  );
-
-  expect(
     await screen.findByText(
-      "No matching tickets found"
-    )
-  ).toBeInTheDocument();
+      "No tickets found"
+    );
 
-  // Clear Filters should be available.
-  expect(
-    screen.getAllByRole("button", {
-      name: "Clear Filters",
-    }).length
-  ).toBeGreaterThan(0);
-});
+    /*
+     * Use a filter instead of search here.
+     * This avoids the 400ms search debounce and
+     * directly tests the no-results state caused
+     * by filtering.
+     */
+    const selects =
+      screen.getAllByRole("combobox");
+
+    const categorySelect = selects[0];
+
+    await user.selectOptions(
+      categorySelect,
+      "1"
+    );
+
+    await waitFor(() => {
+      const requestUrl =
+        getLatestTicketRequestUrl();
+
+      expect(requestUrl).toContain(
+        "categoryId=1"
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        "No matching tickets found"
+      )
+    ).toBeInTheDocument();
+
+    const clearFilterButtons =
+      screen.getAllByRole("button", {
+        name: "Clear Filters",
+      });
+
+    expect(
+      clearFilterButtons.length
+    ).toBeGreaterThan(0);
+  });
 
   it("shows an error message when ticket loading fails", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(
+    vi.spyOn(
+      globalThis,
+      "fetch"
+    ).mockImplementation(
       async (input: RequestInfo | URL) => {
         const url = String(input);
 
-        if (url.includes("/api/v1/categories")) {
+        if (
+          url.includes(
+            "/api/v1/categories"
+          )
+        ) {
           return new Response(
             JSON.stringify({
               data: [],
@@ -527,12 +583,18 @@ describe("MyTickets - Lab 2 UI Tests", () => {
           );
         }
 
-        if (url.includes("/api/v1/tickets")) {
+        if (
+          url.includes(
+            "/api/v1/tickets"
+          )
+        ) {
           return new Response(
             JSON.stringify({
               error: {
-                code: "INTERNAL_SERVER_ERROR",
-                message: "Failed to fetch tickets.",
+                code:
+                  "INTERNAL_SERVER_ERROR",
+                message:
+                  "Failed to fetch tickets.",
               },
             }),
             {
@@ -566,10 +628,14 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     renderMyTicketsWithLocation();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     expect(
-      screen.getByTestId("current-route")
+      screen.getByTestId(
+        "current-route"
+      )
     ).toHaveTextContent("/tickets");
 
     await user.click(
@@ -580,23 +646,34 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId("current-route")
+        screen.getByTestId(
+          "current-route"
+        )
       ).toHaveTextContent(
         "/create-ticket"
       );
     });
 
     expect(
-      screen.getByText("Create Ticket Page")
+      screen.getByText(
+        "Create Ticket Page"
+      )
     ).toBeInTheDocument();
   });
 
   it("shows only the selected requester's tickets when switching requester", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(
+    vi.spyOn(
+      globalThis,
+      "fetch"
+    ).mockImplementation(
       async (input: RequestInfo | URL) => {
         const url = String(input);
 
-        if (url.includes("/api/v1/categories")) {
+        if (
+          url.includes(
+            "/api/v1/categories"
+          )
+        ) {
           return new Response(
             JSON.stringify({
               data: [
@@ -621,25 +698,28 @@ describe("MyTickets - Lab 2 UI Tests", () => {
             "/api/v1/requesters/active"
           )
         ) {
-          /*
-           * getActiveRequesters() returns response.json()
-           * directly, so this endpoint must return an array.
-           */
           return new Response(
-            JSON.stringify(mockRequesters),
+            JSON.stringify(
+              mockRequesters
+            ),
             {
               status: 200,
             }
           );
         }
 
-        if (url.includes("/api/v1/tickets")) {
-          const requesterId = new URL(
-            url,
-            window.location.origin
-          ).searchParams.get(
-            "requesterId"
-          );
+        if (
+          url.includes(
+            "/api/v1/tickets"
+          )
+        ) {
+          const requesterId =
+            new URL(
+              url,
+              window.location.origin
+            ).searchParams.get(
+              "requesterId"
+            );
 
           if (requesterId === "1") {
             return new Response(
@@ -648,7 +728,8 @@ describe("MyTickets - Lab 2 UI Tests", () => {
                 meta: {
                   page: 1,
                   limit: 10,
-                  total: mockTicketsA.length,
+                  total:
+                    mockTicketsA.length,
                   totalPages: 1,
                 },
               }),
@@ -665,7 +746,8 @@ describe("MyTickets - Lab 2 UI Tests", () => {
                 meta: {
                   page: 1,
                   limit: 10,
-                  total: mockTicketsB.length,
+                  total:
+                    mockTicketsB.length,
                   totalPages: 1,
                 },
               }),
@@ -688,7 +770,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={["/tickets"]}>
+      <MemoryRouter
+        initialEntries={["/tickets"]}
+      >
         <RequesterProvider>
           <RequesterSelector />
 
@@ -721,7 +805,7 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       )
     ).toBeInTheDocument();
 
-    // The Requester Selector has a labelled combobox.
+    // Requester Selector has a labelled combobox.
     const requesterSelect =
       screen.getByRole("combobox", {
         name: /Development Requester/i,
@@ -752,7 +836,7 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       )
     ).toBeInTheDocument();
 
-    // Requester A's tickets must no longer be visible.
+    // Requester A's tickets must disappear.
     expect(
       screen.queryByText(
         "TKT-2026-000001"
