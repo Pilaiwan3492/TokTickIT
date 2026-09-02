@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { checkSystem, Category } from "./api.js";
+import { checkSystem, Category } from "./api";
 import { RequesterProvider, useRequester } from "./context/RequesterContext";
 import { RequesterSelector } from "./components/RequesterSelector";
 import { Header } from "./components/Header";
