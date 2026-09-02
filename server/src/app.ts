@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import { requireRequester, requireTicketOwnership, RequesterRequest } from "./middleware/requesterGuard.js";
-import { createTicketHandler } from "./controllers/ticket.controller.js";
+import { createTicketHandler, getTicketsHandler } from "./controllers/ticket.controller.js";
 
 void getPrisma;
 
@@ -147,6 +147,9 @@ app.get("/api/v1/requesters/active", async (_req: Request, res: Response) => {
     });
   }
 });
+
+// Issue 14 — Get Tickets List Endpoint
+app.get("/api/v1/tickets", getTicketsHandler);
 
 // Issue 12 — Ticket Detail with Requester Ownership Check
 app.get(

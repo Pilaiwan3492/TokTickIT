@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { checkSystem, Category } from "./api.js";
 import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import { RequesterSelector } from "./components/RequesterSelector.js";
 import { Header } from "./components/Header.js";
 import CreateTicket from "./pages/CreateTicket.js";
+import MyTickets from "./pages/MyTickets";
+import TicketDetail from "./pages/TicketDetail.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -95,8 +97,14 @@ function AppContent() {
       <Header onChangeRequester={() => setIsChanging(true)} />
       <Routes>
         <Route path="/" element={<HomeContent />} />
+        
         <Route path="/create-ticket" element={<CreateTicket />} />
-        <Route path="/tickets" element={<HomeContent />} />
+        <Route path="/tickets/new" element={<CreateTicket />} />
+
+        <Route path="/tickets" element={<MyTickets />} />
+
+        <Route path="/tickets/:id" element={<TicketDetail />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
