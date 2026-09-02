@@ -2,8 +2,7 @@ import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-
+import { MemoryRouter, useLocation, } from "react-router-dom";
 import MyTickets from "../../src/pages/MyTickets";
 import { RequesterProvider } from "../../src/context/RequesterContext";
 import { RequesterSelector } from "../../src/components/RequesterSelector";
@@ -135,7 +134,10 @@ function mockFetch() {
 
       // Tickets
       if (url.includes("/api/v1/tickets")) {
-        const parsedUrl = new URL(url, "http://localhost");
+        const parsedUrl = new URL(
+          url,
+          "http://localhost"
+        );
 
         const requesterId =
           parsedUrl.searchParams.get("requesterId");
@@ -158,6 +160,7 @@ function mockFetch() {
 
         /*
          * No-results test.
+         *
          * Selecting category 1 should return no tickets.
          */
         if (categoryId === "1") {
@@ -234,8 +237,9 @@ function renderMyTickets() {
   );
 
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/my-tickets"]}>
       <RequesterProvider>
+        <LocationDisplay />
         <MyTickets />
       </RequesterProvider>
     </MemoryRouter>
@@ -249,12 +253,26 @@ function renderWithRequesterSelector() {
   );
 
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/my-tickets"]}>
       <RequesterProvider>
         <RequesterSelector />
         <MyTickets />
       </RequesterProvider>
     </MemoryRouter>
+  );
+}
+
+/*
+ * Helper component used to verify that navigation
+ * actually changes the current route.
+ */
+function LocationDisplay() {
+  const location = useLocation();
+
+  return (
+    <div data-testid="current-location">
+      {location.pathname}
+    </div>
   );
 }
 
@@ -278,7 +296,9 @@ function getLatestTicketRequestUrl() {
 describe("MyTickets - Lab 2 UI Tests", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+
     localStorage.clear();
+
     mockFetch();
   });
 
@@ -296,25 +316,34 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     /*
      * "Hardware" appears both in the Category
      * filter option and in the ticket table.
+     *
      * Use the table cell to avoid the duplicate match.
      */
     expect(
-      screen.getByRole("cell", {name: "Hardware",})
+      screen.getByRole("cell", {
+        name: "Hardware",
+      })
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("cell", { name: "High" })
+      screen.getByRole("cell", {
+        name: "High",
+      })
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("cell", { name: "New",})
+      screen.getByRole("cell", {
+        name: "New",
+      })
     ).toBeInTheDocument();
   });
 
   it("sends the selected requesterId when loading tickets", async () => {
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     const url = getLatestTicketRequestUrl();
 
@@ -324,7 +353,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
   it("sends the search parameter when searching", async () => {
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     const user = userEvent.setup();
 
@@ -333,11 +364,15 @@ describe("MyTickets - Lab 2 UI Tests", () => {
         "Search by ticket number, summary, or description..."
       );
 
-    await user.type(searchInput, "computer");
+    await user.type(
+      searchInput,
+      "computer"
+    );
 
     await waitFor(
       () => {
-        const url = getLatestTicketRequestUrl();
+        const url =
+          getLatestTicketRequestUrl();
 
         expect(url).toContain(
           "search=computer"
@@ -352,7 +387,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
   it("renders category, priority, status, and sort filters", async () => {
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     const selects =
       screen.getAllByRole("combobox");
@@ -363,7 +400,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
   it("sends category, priority, and status filters", async () => {
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     const user = userEvent.setup();
 
@@ -371,7 +410,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       screen.getAllByRole("combobox");
 
     const categorySelect = selects[0];
+
     const prioritySelect = selects[1];
+
     const statusSelect = selects[2];
 
     await user.selectOptions(
@@ -383,6 +424,22 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       expect(
         getLatestTicketRequestUrl()
       ).toContain("categoryId=1");
+    });
+
+    /*
+     * Clear the category filter before testing
+     * the next filter so that the request does
+     * not remain in the no-results state.
+     */
+    await user.selectOptions(
+      categorySelect,
+      ""
+    );
+
+    await waitFor(() => {
+      expect(
+        getLatestTicketRequestUrl()
+      ).not.toContain("categoryId=1");
     });
 
     await user.selectOptions(
@@ -411,7 +468,9 @@ describe("MyTickets - Lab 2 UI Tests", () => {
   it("sends the selected sort option when sort is changed", async () => {
     renderMyTickets();
 
-    await screen.findByText("TKT-2026-000001");
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
 
     const user = userEvent.setup();
 
@@ -672,8 +731,50 @@ describe("MyTickets - Lab 2 UI Tests", () => {
     await user.click(createButton);
 
     expect(
-      createButton
+      screen.getByTestId(
+        "current-location"
+      )
+    ).toHaveTextContent(
+      "/create-ticket"
+    );
+  });
+
+  it("shows only Lab 2 supported status options", async () => {
+    renderMyTickets();
+
+    await screen.findByText(
+      "TKT-2026-000001"
+    );
+
+    expect(
+      screen.getByRole("option", {
+        name: "New",
+      })
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("option", {
+        name: "In Progress",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("option", {
+        name: "Resolved",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("option", {
+        name: "Closed",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("option", {
+        name: "Pending",
+      })
+    ).not.toBeInTheDocument();
   });
 
   it("switches requester and only shows the selected requester's tickets", async () => {

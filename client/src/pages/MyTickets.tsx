@@ -196,7 +196,6 @@ export default function MyTickets() {
   const renderPriorityBadge = (p: string) => {
     switch (p.toUpperCase()) {
       case "HIGH":
-      case "URGENT":
         return (
           <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1 fw-medium">
             High
@@ -242,13 +241,6 @@ export default function MyTickets() {
             style={{ backgroundColor: "#52C41A" }}
           >
             In Progress
-          </span>
-        );
-
-      case "PENDING":
-        return (
-          <span className="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-25 rounded-pill px-2 py-1 fw-medium">
-            Pending
           </span>
         );
 
@@ -441,7 +433,6 @@ export default function MyTickets() {
               <option value="">All Statuses</option>
               <option value="NEW">New</option>
               <option value="IN_PROGRESS">In Progress</option>
-              <option value="PENDING">Pending</option>
               <option value="RESOLVED">Resolved</option>
               <option value="CLOSED">Closed</option>
             </select>

@@ -6,7 +6,7 @@ import { RequesterSelector } from "./components/RequesterSelector";
 import { Header } from "./components/Header";
 import CreateTicket from "./pages/CreateTicket";
 import MyTickets from "./pages/MyTickets";
-import TicketDetail from "./pages/TicketDetail.js";
+import TicketDetail from "./pages/TicketDetail";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
