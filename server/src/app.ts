@@ -1,25 +1,17 @@
 import express, { Request, Response } from "express";
-
 import cors from "cors";
-
 import { getPrisma } from "./prisma.js";
-
-import {
-  requireRequester,
-  requireTicketOwnership,
-  RequesterRequest,
-} from "./middleware/requesterGuard.js";
+import { requireRequester, requireTicketOwnership, RequesterRequest } from "./middleware/requesterGuard.js";
+import { createTicketHandler } from "./controllers/ticket.controller.js";
 
 void getPrisma;
 
 export const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
 // Issue 2 — Health check
-
 app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({
     status: "ok",
@@ -27,8 +19,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
   });
 });
 
-// Issue 4 — Categories
-
+// Issue 4 — Legacy Categories Endpoint
 app.get("/api/categories", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
@@ -56,47 +47,108 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
   }
 });
 
-// Lab 2 — Active Requesters Endpoint
+// Lab 2 Reference API — GET /api/v1/categories (Active only)
+app.get("/api/v1/categories", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
 
-// Used by the Development Requester Selector
+    const categories = await prisma.category.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
 
-app.get(
-  "/api/v1/requesters/active",
-  async (_req: Request, res: Response) => {
-    try {
-      const prisma = getPrisma();
+    return res.status(200).json({
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Error fetching active categories:", error);
 
-      const activeRequesters = await prisma.requesterUser.findMany({
-        where: {
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          isActive: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      });
-
-      res.status(200).json(activeRequesters);
-    } catch (error) {
-      console.error("Error fetching active requesters:", error);
-
-      res.status(500).json({
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Internal server error",
-        },
-      });
-    }
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
   }
-);
+});
 
-// Lab 2 — Ticket Detail with Requester Ownership Check
+// Lab 2 Reference API — GET /api/v1/related-systems (Active only)
+app.get("/api/v1/related-systems", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
 
+    const relatedSystems = await prisma.relatedSystem.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    return res.status(200).json({
+      data: relatedSystems,
+    });
+  } catch (error) {
+    console.error("Error fetching active related systems:", error);
+
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+});
+
+// Issue 12 — Active Requesters Endpoint
+app.get("/api/v1/requesters/active", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    const activeRequesters = await prisma.requesterUser.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    res.status(200).json(activeRequesters);
+  } catch (error) {
+    console.error("Error fetching active requesters:", error);
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+});
+
+// Issue 12 — Ticket Detail with Requester Ownership Check
 app.get(
   "/api/v1/tickets/:id",
   requireRequester,
@@ -115,9 +167,6 @@ app.get(
           attachments: true,
         },
       });
-
-      // Ownership middleware already checks that the ticket exists.
-      // This is a defensive check in case the ticket is removed between queries.
 
       if (!ticket) {
         return res.status(404).json({
@@ -143,5 +192,8 @@ app.get(
     }
   }
 );
+
+// Issue 13 — Create Ticket Endpoint
+app.post("/api/v1/tickets", requireRequester, createTicketHandler);
 
 export default app;
