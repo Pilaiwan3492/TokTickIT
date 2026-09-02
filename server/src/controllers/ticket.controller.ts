@@ -127,3 +127,121 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     });
   }
 };
+
+// ---------------------------------------------------------
+// Issue 14: Get Paginated Tickets by Requester Ownership
+// ---------------------------------------------------------
+export const getTicketsHandler = async (req: RequesterRequest, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    // 1. Ownership check - strict filter by Requester context or query parameter
+    const rawRequesterId = req.query.requesterId || req.requester?.id;
+    const requesterIdNum = Number(rawRequesterId);
+
+    if (
+      !rawRequesterId ||
+      typeof rawRequesterId === "boolean" ||
+      !Number.isInteger(requesterIdNum) ||
+      requesterIdNum <= 0
+    ) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Requester ID is required and must be a positive integer.",
+        },
+      });
+    }
+
+    // 2. Parse query parameters
+    const {
+      search,
+      categoryId,
+      priority,
+      status,
+      page = "1",
+      limit = "10",
+      sort = "createdAt_desc",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(String(limit), 10) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    // 3. Build Prisma filter conditions (Strict Requester Ownership)
+    const where: any = {
+      requesterId: requesterIdNum,
+    };
+
+    if (categoryId) {
+      const catIdNum = Number(categoryId);
+      if (Number.isInteger(catIdNum) && catIdNum > 0) {
+        where.categoryId = catIdNum;
+      }
+    }
+
+    if (priority && typeof priority === "string") {
+      where.requestedPriority = priority.toUpperCase();
+    }
+
+    if (status && typeof status === "string") {
+      where.currentStatus = status.toUpperCase();
+    }
+
+    if (search && typeof search === "string" && search.trim() !== "") {
+      const queryStr = search.trim();
+      where.OR = [
+        { ticketNo: { contains: queryStr, mode: "insensitive" } },
+        { summary: { contains: queryStr, mode: "insensitive" } },
+      ];
+    }
+
+    // 4. Sorting logic
+    let orderBy: any = { createdAt: "desc" };
+    if (typeof sort === "string") {
+      const [field, order] = sort.split("_");
+      const validOrder = order?.toLowerCase() === "asc" ? "asc" : "desc";
+
+      if (field === "ticketNo") orderBy = { ticketNo: validOrder };
+      else if (field === "createdAt" || field === "createdDate") orderBy = { createdAt: validOrder };
+      else if (field === "summary") orderBy = { summary: validOrder };
+      else if (field === "priority") orderBy = { requestedPriority: validOrder };
+      else if (field === "status") orderBy = { currentStatus: validOrder };
+    }
+
+    // 5. Query execution with relational data
+    const [total, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limitNum,
+        include: {
+          category: true,
+          relatedSystem: true,
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return res.status(200).json({
+      data: tickets,
+      meta: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching tickets:", error);
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+};
