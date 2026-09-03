@@ -21,45 +21,55 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     expect(category).not.toBeNull();
     expect(relatedSystem).not.toBeNull();
 
-    // Ensure at least 3 distinct tickets exist for validRequesterId with different timestamps and priorities
-    const existingCount = await prisma.ticket.count({ where: { requesterId: validRequesterId } });
-    if (existingCount < 3) {
-      await prisma.ticket.createMany({
-        data: [
-          {
-            ticketNo: "TKT-2026-900001",
-            requesterId: validRequesterId,
-            categoryId: category!.id,
-            relatedSystemId: relatedSystem!.id,
-            summary: "Early alpha issue report",
-            description: "Detailed description for the early alpha report.",
-            requestedPriority: "LOW",
-            currentStatus: "NEW",
-            createdAt: new Date("2026-01-01T10:00:00Z"),
-          },
-          {
-            ticketNo: "TKT-2026-900002",
-            requesterId: validRequesterId,
-            categoryId: category!.id,
-            relatedSystemId: relatedSystem!.id,
-            summary: "Mid beta issue report",
-            description: "Detailed description for the mid beta report.",
-            requestedPriority: "MEDIUM",
-            currentStatus: "NEW",
-            createdAt: new Date("2026-02-01T10:00:00Z"),
-          },
-          {
-            ticketNo: "TKT-2026-900003",
-            requesterId: validRequesterId,
-            categoryId: category!.id,
-            relatedSystemId: relatedSystem!.id,
-            summary: "Late release candidate issue report",
-            description: "Detailed description for the late release candidate report.",
-            requestedPriority: "HIGH",
-            currentStatus: "NEW",
-            createdAt: new Date("2026-03-01T10:00:00Z"),
-          },
-        ],
+    // Ensure tickets exist with LOW, MEDIUM, and HIGH priorities for validRequesterId
+    const hasLow = await prisma.ticket.findFirst({ where: { requesterId: validRequesterId, requestedPriority: "LOW" } });
+    if (!hasLow) {
+      await prisma.ticket.create({
+        data: {
+          ticketNo: `TKT-2026-LOW-${Date.now().toString().slice(-5)}`,
+          requesterId: validRequesterId,
+          categoryId: category!.id,
+          relatedSystemId: relatedSystem!.id,
+          summary: "Low priority ticket for sorting test",
+          description: "Detailed description for low priority ticket.",
+          requestedPriority: "LOW",
+          currentStatus: "NEW",
+          createdAt: new Date("2026-01-01T10:00:00Z"),
+        },
+      });
+    }
+
+    const hasMed = await prisma.ticket.findFirst({ where: { requesterId: validRequesterId, requestedPriority: "MEDIUM" } });
+    if (!hasMed) {
+      await prisma.ticket.create({
+        data: {
+          ticketNo: `TKT-2026-MED-${Date.now().toString().slice(-5)}`,
+          requesterId: validRequesterId,
+          categoryId: category!.id,
+          relatedSystemId: relatedSystem!.id,
+          summary: "Medium priority ticket for sorting test",
+          description: "Detailed description for medium priority ticket.",
+          requestedPriority: "MEDIUM",
+          currentStatus: "NEW",
+          createdAt: new Date("2026-02-01T10:00:00Z"),
+        },
+      });
+    }
+
+    const hasHigh = await prisma.ticket.findFirst({ where: { requesterId: validRequesterId, requestedPriority: "HIGH" } });
+    if (!hasHigh) {
+      await prisma.ticket.create({
+        data: {
+          ticketNo: `TKT-2026-HIGH-${Date.now().toString().slice(-5)}`,
+          requesterId: validRequesterId,
+          categoryId: category!.id,
+          relatedSystemId: relatedSystem!.id,
+          summary: "High priority ticket for sorting test",
+          description: "Detailed description for high priority ticket.",
+          requestedPriority: "HIGH",
+          currentStatus: "NEW",
+          createdAt: new Date("2026-03-01T10:00:00Z"),
+        },
       });
     }
   });
@@ -168,7 +178,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   // ---------------------------------------------------------
-  // 2. Sorting Behavior Tests (AC-11: sort parameters & ordering)
+  // 2. Sorting Behavior Tests (AC-11: primary & secondary sorting)
   // ---------------------------------------------------------
 
   test("✓ (AC-11) Should sort tickets by createdAt ascending (sort=createdAt_asc) and verify timestamp order", async () => {
@@ -231,18 +241,102 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     }
   });
 
-  test("✓ (AC-11) Should sort tickets by priority ascending (sort=priority_asc) and descending (sort=priority_desc)", async () => {
+  test("✓ (AC-11) Should sort tickets by priority ascending (sort=priority_asc) and assert LOW <= MEDIUM <= HIGH", async () => {
+    const priorityRank: Record<string, number> = {
+      LOW: 1,
+      MEDIUM: 2,
+      HIGH: 3,
+    };
+
     const resAsc = await request(app).get(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=priority_asc&limit=50`
     );
     expect(resAsc.status).toBe(200);
-    expect(Array.isArray(resAsc.body.data)).toBe(true);
+    const tickets = resAsc.body.data;
+    expect(tickets.length).toBeGreaterThanOrEqual(3);
+
+    for (let i = 0; i < tickets.length - 1; i++) {
+      const currentRank = priorityRank[tickets[i].requestedPriority];
+      const nextRank = priorityRank[tickets[i + 1].requestedPriority];
+      expect(currentRank).toBeLessThanOrEqual(nextRank);
+    }
+  });
+
+  test("✓ (AC-11) Should sort tickets by priority descending (sort=priority_desc) and assert HIGH >= MEDIUM >= LOW", async () => {
+    const priorityRank: Record<string, number> = {
+      LOW: 1,
+      MEDIUM: 2,
+      HIGH: 3,
+    };
 
     const resDesc = await request(app).get(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=priority_desc&limit=50`
     );
     expect(resDesc.status).toBe(200);
-    expect(Array.isArray(resDesc.body.data)).toBe(true);
+    const tickets = resDesc.body.data;
+    expect(tickets.length).toBeGreaterThanOrEqual(3);
+
+    for (let i = 0; i < tickets.length - 1; i++) {
+      const currentRank = priorityRank[tickets[i].requestedPriority];
+      const nextRank = priorityRank[tickets[i + 1].requestedPriority];
+      expect(currentRank).toBeGreaterThanOrEqual(nextRank);
+    }
+  });
+
+  test("✓ (AC-11) Should apply deterministic secondary sorting by id descending (id_desc) when primary sort values are identical", async () => {
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+    expect(category).not.toBeNull();
+    expect(relatedSystem).not.toBeNull();
+
+    // Create two tickets with the EXACT SAME createdAt timestamp
+    const tiedTimestamp = new Date("2026-07-07T07:07:07.000Z");
+    const uniqueSuffix = Date.now().toString().slice(-6);
+
+    const ticketA = await prisma.ticket.create({
+      data: {
+        ticketNo: `TKT-2026-TIE1-${uniqueSuffix}`,
+        requesterId: validRequesterId,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Secondary sort tie test ticket A",
+        description: "Testing deterministic id_desc secondary sorting A.",
+        requestedPriority: "MEDIUM",
+        currentStatus: "NEW",
+        createdAt: tiedTimestamp,
+      },
+    });
+
+    const ticketB = await prisma.ticket.create({
+      data: {
+        ticketNo: `TKT-2026-TIE2-${uniqueSuffix}`,
+        requesterId: validRequesterId,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Secondary sort tie test ticket B",
+        description: "Testing deterministic id_desc secondary sorting B.",
+        requestedPriority: "MEDIUM",
+        currentStatus: "NEW",
+        createdAt: tiedTimestamp,
+      },
+    });
+
+    const res = await request(app).get(
+      `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
+    );
+
+    expect(res.status).toBe(200);
+    const tiedTickets = res.body.data.filter(
+      (t: any) => t.id === ticketA.id || t.id === ticketB.id
+    );
+    expect(tiedTickets.length).toBe(2);
+
+    // Secondary sort specification: id_desc (the ticket with larger UUID string must appear first)
+    const expectedFirstId = ticketA.id > ticketB.id ? ticketA.id : ticketB.id;
+    const expectedSecondId = ticketA.id > ticketB.id ? ticketB.id : ticketA.id;
+
+    expect(tiedTickets[0].id).toBe(expectedFirstId);
+    expect(tiedTickets[1].id).toBe(expectedSecondId);
   });
 
   test("🔴 (AC-11) Should return 400 INVALID_QUERY when sort parameter is invalid", async () => {

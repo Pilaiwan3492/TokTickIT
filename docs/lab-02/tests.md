@@ -45,8 +45,9 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 | **API-26** | API | AC-11, BR-04 | Sort tickets by createdAt ascending (`sort=createdAt_asc`) and verify timestamp ordering | HTTP 200 OK; asserts `t[i].createdAt <= t[i+1].createdAt` for all items | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
 | **API-27** | API | AC-11, BR-04 | Sort tickets by createdAt descending (`sort=createdAt_desc`) as default and verify ordering | HTTP 200 OK; asserts `t[i].createdAt >= t[i+1].createdAt` for all items | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
 | **API-28** | API | AC-11, BR-04 | Sort tickets by ticketNo ascending (`sort=ticketNo_asc`) and descending (`sort=ticketNo_desc`) | HTTP 200 OK; asserts deterministic alphabetical/reverse order | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
-| **API-29** | API | AC-11, BR-04 | Sort tickets by priority ascending (`sort=priority_asc`) and descending (`sort=priority_desc`) | HTTP 200 OK; returns array with requested priority ordering | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
-| **API-30** | API | AC-11, BR-04 | Reject invalid sort parameter (e.g. `sort=unknown_field_asc`) | HTTP 400 Bad Request with `INVALID_QUERY` error code | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-29** | API | AC-11, BR-04 | Sort tickets by priority ascending (`sort=priority_asc`) and descending (`sort=priority_desc`) | HTTP 200 OK; asserts rank `LOW <= MEDIUM <= HIGH` and `HIGH >= MEDIUM >= LOW` | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-30** | API | AC-11, BR-04 | Apply deterministic secondary sorting by id descending (`id_desc`) when primary sort keys match | HTTP 200 OK; asserts identical timestamp records are sorted by UUID descending | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-31** | API | AC-11, BR-04 | Reject invalid sort parameter (e.g. `sort=unknown_field_asc`) | HTTP 400 Bad Request with `INVALID_QUERY` error code | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
 | **UI-01** | UI | AC-01, AC-09 | Create Ticket form initial render with reference data from API | Dropdowns populated, summary/description inputs visible, counters at 0 | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
 | **UI-02** | UI | AC-09, BR-05 | Client-side validation: submit empty form or invalid lengths | Field-level error messages displayed below inputs; API not called | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
 | **UI-03** | UI | AC-01, AC-20 | Submit valid form data in Create Ticket | Displays success screen with official Ticket Number and action buttons | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
@@ -83,7 +84,7 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 | **AC-08** | Switching requester context reloads and scopes data to the new requester | `UI-07`, `API-04`, `API-25` | **Pass** |
 | **AC-09** | Field-level validation on Summary (5–150 chars) and Description (10–2000 chars) | `API-02`, `UI-02` | **Pass** |
 | **AC-10** | Paginated ticket list with deterministic page sizing and metadata | `API-04`, `API-07`, `UI-04` | **Pass** |
-| **AC-11** | Sorting tickets by supported fields with deterministic secondary sorting and verified order | `API-26`, `API-27`, `API-28`, `API-29`, `API-30`, `UI-19` | **Pass** |
+| **AC-11** | Sorting tickets by supported fields with deterministic secondary sorting and verified order | `API-26`, `API-27`, `API-28`, `API-29`, `API-30`, `API-31`, `UI-19` | **Pass** |
 | **AC-12** | Display meaningful empty state when requester has 0 tickets | `UI-08` | **Pass** |
 | **AC-13** | Display clear no-results state when search/filter returns 0 matches | `API-05`, `UI-08` | **Pass** |
 | **AC-14** | Display safe error states without exposing internal infrastructure on API failures | `API-08`, `UI-10`, `UI-11` | **Pass** |
@@ -118,7 +119,7 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 cd server
 npm test
 ```
-Runs all 7 test suites via Vitest, covering health, categories, ownership guards, create ticket, my tickets (including AC-11 sorting tests), ticket detail, and attachments.
+Runs all 7 test suites via Vitest, covering health, categories, ownership guards, create ticket, my tickets (including AC-11 primary & secondary sorting tests), ticket detail, and attachments.
 
 ### Frontend Test Suite
 ```bash
@@ -138,7 +139,7 @@ Executes TypeScript compiler (`tsc`) and Vite production bundler to verify zero 
 
 ## 6. Final Results
 
-Both test suites executed with **100% pass rate (94/94 tests passing)** and zero errors or warnings.
+Both test suites executed with **100% pass rate (96/96 tests passing)** and zero errors or warnings.
 
 ### Backend Execution Log
 ```text
@@ -147,18 +148,18 @@ Both test suites executed with **100% pass rate (94/94 tests passing)** and zero
 
  RUN  v2.1.9 C:/Users/Acer/Desktop/TokTickIT/server
 
- ✓ tests/lab-01/health.test.ts (1 test) 34ms
- ✓ tests/lab-01/categories.test.ts (1 test) 75ms
- ✓ tests/lab-02/ownership.test.ts (5 tests) 139ms
- ✓ tests/lab-02/ticket-detail.api.test.ts (5 tests) 145ms
- ✓ tests/lab-02/create-ticket.api.test.ts (6 tests) 177ms
- ✓ tests/lab-02/my-tickets.api.test.ts (18 tests) 360ms
- ✓ tests/lab-02/attachments.api.test.ts (24 tests) 456ms
+ ✓ tests/lab-01/health.test.ts (1 test) 33ms
+ ✓ tests/lab-01/categories.test.ts (1 test) 66ms
+ ✓ tests/lab-02/ownership.test.ts (5 tests) 161ms
+ ✓ tests/lab-02/ticket-detail.api.test.ts (5 tests) 153ms
+ ✓ tests/lab-02/create-ticket.api.test.ts (6 tests) 197ms
+ ✓ tests/lab-02/my-tickets.api.test.ts (20 tests) 402ms
+ ✓ tests/lab-02/attachments.api.test.ts (24 tests) 542ms
 
  Test Files  7 passed (7)
-      Tests  60 passed (60)
-   Start at  21:19:15
-   Duration  1.31s (transform 212ms, setup 0ms, collect 2.71s, tests 1.39s, environment 1ms, prepare 874ms)
+      Tests  62 passed (62)
+   Start at  21:26:44
+   Duration  1.43s (transform 300ms, setup 0ms, collect 2.84s, tests 1.55s, environment 1ms, prepare 993ms)
 ```
 
 ### Frontend Execution Log
@@ -169,18 +170,19 @@ Both test suites executed with **100% pass rate (94/94 tests passing)** and zero
  RUN  v2.1.9 C:/Users/Acer/Desktop/TokTickIT/client
 
  ✓ tests/lab-02/RequesterTicketDetail.test.tsx (3 tests) 147ms
- ✓ tests/lab-02/CreateTicket.test.tsx (4 tests) 294ms
- ✓ tests/lab-01/App.test.tsx (3 tests) 277ms
- ✓ tests/lab-02/AttachmentSection.test.tsx (10 tests) 434ms
- ✓ tests/lab-02/MyTickets.test.tsx (14 tests) 2098ms
-   ✓ MyTickets - Lab 2 UI Tests > sends the search parameter when searching 637ms
-   ✓ MyTickets - Lab 2 UI Tests > sends category, priority, and status filters 364ms
+ ✓ tests/lab-02/CreateTicket.test.tsx (4 tests) 299ms
+ ✓ tests/lab-01/App.test.tsx (3 tests) 259ms
+ ✓ tests/lab-02/AttachmentSection.test.tsx (10 tests) 452ms
+ ✓ tests/lab-02/MyTickets.test.tsx (14 tests) 2142ms
+   ✓ MyTickets - Lab 2 UI Tests > sends the search parameter when searching 652ms
+   ✓ MyTickets - Lab 2 UI Tests > sends category, priority, and status filters 352ms
 
  Test Files  5 passed (5)
       Tests  34 passed (34)
-   Start at  21:18:56
-   Duration  3.56s (transform 319ms, setup 503ms, collect 1.34s, tests 3.25s, environment 3.10s, prepare 664ms)
+   Start at  21:26:55
+   Duration  3.54s (transform 332ms, setup 479ms, collect 1.20s, tests 3.30s, environment 2.89s, prepare 556ms)
 ```
+
 
 ---
 
