@@ -852,4 +852,51 @@ describe("MyTickets - Lab 2 UI Tests", () => {
       );
     });
   });
-});
+
+  it("sends the sort parameter when changing sort order in MyTickets (AC-11)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/api/v1/requesters/active")) {
+          return createRequesterResponse();
+        }
+
+        if (url.includes("/api/v1/categories")) {
+          return createMockResponse(mockCategories);
+        }
+
+        if (url.includes("/api/v1/tickets")) {
+          return createMockResponse(mockTickets);
+        }
+
+        return createMockResponse([]);
+      })
+    );
+
+    renderMyTickets();
+
+    await screen.findByText("TKT-2026-000001");
+
+    const user = userEvent.setup();
+    const sortSelect = screen.getByLabelText(/Sort/i);
+
+    // Default sort
+    expect(getLatestTicketRequestUrl()).toContain("sort=createdAt_desc");
+
+    // Change to Oldest first
+    await user.selectOptions(sortSelect, "createdAt_asc");
+
+    await waitFor(() => {
+      expect(getLatestTicketRequestUrl()).toContain("sort=createdAt_asc");
+    });
+
+    // Change to Ticket No.: A → Z
+    await user.selectOptions(sortSelect, "ticketNo_asc");
+
+    await waitFor(() => {
+      expect(getLatestTicketRequestUrl()).toContain("sort=ticketNo_asc");
+    });
+  });
+});

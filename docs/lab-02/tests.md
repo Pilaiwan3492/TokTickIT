@@ -42,6 +42,11 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 | **API-23** | API | AC-17, BR-07 | Soft-remove attachment with reason < 3 characters | HTTP 400 Bad Request with `VALIDATION_ERROR` error code | `server/tests/lab-02/attachments.api.test.ts` | `Pass` |
 | **API-24** | API | AC-05, BR-07 | Soft-remove already removed attachment | HTTP 409 Conflict with `ATTACHMENT_ALREADY_REMOVED` error code | `server/tests/lab-02/attachments.api.test.ts` | `Pass` |
 | **API-25** | API | AC-03, BR-04 | Comprehensive cross-requester ownership guards across all ticket endpoints | HTTP 403 Forbidden across GET, POST attachment, and DELETE attachment | `server/tests/lab-02/ownership.test.ts` | `Pass` |
+| **API-26** | API | AC-11, BR-04 | Sort tickets by createdAt ascending (`sort=createdAt_asc`) and verify timestamp ordering | HTTP 200 OK; asserts `t[i].createdAt <= t[i+1].createdAt` for all items | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-27** | API | AC-11, BR-04 | Sort tickets by createdAt descending (`sort=createdAt_desc`) as default and verify ordering | HTTP 200 OK; asserts `t[i].createdAt >= t[i+1].createdAt` for all items | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-28** | API | AC-11, BR-04 | Sort tickets by ticketNo ascending (`sort=ticketNo_asc`) and descending (`sort=ticketNo_desc`) | HTTP 200 OK; asserts deterministic alphabetical/reverse order | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-29** | API | AC-11, BR-04 | Sort tickets by priority ascending (`sort=priority_asc`) and descending (`sort=priority_desc`) | HTTP 200 OK; returns array with requested priority ordering | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
+| **API-30** | API | AC-11, BR-04 | Reject invalid sort parameter (e.g. `sort=unknown_field_asc`) | HTTP 400 Bad Request with `INVALID_QUERY` error code | `server/tests/lab-02/my-tickets.api.test.ts` | `Pass` |
 | **UI-01** | UI | AC-01, AC-09 | Create Ticket form initial render with reference data from API | Dropdowns populated, summary/description inputs visible, counters at 0 | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
 | **UI-02** | UI | AC-09, BR-05 | Client-side validation: submit empty form or invalid lengths | Field-level error messages displayed below inputs; API not called | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
 | **UI-03** | UI | AC-01, AC-20 | Submit valid form data in Create Ticket | Displays success screen with official Ticket Number and action buttons | `client/tests/lab-02/CreateTicket.test.tsx` | `Pass` |
@@ -60,6 +65,7 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 | **UI-16** | UI | AC-05, BR-07 | Soft-removed attachment presentation | Displays `Status: Removed`, timestamp, and reason; hides action buttons | `client/tests/lab-02/AttachmentSection.test.tsx` | `Pass` |
 | **UI-17** | UI | AC-17, BR-07 | Remove Confirmation Dialog Modal validation | Modal opens on Remove; validates mandatory reason (3–255 chars); cancel closes | `client/tests/lab-02/AttachmentSection.test.tsx` | `Pass` |
 | **UI-18** | UI | AC-05, BR-07 | Remove Attachment submit flow | Calls DELETE API with reason; displays success alert; refreshes detail state | `client/tests/lab-02/AttachmentSection.test.tsx` | `Pass` |
+| **UI-19** | UI | AC-11, BR-04 | Change Sort dropdown in MyTickets UI triggers API call with corresponding sort parameter | Dropdown selection changes sort query param (`sort=createdAt_asc`, `sort=ticketNo_asc`) | `client/tests/lab-02/MyTickets.test.tsx` | `Pass` |
 
 ---
 
@@ -77,7 +83,7 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 | **AC-08** | Switching requester context reloads and scopes data to the new requester | `UI-07`, `API-04`, `API-25` | **Pass** |
 | **AC-09** | Field-level validation on Summary (5–150 chars) and Description (10–2000 chars) | `API-02`, `UI-02` | **Pass** |
 | **AC-10** | Paginated ticket list with deterministic page sizing and metadata | `API-04`, `API-07`, `UI-04` | **Pass** |
-| **AC-11** | Sorting tickets by supported fields with secondary sorting | `API-04`, `UI-04` | **Pass** |
+| **AC-11** | Sorting tickets by supported fields with deterministic secondary sorting and verified order | `API-26`, `API-27`, `API-28`, `API-29`, `API-30`, `UI-19` | **Pass** |
 | **AC-12** | Display meaningful empty state when requester has 0 tickets | `UI-08` | **Pass** |
 | **AC-13** | Display clear no-results state when search/filter returns 0 matches | `API-05`, `UI-08` | **Pass** |
 | **AC-14** | Display safe error states without exposing internal infrastructure on API failures | `API-08`, `UI-10`, `UI-11` | **Pass** |
@@ -112,14 +118,14 @@ This document defines the comprehensive Test Plan and Execution Evidence for the
 cd server
 npm test
 ```
-Runs all 7 test suites via Vitest, covering health, categories, ownership guards, create ticket, my tickets, ticket detail, and attachments.
+Runs all 7 test suites via Vitest, covering health, categories, ownership guards, create ticket, my tickets (including AC-11 sorting tests), ticket detail, and attachments.
 
 ### Frontend Test Suite
 ```bash
 cd client
 npm test
 ```
-Runs all 5 test suites via Vitest, covering App, CreateTicket, MyTickets, RequesterTicketDetail, and AttachmentSection.
+Runs all 5 test suites via Vitest, covering App, CreateTicket, MyTickets (including AC-11 sort selector test), RequesterTicketDetail, and AttachmentSection.
 
 ### Production Type-Check & Build
 ```bash
@@ -132,7 +138,7 @@ Executes TypeScript compiler (`tsc`) and Vite production bundler to verify zero 
 
 ## 6. Final Results
 
-Both test suites executed with **100% pass rate (87/87 tests passing)** and zero errors.
+Both test suites executed with **100% pass rate (94/94 tests passing)** and zero errors or warnings.
 
 ### Backend Execution Log
 ```text
@@ -141,18 +147,18 @@ Both test suites executed with **100% pass rate (87/87 tests passing)** and zero
 
  RUN  v2.1.9 C:/Users/Acer/Desktop/TokTickIT/server
 
- ✓ tests/lab-01/health.test.ts (1 test) 27ms
- ✓ tests/lab-01/categories.test.ts (1 test) 64ms
- ✓ tests/lab-02/ownership.test.ts (5 tests) 135ms
- ✓ tests/lab-02/ticket-detail.api.test.ts (5 tests) 134ms
- ✓ tests/lab-02/create-ticket.api.test.ts (6 tests) 159ms
- ✓ tests/lab-02/my-tickets.api.test.ts (12 tests) 249ms
- ✓ tests/lab-02/attachments.api.test.ts (24 tests) 415ms
+ ✓ tests/lab-01/health.test.ts (1 test) 34ms
+ ✓ tests/lab-01/categories.test.ts (1 test) 75ms
+ ✓ tests/lab-02/ownership.test.ts (5 tests) 139ms
+ ✓ tests/lab-02/ticket-detail.api.test.ts (5 tests) 145ms
+ ✓ tests/lab-02/create-ticket.api.test.ts (6 tests) 177ms
+ ✓ tests/lab-02/my-tickets.api.test.ts (18 tests) 360ms
+ ✓ tests/lab-02/attachments.api.test.ts (24 tests) 456ms
 
  Test Files  7 passed (7)
-      Tests  54 passed (54)
-   Start at  21:02:31
-   Duration  1.21s (transform 184ms, setup 0ms, collect 2.53s, tests 1.18s, environment 1ms, prepare 854ms)
+      Tests  60 passed (60)
+   Start at  21:19:15
+   Duration  1.31s (transform 212ms, setup 0ms, collect 2.71s, tests 1.39s, environment 1ms, prepare 874ms)
 ```
 
 ### Frontend Execution Log
@@ -162,18 +168,18 @@ Both test suites executed with **100% pass rate (87/87 tests passing)** and zero
 
  RUN  v2.1.9 C:/Users/Acer/Desktop/TokTickIT/client
 
- ✓ tests/lab-02/RequesterTicketDetail.test.tsx (3 tests) 140ms
- ✓ tests/lab-02/CreateTicket.test.tsx (4 tests) 298ms
- ✓ tests/lab-01/App.test.tsx (3 tests) 279ms
- ✓ tests/lab-02/AttachmentSection.test.tsx (10 tests) 474ms
- ✓ tests/lab-02/MyTickets.test.tsx (13 tests) 1916ms
-   ✓ MyTickets - Lab 2 UI Tests > sends the search parameter when searching 648ms
-   ✓ MyTickets - Lab 2 UI Tests > sends category, priority, and status filters 362ms
+ ✓ tests/lab-02/RequesterTicketDetail.test.tsx (3 tests) 147ms
+ ✓ tests/lab-02/CreateTicket.test.tsx (4 tests) 294ms
+ ✓ tests/lab-01/App.test.tsx (3 tests) 277ms
+ ✓ tests/lab-02/AttachmentSection.test.tsx (10 tests) 434ms
+ ✓ tests/lab-02/MyTickets.test.tsx (14 tests) 2098ms
+   ✓ MyTickets - Lab 2 UI Tests > sends the search parameter when searching 637ms
+   ✓ MyTickets - Lab 2 UI Tests > sends category, priority, and status filters 364ms
 
  Test Files  5 passed (5)
-      Tests  33 passed (33)
-   Start at  21:02:46
-   Duration  3.33s (transform 297ms, setup 560ms, collect 1.28s, tests 3.11s, environment 2.85s, prepare 647ms)
+      Tests  34 passed (34)
+   Start at  21:18:56
+   Duration  3.56s (transform 319ms, setup 503ms, collect 1.34s, tests 3.25s, environment 3.10s, prepare 664ms)
 ```
 
 ---
@@ -184,3 +190,4 @@ Both test suites executed with **100% pass rate (87/87 tests passing)** and zero
 - **IT Staff Workflow**: Assigning tickets, changing IT Priority, IT dashboard queues, and resolving/closing tickets are scheduled for later labs.
 - **Collaboration**: Public comments, internal notes, and audit action logs are scheduled for later labs.
 - **Deferred Tests**: **None**. All planned tests for the approved Lab 2 scope have been implemented and are actively passing in the test suite. No tests are skipped, disabled, or commented out.
+
