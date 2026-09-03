@@ -395,15 +395,17 @@ export const getTicketDetailHandler = async (
       });
     }
 
-    // Validate ticket ID
-    if (!id || typeof id !== "string") {
-      return res.status(404).json({
+    // Validate ticket ID (must be a valid UUID)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
+      return res.status(400).json({
         error: {
-          code: "TICKET_NOT_FOUND",
-          message: "Ticket not found.",
+          code: "VALIDATION_ERROR",
+          message: "Ticket ID must be a valid UUID.",
         },
       });
     }
+
 
     const requesterId = Number(rawRequesterId);
 
