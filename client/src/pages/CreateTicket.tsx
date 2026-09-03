@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRequester } from "../context/RequesterContext.js";
 
@@ -14,9 +14,19 @@ interface RelatedSystem {
   isActive?: boolean;
 }
 
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MiB
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+};
+
 export default function CreateTicket() {
   const navigate = useNavigate();
   const { selectedRequester } = useRequester();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
@@ -27,10 +37,15 @@ export default function CreateTicket() {
   const [summary, setSummary] = useState<string>("");
   const [description, setDescription] = useState<string>("");
 
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string>("");
+  const [attachmentWarning, setAttachmentWarning] = useState<string>("");
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [createdTicketNo, setCreatedTicketNo] = useState<string | null>(null);
+  const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -63,10 +78,41 @@ export default function CreateTicket() {
     fetchRelatedSystems();
   }, []);
 
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAttachmentError("");
+    const newFiles = Array.from(files);
+
+    if (selectedFiles.length + newFiles.length > 5) {
+      setAttachmentError("Maximum 5 active attachments per ticket.");
+      return;
+    }
+
+    for (const file of newFiles) {
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        setAttachmentError("This file type is not supported. Allowed: JPG, JPEG, PNG, WEBP, PDF.");
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setAttachmentError("File size must not exceed 5 MiB (5,242,880 bytes).");
+        return;
+      }
+    }
+
+    setSelectedFiles((prev) => [...prev, ...newFiles]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setAttachmentError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldErrors({});
     setGeneralError("");
+    setAttachmentWarning("");
 
     if (!selectedRequester?.id) {
       setGeneralError("Please select a requester before creating a ticket.");
@@ -118,7 +164,38 @@ export default function CreateTicket() {
           setGeneralError(resData.error?.message || "Failed to create ticket");
         }
       } else {
-        setCreatedTicketNo(resData.data?.ticketNo);
+        const newTicketId = resData.data?.id;
+        const newTicketNo = resData.data?.ticketNo;
+        setCreatedTicketId(newTicketId);
+        setCreatedTicketNo(newTicketNo);
+
+        let hasAttachmentFailure = false;
+        if (newTicketId && selectedFiles.length > 0) {
+          for (const file of selectedFiles) {
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+              const attachRes = await fetch(
+                `/api/v1/tickets/${newTicketId}/attachments?requesterId=${selectedRequester.id}`,
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
+              if (!attachRes.ok) {
+                hasAttachmentFailure = true;
+              }
+            } catch {
+              hasAttachmentFailure = true;
+            }
+          }
+        }
+
+        if (hasAttachmentFailure) {
+          setAttachmentWarning(
+            "Ticket created successfully, but one or more attachments could not be uploaded."
+          );
+        }
       }
     } catch (error) {
       setGeneralError("An unexpected error occurred. Please try again.");
@@ -190,17 +267,52 @@ export default function CreateTicket() {
           >
             {createdTicketNo}
           </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+
+          {attachmentWarning && (
+            <div
+              style={{
+                backgroundColor: "#fffbeb",
+                border: "1px solid #f59e0b",
+                color: "#b45309",
+                padding: "12px",
+                borderRadius: "6px",
+                fontSize: "14px",
+                marginBottom: "20px",
+                textAlign: "left",
+              }}
+            >
+              ⚠️ {attachmentWarning}
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
+            {createdTicketId && (
+              <button
+                type="button"
+                onClick={() => navigate(`/tickets/${createdTicketId}`)}
+                style={{
+                  backgroundColor: "#006644",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                View Ticket Details
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate("/tickets")}
               style={{
-                backgroundColor: "#006644",
-                color: "#ffffff",
-                border: "none",
+                backgroundColor: "#f1f5f9",
+                color: "#334155",
+                border: "1px solid #cbd5e1",
                 padding: "8px 16px",
                 borderRadius: "6px",
-                fontWeight: "600",
+                fontWeight: "500",
                 cursor: "pointer",
               }}
             >
@@ -210,6 +322,9 @@ export default function CreateTicket() {
               type="button"
               onClick={() => {
                 setCreatedTicketNo(null);
+                setCreatedTicketId(null);
+                setAttachmentWarning("");
+                setSelectedFiles([]);
                 setSummary("");
                 setDescription("");
                 setCategoryId("");
@@ -343,9 +458,14 @@ export default function CreateTicket() {
 
             {/* Summary */}
             <div>
-              <label style={labelStyle}>
-                Summary <span style={{ color: "#dc2626" }}>*</span>
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Summary <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                  {summary.trim().length} / 150
+                </span>
+              </div>
               <input
                 type="text"
                 value={summary}
@@ -361,9 +481,14 @@ export default function CreateTicket() {
 
             {/* Description */}
             <div>
-              <label style={labelStyle}>
-                Description <span style={{ color: "#dc2626" }}>*</span>
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Description <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                  {description.trim().length} / 2000
+                </span>
+              </div>
               <textarea
                 rows={5}
                 value={description}
@@ -376,6 +501,86 @@ export default function CreateTicket() {
                 }}
               />
               {fieldErrors.description && <div style={errorTextStyle}>{fieldErrors.description}</div>}
+            </div>
+
+            {/* Attachments Section */}
+            <div style={{ paddingTop: "8px" }}>
+              <label style={labelStyle}>
+                Attachments
+              </label>
+              <div
+                data-testid="attachment-dropzone"
+                style={{
+                  border: "2px dashed #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "24px 16px",
+                  textAlign: "center",
+                  backgroundColor: "#f8fafc",
+                  cursor: "pointer",
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleFileSelect(e.dataTransfer.files);
+                }}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  multiple
+                  accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                />
+                <div style={{ fontSize: "14px", fontWeight: "600", color: "#334155" }}>
+                  Drag & Drop files here or <span style={{ color: "#006644", textDecoration: "underline" }}>Choose Files</span>
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>
+                  Allowed: JPG, JPEG, PNG, WEBP, PDF · Maximum: 5 MB per file · Maximum: 5 active attachments
+                </div>
+              </div>
+
+              {attachmentError && (
+                <div style={{ ...errorTextStyle, marginTop: "6px" }}>{attachmentError}</div>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedFiles.map((file, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        backgroundColor: "#f1f5f9",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "500", color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {file.name} ({formatFileSize(file.size)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(idx)}
+                        style={{
+                          backgroundColor: "transparent",
+                          border: "none",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          fontWeight: "600",
+                          fontSize: "12px",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useRequester } from "../context/RequesterContext";
 
@@ -13,31 +13,33 @@ interface Attachment {
   contentType?: string;
   createdAt?: string;
   uploadedAt?: string;
-  isRemoved?: boolean;
   removedAt?: string | null;
+  removalReason?: string | null;
+  isRemoved?: boolean;
 }
 
 interface Ticket {
   id: string;
   ticketNo: string;
+  summary: string;
+  description: string;
+  requestedPriority: string;
+  itPriority?: string | null;
+  currentStatus: string;
+  createdAt: string;
+  updatedAt: string;
   requesterId?: number;
   requester?: {
     id: number;
     name: string;
     email?: string;
   };
-  summary: string;
-  description: string;
-  currentStatus: string;
-  requestedPriority: string;
-  createdAt: string;
-  updatedAt?: string;
   category?: {
-    id?: number;
+    id: number;
     name: string;
   };
   relatedSystem?: {
-    id?: number;
+    id: number;
     name: string;
   };
   attachments?: Attachment[];
@@ -48,82 +50,128 @@ export default function TicketDetail() {
   const navigate = useNavigate();
   const { selectedRequester } = useRequester();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // No requester selected -> go to requester selection.
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+  const fetchTicket = useCallback(async () => {
     if (!selectedRequester?.id) {
       navigate("/select-requester");
       return;
     }
 
-    // Store the narrowed requester value so TypeScript knows
-    // it cannot become null inside the async function.
-    const requester = selectedRequester;
+    if (!id) {
+      setError("Ticket not found.");
+      setLoading(false);
+      return;
+    }
 
-    async function fetchTicket() {
-      if (!id) {
-        setError("Ticket not found.");
-        setLoading(false);
+    const requesterId = selectedRequester.id;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Lab 2 API: GET /api/v1/tickets/:id?requesterId={requesterId}
+      const res = await fetch(
+        `/api/v1/tickets/${id}?requesterId=${requesterId}`
+      );
+
+      // Cross-requester access.
+      if (res.status === 403) {
+        setError("You do not have permission to access this ticket.");
         return;
       }
 
-      const requesterId = requester.id;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Lab 2 API:
-        // GET /api/v1/tickets/:id?requesterId={requesterId}
-        const res = await fetch(
-          `/api/v1/tickets/${id}?requesterId=${requesterId}`
-        );
-
-        // Cross-requester access.
-        if (res.status === 403) {
-          setError(
-            "You do not have permission to access this ticket."
-          );
-          return;
-        }
-
-        // Ticket does not exist.
-        if (res.status === 404) {
-          setError("Ticket not found.");
-          return;
-        }
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-
-          setError(
-            errData.error?.message ||
-              "Unable to load ticket details. Please try again."
-          );
-          return;
-        }
-
-        const responseData = await res.json();
-
-        // Lab 2 single-resource response:
-        // { data: {...} }
-        setTicket(responseData.data || responseData);
-      } catch (err) {
-        console.error("Error fetching ticket details:", err);
-
-        setError(
-          "Unable to load ticket details. Please try again."
-        );
-      } finally {
-        setLoading(false);
+      // Ticket does not exist.
+      if (res.status === 404) {
+        setError("Ticket not found.");
+        return;
       }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setError(
+          errData.error?.message ||
+            "Unable to load ticket details. Please try again."
+        );
+        return;
+      }
+
+      const responseData = await res.json();
+      setTicket(responseData.data || responseData);
+    } catch (err) {
+      console.error("Error fetching ticket details:", err);
+      setError("Unable to load ticket details. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, selectedRequester, navigate]);
+
+  useEffect(() => {
+    fetchTicket();
+  }, [fetchTicket]);
+
+  const activeAttachments =
+    ticket?.attachments?.filter(
+      (att) => !att.removedAt && !att.isRemoved
+    ) || [];
+  const activeAttachmentsCount = activeAttachments.length;
+  const isMaxAttachmentsReached = activeAttachmentsCount >= 5;
+
+  const handleAddAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id || !selectedRequester?.id) return;
+    e.target.value = ""; // reset file input
+
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setUploadError("This file type is not supported. Allowed: JPG, JPEG, PNG, WEBP, PDF.");
+      return;
     }
 
-    fetchTicket();
-  }, [id, selectedRequester, navigate]);
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File size must not exceed 5 MiB (5,242,880 bytes).");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(
+        `/api/v1/tickets/${id}/attachments?requesterId=${selectedRequester.id}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const resData = await res.json();
+
+      if (!res.ok) {
+        setUploadError(resData.error?.message || "Failed to upload attachment.");
+      } else {
+        setUploadSuccess("Attachment uploaded successfully.");
+        await fetchTicket();
+      }
+    } catch {
+      setUploadError("Unable to upload the attachment. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   const renderPriorityBadge = (priority?: string) => {
     switch (priority?.toUpperCase()) {
@@ -460,15 +508,56 @@ export default function TicketDetail() {
         {/* Attachments */}
         <section>
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h2 className="h6 fw-bold text-dark mb-0">
-              Attachments
-            </h2>
+            <div>
+              <h2 className="h6 fw-bold text-dark mb-0 d-inline me-2">
+                Attachments
+              </h2>
+              <span className="text-secondary small">
+                ({activeAttachmentsCount}/5 active)
+              </span>
+            </div>
 
-            <span className="text-secondary small">
-              {ticket.attachments?.length || 0} attachment
-              {ticket.attachments?.length === 1 ? "" : "s"}
-            </span>
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                onChange={handleAddAttachment}
+              />
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isMaxAttachmentsReached || isUploading}
+                style={{
+                  borderColor: isMaxAttachmentsReached ? "#cbd5e1" : "#006B3C",
+                  color: isMaxAttachmentsReached ? "#94a3b8" : "#006B3C",
+                  fontWeight: "600",
+                }}
+              >
+                {isUploading ? "Uploading..." : "+ Add Attachment"}
+              </button>
+            </div>
           </div>
+
+          {isMaxAttachmentsReached && (
+            <div className="small mb-3" style={{ color: "#b45309" }}>
+              This ticket already has the maximum number of active attachments.
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="alert alert-danger py-2 px-3 small mb-3" role="alert">
+              {uploadError}
+            </div>
+          )}
+
+          {uploadSuccess && (
+            <div className="alert alert-success py-2 px-3 small mb-3" role="alert">
+              {uploadSuccess}
+            </div>
+          )}
 
           {/* Empty attachment state */}
           {!ticket.attachments ||

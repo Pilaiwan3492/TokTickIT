@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { createTicketHandler, getTicketsHandler, getTicketDetailHandler } from "../controllers/ticket.controller.js";
+import { uploadMiddleware, uploadAttachmentHandler } from "../controllers/attachment.controller.js";
 
 const router = Router();
 
@@ -13,4 +14,7 @@ router.get("/", getTicketsHandler);
 // GET /api/v1/tickets/:id
 router.get("/:id", getTicketDetailHandler);
 
-export default router;
+// POST /api/v1/tickets/:id/attachments
+router.post("/:id/attachments", uploadMiddleware, uploadAttachmentHandler);
+
+export default router;
