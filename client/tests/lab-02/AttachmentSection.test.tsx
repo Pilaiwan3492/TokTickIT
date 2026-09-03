@@ -105,6 +105,35 @@ describe("Attachment Section & Upload UI Tests (Lab 2)", () => {
         });
       }
 
+      if (urlStr.includes("/api/v1/tickets/removed-ticket-1") && !init?.method) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: {
+              id: "removed-ticket-1",
+              ticketNo: "TKT-2026-000009",
+              summary: "Ticket with removed attachment",
+              description: "Detail of ticket with removed attachment.",
+              requestedPriority: "LOW",
+              currentStatus: "NEW",
+              createdAt: "2026-08-25T00:00:00.000Z",
+              updatedAt: "2026-08-25T00:00:00.000Z",
+              attachments: [
+                {
+                  id: "att-removed",
+                  fileName: "outdated-log.txt",
+                  fileSize: 4096,
+                  mimeType: "text/plain",
+                  uploadedAt: "2026-08-25T00:00:00.000Z",
+                  removedAt: "2026-08-25T01:00:00.000Z",
+                  removalReason: "Uploaded the wrong log file.",
+                },
+              ],
+            },
+          }),
+        });
+      }
+
       if (urlStr.includes("/attachments") && init?.method === "POST") {
         return Promise.resolve({
           ok: true,
@@ -120,6 +149,28 @@ describe("Attachment Section & Upload UI Tests (Lab 2)", () => {
               removalReason: null,
             },
           }),
+        });
+      }
+
+      if (urlStr.includes("/attachments") && init?.method === "DELETE") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: {
+              id: "att-1",
+              removedAt: new Date().toISOString(),
+              removalReason: "Uploaded wrong screenshot.",
+            },
+          }),
+        });
+      }
+
+      if (urlStr.includes("/download")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          blob: async () => new Blob(["test data"]),
         });
       }
 
@@ -267,4 +318,126 @@ describe("Attachment Section & Upload UI Tests (Lab 2)", () => {
       screen.getByText(/This ticket already has the maximum number of active attachments/i)
     ).toBeInTheDocument();
   });
+
+  it("renders Download and Remove buttons for active attachment in TicketDetail", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tickets/test-ticket-1"]}>
+        <RequesterProvider>
+          <Routes>
+            <Route path="/tickets/:id" element={<TicketDetail />} />
+          </Routes>
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/existing-log\.png/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /^Download$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Remove$/i })).toBeInTheDocument();
+  });
+
+  it("renders soft-removed status and reason while hiding action buttons", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tickets/removed-ticket-1"]}>
+        <RequesterProvider>
+          <Routes>
+            <Route path="/tickets/:id" element={<TicketDetail />} />
+          </Routes>
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/outdated-log\.txt/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Status: Removed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reason: Uploaded the wrong log file\./i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Download$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Remove$/i })).not.toBeInTheDocument();
+  });
+
+  it("opens removal modal and validates reason length on Remove click", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tickets/test-ticket-1"]}>
+        <RequesterProvider>
+          <Routes>
+            <Route path="/tickets/:id" element={<TicketDetail />} />
+          </Routes>
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/existing-log\.png/i)).toBeInTheDocument();
+    });
+
+    const removeBtn = screen.getByRole("button", { name: /^Remove$/i });
+    fireEvent.click(removeBtn);
+
+    // Verify modal is displayed
+    expect(screen.getByText(/Remove attachment\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The attachment will no longer be available for download/i)
+    ).toBeInTheDocument();
+
+    // Click confirm without reason -> shows error
+    const confirmBtn = screen.getByRole("button", { name: /Remove Attachment/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Removal reason is required\./i)).toBeInTheDocument();
+    });
+
+    // Enter less than 3 chars -> shows error
+    const reasonInput = screen.getByPlaceholderText(/e\.g\. Uploaded the wrong screenshot\./i);
+    fireEvent.change(reasonInput, { target: { value: "ab" } });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Removal reason must be between 3 and 255 characters\./i)
+      ).toBeInTheDocument();
+    });
+
+    // Cancel closes modal
+    const cancelBtn = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Remove attachment\?/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("submits removal with valid reason and displays success alert", async () => {
+    render(
+      <MemoryRouter initialEntries={["/tickets/test-ticket-1"]}>
+        <RequesterProvider>
+          <Routes>
+            <Route path="/tickets/:id" element={<TicketDetail />} />
+          </Routes>
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/existing-log\.png/i)).toBeInTheDocument();
+    });
+
+    const removeBtn = screen.getByRole("button", { name: /^Remove$/i });
+    fireEvent.click(removeBtn);
+
+    const reasonInput = screen.getByPlaceholderText(/e\.g\. Uploaded the wrong screenshot\./i);
+    fireEvent.change(reasonInput, { target: { value: "Uploaded wrong screenshot." } });
+
+    const confirmBtn = screen.getByRole("button", { name: /Remove Attachment/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Attachment removed successfully\./i)).toBeInTheDocument();
+    });
+  });
 });
+

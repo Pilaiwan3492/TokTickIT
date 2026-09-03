@@ -59,6 +59,13 @@ export default function TicketDetail() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
+  const [attachmentToRemove, setAttachmentToRemove] = useState<Attachment | null>(null);
+  const [removalReason, setRemovalReason] = useState<string>("");
+  const [removalReasonError, setRemovalReasonError] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeSuccess, setRemoveSuccess] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
   const fetchTicket = useCallback(async () => {
     if (!selectedRequester?.id) {
       navigate("/select-requester");
@@ -169,6 +176,91 @@ export default function TicketDetail() {
       setUploadError("Unable to upload the attachment. Please try again.");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDownload = async (attachment: Attachment) => {
+    if (!selectedRequester?.id) return;
+    setDownloadError(null);
+
+    const downloadUrl = `/api/v1/attachments/${attachment.id}/download?requesterId=${selectedRequester.id}`;
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 404 && errData.error?.code === "ATTACHMENT_NOT_AVAILABLE") {
+          setDownloadError("This attachment is no longer available for download.");
+        } else {
+          setDownloadError(errData.error?.message || "Unable to download the attachment. Please try again.");
+        }
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = getAttachmentName(attachment);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+      setDownloadError("Unable to download the attachment. Please try again.");
+    }
+  };
+
+  const openRemoveModal = (attachment: Attachment) => {
+    setAttachmentToRemove(attachment);
+    setRemovalReason("");
+    setRemovalReasonError(null);
+  };
+
+  const closeRemoveModal = () => {
+    setAttachmentToRemove(null);
+    setRemovalReason("");
+    setRemovalReasonError(null);
+  };
+
+  const handleConfirmRemove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!attachmentToRemove || !selectedRequester?.id) return;
+
+    const trimmed = removalReason.trim();
+    if (trimmed.length === 0) {
+      setRemovalReasonError("Removal reason is required.");
+      return;
+    }
+    if (trimmed.length < 3 || trimmed.length > 255) {
+      setRemovalReasonError("Removal reason must be between 3 and 255 characters.");
+      return;
+    }
+
+    setIsRemoving(true);
+    try {
+      const res = await fetch(
+        `/api/v1/attachments/${attachmentToRemove.id}?requesterId=${selectedRequester.id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ removalReason: trimmed }),
+        }
+      );
+
+      const resData = await res.json();
+      if (!res.ok) {
+        setRemovalReasonError(resData.error?.message || "Failed to remove attachment.");
+      } else {
+        setRemoveSuccess("Attachment removed successfully.");
+        closeRemoveModal();
+        await fetchTicket();
+      }
+    } catch (err) {
+      console.error("Remove attachment error:", err);
+      setRemovalReasonError("Unable to remove the attachment. Please try again.");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -559,6 +651,18 @@ export default function TicketDetail() {
             </div>
           )}
 
+          {removeSuccess && (
+            <div className="alert alert-success py-2 px-3 small mb-3" role="alert">
+              {removeSuccess}
+            </div>
+          )}
+
+          {downloadError && (
+            <div className="alert alert-danger py-2 px-3 small mb-3" role="alert">
+              {downloadError}
+            </div>
+          )}
+
           {/* Empty attachment state */}
           {!ticket.attachments ||
           ticket.attachments.length === 0 ? (
@@ -619,11 +723,51 @@ export default function TicketDetail() {
                         )}
 
                         {isRemoved && (
-                          <div className="small text-secondary mt-1">
-                            Status: Removed
+                          <div className="mt-2 pt-2 border-top" style={{ borderColor: "#D5DDD8" }}>
+                            <span className="badge bg-secondary me-2">
+                              Status: Removed
+                            </span>
+                            {attachment.removedAt && (
+                              <span className="small text-secondary me-2">
+                                Removed: {formatDate(attachment.removedAt)}
+                              </span>
+                            )}
+                            {attachment.removalReason && (
+                              <div className="small text-secondary mt-1 fst-italic">
+                                Reason: {attachment.removalReason}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
+
+                      {/* Action buttons (Available only for active attachments) */}
+                      {!isRemoved && (
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleDownload(attachment)}
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            Download
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => openRemoveModal(attachment)}
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -631,7 +775,99 @@ export default function TicketDetail() {
             </div>
           )}
         </section>
+
+        {/* Remove Attachment Confirmation Dialog Modal */}
+        {attachmentToRemove && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-modal-title"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1050,
+              padding: "16px",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "8px",
+                maxWidth: "480px",
+                width: "100%",
+                padding: "24px",
+                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+              }}
+            >
+              <h3
+                id="remove-modal-title"
+                style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}
+              >
+                Remove attachment?
+              </h3>
+              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "16px" }}>
+                The attachment will no longer be available for download. Its metadata will remain in the ticket history.
+              </p>
+
+              <form onSubmit={handleConfirmRemove}>
+                <div style={{ marginBottom: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#334155" }}>
+                      Removal reason <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                      {removalReason.trim().length} / 255
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Uploaded the wrong screenshot."
+                    value={removalReason}
+                    onChange={(e) => {
+                      setRemovalReason(e.target.value);
+                      if (removalReasonError) setRemovalReasonError(null);
+                    }}
+                    style={{
+                      borderColor: removalReasonError ? "#dc2626" : "#cbd5e1",
+                    }}
+                  />
+                  {removalReasonError && (
+                    <div style={{ color: "#dc2626", fontSize: "12px", marginTop: "4px" }}>
+                      {removalReasonError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={closeRemoveModal}
+                    disabled={isRemoving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-danger"
+                    disabled={isRemoving}
+                  >
+                    {isRemoving ? "Removing..." : "Remove Attachment"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
+}
