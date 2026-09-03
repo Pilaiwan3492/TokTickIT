@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+
 import { getPrisma } from "./prisma.js";
-import { requireRequester, requireTicketOwnership, RequesterRequest } from "./middleware/requesterGuard.js";
-import { createTicketHandler, getTicketsHandler } from "./controllers/ticket.controller.js";
+import ticketRoutes from "./routes/ticket.routes.js";
 
 void getPrisma;
 
@@ -116,77 +116,32 @@ app.get("/api/v1/related-systems", async (_req: Request, res: Response) => {
 });
 
 // Issue 12 — Active Requesters Endpoint
-app.get("/api/v1/requesters/active", async (_req: Request, res: Response) => {
-  try {
-    const prisma = getPrisma();
-
-    const activeRequesters = await prisma.requesterUser.findMany({
-      where: {
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isActive: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-
-    res.status(200).json(activeRequesters);
-  } catch (error) {
-    console.error("Error fetching active requesters:", error);
-
-    res.status(500).json({
-      error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error",
-      },
-    });
-  }
-});
-
-// Issue 14 — Get Tickets List Endpoint
-app.get("/api/v1/tickets", getTicketsHandler);
-
-// Issue 12 — Ticket Detail with Requester Ownership Check
 app.get(
-  "/api/v1/tickets/:id",
-  requireRequester,
-  requireTicketOwnership,
-  async (req: RequesterRequest, res: Response) => {
+  "/api/v1/requesters/active",
+  async (_req: Request, res: Response) => {
     try {
       const prisma = getPrisma();
 
-      const ticket = await prisma.ticket.findUnique({
+      const activeRequesters = await prisma.requesterUser.findMany({
         where: {
-          id: req.params.id,
+          isActive: true,
         },
-        include: {
-          category: true,
-          relatedSystem: true,
-          attachments: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true,
+        },
+        orderBy: {
+          name: "asc",
         },
       });
 
-      if (!ticket) {
-        return res.status(404).json({
-          error: {
-            code: "TICKET_NOT_FOUND",
-            message: "Ticket not found.",
-          },
-        });
-      }
-
-      return res.status(200).json({
-        data: ticket,
-      });
+      res.status(200).json(activeRequesters);
     } catch (error) {
-      console.error("Error fetching ticket:", error);
+      console.error("Error fetching active requesters:", error);
 
-      return res.status(500).json({
+      res.status(500).json({
         error: {
           code: "INTERNAL_SERVER_ERROR",
           message: "Internal server error",
@@ -196,7 +151,13 @@ app.get(
   }
 );
 
-// Issue 13 — Create Ticket Endpoint
-app.post("/api/v1/tickets", requireRequester, createTicketHandler);
+// Lab 2 — Ticket APIs
+// POST /api/v1/tickets
+// GET  /api/v1/tickets
+// GET  /api/v1/tickets/:id
+//
+// The actual handlers are defined in ticket.routes.ts
+// and ticket.controller.ts.
+app.use("/api/v1/tickets", ticketRoutes);
 
 export default app;

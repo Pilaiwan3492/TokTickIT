@@ -365,3 +365,111 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
     });
   }
 };
+
+export const getTicketDetailHandler = async (
+  req: RequesterRequest,
+  res: Response
+) => {
+  try {
+    const prisma = getPrisma();
+
+    const { id } = req.params;
+
+    const rawRequesterId =
+      req.query.requesterId ?? req.requester?.id;
+
+    // Validate requester context
+    if (
+      rawRequesterId === undefined ||
+      rawRequesterId === null ||
+      typeof rawRequesterId === "boolean" ||
+      !/^\d+$/.test(String(rawRequesterId)) ||
+      Number(rawRequesterId) <= 0
+    ) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message:
+            "Requester ID is required and must be a positive integer.",
+        },
+      });
+    }
+
+    // Validate ticket ID
+    if (!id || typeof id !== "string") {
+      return res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    const requesterId = Number(rawRequesterId);
+
+    // Verify requester exists and is active
+    const requester = await prisma.requesterUser.findUnique({
+      where: {
+        id: requesterId,
+      },
+    });
+
+    if (!requester || requester.isActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "Requester not found or inactive.",
+        },
+      });
+    }
+
+    // Find ticket together with required detail data and attachments.
+    const ticket = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        requester: true,
+        category: true,
+        relatedSystem: true,
+        attachments: true,
+      },
+    });
+
+    // Ticket does not exist
+    if (!ticket) {
+      return res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    // Ownership enforcement
+    if (ticket.requesterId !== requesterId) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have permission to access this ticket.",
+        },
+      });
+    }
+
+    // Return ticket detail.
+    // Soft-removed attachments remain visible as metadata.
+    // Download/preview restrictions are handled by attachment APIs.
+    return res.status(200).json({
+      data: ticket,
+    });
+  } catch (error) {
+    console.error("Error fetching ticket detail:", error);
+
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+};

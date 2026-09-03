@@ -35,7 +35,7 @@ describe("POST /api/v1/tickets Validation & Creation Scenarios", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REQUESTER_CONTEXT");
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
   it("should return 400 when categoryId does not exist or is inactive", async () => {

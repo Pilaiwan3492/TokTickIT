@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { checkSystem, Category } from "./api.js";
-import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
-import { RequesterSelector } from "./components/RequesterSelector.js";
-import { Header } from "./components/Header.js";
-import CreateTicket from "./pages/CreateTicket.js";
+import { checkSystem, Category } from "./api";
+import { RequesterProvider, useRequester } from "./context/RequesterContext";
+import { RequesterSelector } from "./components/RequesterSelector";
+import { Header } from "./components/Header";
+import CreateTicket from "./pages/CreateTicket";
 import MyTickets from "./pages/MyTickets";
-import TicketDetail from "./pages/TicketDetail.js";
+import TicketDetail from "./pages/TicketDetail";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
