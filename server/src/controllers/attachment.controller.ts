@@ -239,3 +239,263 @@ export const uploadAttachmentHandler = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * GET /api/v1/attachments/:id/download?requesterId={requesterId}
+ * Download an active attachment
+ */
+export const downloadAttachmentHandler = async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+    const rawRequesterId = req.query.requesterId;
+
+    // 1. Validate Attachment ID (must be valid UUID)
+    if (!id || !UUID_REGEX.test(id)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Attachment ID must be a valid UUID.",
+        },
+      });
+    }
+
+    // 2. Validate Requester Context
+    if (
+      rawRequesterId === undefined ||
+      rawRequesterId === null ||
+      typeof rawRequesterId === "boolean" ||
+      !/^\d+$/.test(String(rawRequesterId)) ||
+      Number(rawRequesterId) <= 0
+    ) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "Requester ID is required and must be a positive integer.",
+        },
+      });
+    }
+
+    const requesterId = Number(rawRequesterId);
+
+    // Verify requester exists and is active
+    const requester = await prisma.requesterUser.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || requester.isActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "The selected Requester is invalid.",
+        },
+      });
+    }
+
+    // 3. Find attachment with parent ticket
+    const attachment = await prisma.attachment.findUnique({
+      where: { id },
+      include: { ticket: true },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        error: {
+          code: "ATTACHMENT_NOT_FOUND",
+          message: "Attachment not found.",
+        },
+      });
+    }
+
+    // 4. Verify Ticket Ownership
+    if (attachment.ticket.requesterId !== requesterId) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have permission to access this attachment.",
+        },
+      });
+    }
+
+    // 5. Check if attachment has been soft-removed
+    if (attachment.removedAt !== null) {
+      return res.status(404).json({
+        error: {
+          code: "ATTACHMENT_NOT_AVAILABLE",
+          message: "This attachment is no longer available for download.",
+        },
+      });
+    }
+
+    // 6. Check file storage presence
+    const resolvedPath = path.resolve(process.cwd(), attachment.filePath);
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(500).json({
+        error: {
+          code: "ATTACHMENT_STORAGE_ERROR",
+          message: "The attachment file is unavailable. Please try again later.",
+        },
+      });
+    }
+
+    // 7. Send file with proper headers
+    res.setHeader("Content-Type", attachment.mimeType);
+    res.setHeader("Content-Disposition", `attachment; filename="${attachment.fileName}"`);
+    return res.sendFile(resolvedPath);
+  } catch (error) {
+    console.error("Error downloading attachment:", error);
+    return res.status(500).json({
+      error: {
+        code: "ATTACHMENT_DOWNLOAD_FAILED",
+        message: "Unable to download the attachment. Please try again.",
+      },
+    });
+  }
+};
+
+/**
+ * DELETE /api/v1/attachments/:id?requesterId={requesterId}
+ * Soft-remove an attachment while retaining metadata
+ */
+export const removeAttachmentHandler = async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+    const rawRequesterId = req.query.requesterId;
+    const { removalReason } = req.body || {};
+
+    // 1. Validate Attachment ID (must be valid UUID)
+    if (!id || !UUID_REGEX.test(id)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Attachment ID must be a valid UUID.",
+        },
+      });
+    }
+
+    // 2. Validate Requester Context
+    if (
+      rawRequesterId === undefined ||
+      rawRequesterId === null ||
+      typeof rawRequesterId === "boolean" ||
+      !/^\d+$/.test(String(rawRequesterId)) ||
+      Number(rawRequesterId) <= 0
+    ) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "Requester ID is required and must be a positive integer.",
+        },
+      });
+    }
+
+    const requesterId = Number(rawRequesterId);
+
+    // Verify requester exists and is active
+    const requester = await prisma.requesterUser.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || requester.isActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_REFERENCE",
+          message: "The selected Requester is invalid.",
+        },
+      });
+    }
+
+    // 3. Validate removalReason
+    if (
+      removalReason === undefined ||
+      removalReason === null ||
+      typeof removalReason !== "string" ||
+      removalReason.trim().length === 0
+    ) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Removal reason is required.",
+          fields: {
+            removalReason: "Removal reason is required.",
+          },
+        },
+      });
+    }
+
+    const trimmedReason = removalReason.trim();
+    if (trimmedReason.length < 3 || trimmedReason.length > 255) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Removal reason must be between 3 and 255 characters.",
+          fields: {
+            removalReason: "Removal reason must be between 3 and 255 characters.",
+          },
+        },
+      });
+    }
+
+    // 4. Find attachment with parent ticket
+    const attachment = await prisma.attachment.findUnique({
+      where: { id },
+      include: { ticket: true },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        error: {
+          code: "ATTACHMENT_NOT_FOUND",
+          message: "Attachment not found.",
+        },
+      });
+    }
+
+    // 5. Verify Ticket Ownership
+    if (attachment.ticket.requesterId !== requesterId) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have permission to remove this attachment.",
+        },
+      });
+    }
+
+    // 6. Check if already removed
+    if (attachment.removedAt !== null) {
+      return res.status(409).json({
+        error: {
+          code: "ATTACHMENT_ALREADY_REMOVED",
+          message: "This attachment has already been removed.",
+        },
+      });
+    }
+
+    // 7. Soft-remove attachment
+    const updated = await prisma.attachment.update({
+      where: { id },
+      data: {
+        removedAt: new Date(),
+        removalReason: trimmedReason,
+      },
+    });
+
+    return res.status(200).json({
+      data: {
+        id: updated.id,
+        removedAt: updated.removedAt,
+        removalReason: updated.removalReason,
+      },
+    });
+  } catch (error) {
+    console.error("Error removing attachment:", error);
+    return res.status(500).json({
+      error: {
+        code: "ATTACHMENT_REMOVE_FAILED",
+        message: "Unable to remove the attachment. Please try again.",
+      },
+    });
+  }
+};
+

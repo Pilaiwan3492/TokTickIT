@@ -3,6 +3,7 @@ import cors from "cors";
 
 import { getPrisma } from "./prisma.js";
 import ticketRoutes from "./routes/ticket.routes.js";
+import attachmentRoutes from "./routes/attachment.routes.js";
 
 void getPrisma;
 
@@ -152,12 +153,9 @@ app.get(
 );
 
 // Lab 2 — Ticket APIs
-// POST /api/v1/tickets
-// GET  /api/v1/tickets
-// GET  /api/v1/tickets/:id
-//
-// The actual handlers are defined in ticket.routes.ts
-// and ticket.controller.ts.
 app.use("/api/v1/tickets", ticketRoutes);
 
-export default app;
+// Lab 2 — Attachment APIs (Download & Soft Removal)
+app.use("/api/v1/attachments", attachmentRoutes);
+
+export default app;

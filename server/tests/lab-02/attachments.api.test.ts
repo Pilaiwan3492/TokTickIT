@@ -237,4 +237,249 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     expect(res.body.error.code).toBe("ATTACHMENT_LIMIT_REACHED");
     expect(res.body.error.message).toBe("This ticket already has the maximum number of active attachments.");
   });
+
+  // ---------------------------------------------------------
+  // 3. Download Attachment Tests (GET /api/v1/attachments/:id/download)
+  // ---------------------------------------------------------
+
+  test("✓ Should download an active attachment with correct Content-Type and Content-Disposition headers", async () => {
+    // Clear any previous active attachments to avoid 5-attachment limit
+    await prisma.attachment.deleteMany({ where: { ticketId: testTicketId } });
+
+    // Upload a real attachment first
+    const pngBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    const uploadRes = await request(app)
+      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .attach("file", pngBuffer, "download-me.png");
+
+
+    expect(uploadRes.status).toBe(201);
+    const attachmentId = uploadRes.body.data.id;
+
+    const downloadRes = await request(app)
+      .get(`/api/v1/attachments/${attachmentId}/download?requesterId=${validRequesterId}`);
+
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.header["content-type"]).toContain("image/png");
+    expect(downloadRes.header["content-disposition"]).toContain('filename="download-me.png"');
+    expect(downloadRes.body).toBeDefined();
+  });
+
+  test("❌ Should return 400 VALIDATION_ERROR when download attachment ID is not a valid UUID", async () => {
+    const res = await request(app)
+      .get(`/api/v1/attachments/not-a-uuid/download?requesterId=${validRequesterId}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res.body.error.message).toBe("Attachment ID must be a valid UUID.");
+  });
+
+  test("❌ Should return 400 INVALID_REFERENCE when download requesterId is missing or invalid", async () => {
+    const res = await request(app)
+      .get(`/api/v1/attachments/550e8400-e29b-41d4-a716-446655440000/download`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+  });
+
+  test("❌ Should return 404 ATTACHMENT_NOT_FOUND when downloading non-existent attachment", async () => {
+    const nonExistentUuid = "550e8400-e29b-41d4-a716-446655440099";
+    const res = await request(app)
+      .get(`/api/v1/attachments/${nonExistentUuid}/download?requesterId=${validRequesterId}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
+    expect(res.body.error.message).toBe("Attachment not found.");
+  });
+
+  test("❌ Should return 403 FORBIDDEN when downloading attachment belonging to another requester", async () => {
+    // Create an attachment for otherTicketId (owned by otherRequesterId)
+    const otherAtt = await prisma.attachment.create({
+      data: {
+        ticketId: otherTicketId,
+        fileName: "other-user.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/other-user.png",
+      },
+    });
+
+    // ValidRequesterId attempts to download otherRequester's attachment
+    const res = await request(app)
+      .get(`/api/v1/attachments/${otherAtt.id}/download?requesterId=${validRequesterId}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(res.body.error.message).toBe("You do not have permission to access this attachment.");
+  });
+
+  test("❌ Should return 404 ATTACHMENT_NOT_AVAILABLE when downloading a soft-removed attachment", async () => {
+    const removedAtt = await prisma.attachment.create({
+      data: {
+        ticketId: testTicketId,
+        fileName: "already-removed.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/already-removed.png",
+        removedAt: new Date(),
+        removalReason: "Test removal reason",
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/attachments/${removedAtt.id}/download?requesterId=${validRequesterId}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ATTACHMENT_NOT_AVAILABLE");
+    expect(res.body.error.message).toBe("This attachment is no longer available for download.");
+  });
+
+  // ---------------------------------------------------------
+  // 4. Soft Removal Tests (DELETE /api/v1/attachments/:id)
+  // ---------------------------------------------------------
+
+  test("✓ Should soft-remove an active attachment with valid removalReason (200 OK)", async () => {
+    const attToRemove = await prisma.attachment.create({
+      data: {
+        ticketId: testTicketId,
+        fileName: "to-be-removed.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/to-be-removed.png",
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/attachments/${attToRemove.id}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "Uploaded the wrong screenshot." });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      id: attToRemove.id,
+      removedAt: expect.any(String),
+      removalReason: "Uploaded the wrong screenshot.",
+    });
+
+    // Verify in database: record still exists (not physically deleted)
+    const dbRecord = await prisma.attachment.findUnique({ where: { id: attToRemove.id } });
+    expect(dbRecord).not.toBeNull();
+    expect(dbRecord?.removedAt).not.toBeNull();
+    expect(dbRecord?.removalReason).toBe("Uploaded the wrong screenshot.");
+
+    // Subsequent download must return 404 ATTACHMENT_NOT_AVAILABLE
+    const downloadRes = await request(app)
+      .get(`/api/v1/attachments/${attToRemove.id}/download?requesterId=${validRequesterId}`);
+    expect(downloadRes.status).toBe(404);
+    expect(downloadRes.body.error.code).toBe("ATTACHMENT_NOT_AVAILABLE");
+  });
+
+  test("❌ Should return 400 VALIDATION_ERROR when removalReason is missing or whitespace-only", async () => {
+    const att = await prisma.attachment.create({
+      data: {
+        ticketId: testTicketId,
+        fileName: "temp.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/temp.png",
+      },
+    });
+
+    // Missing reason
+    const res1 = await request(app)
+      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .send({});
+    expect(res1.status).toBe(400);
+    expect(res1.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res1.body.error.message).toBe("Removal reason is required.");
+
+    // Whitespace only
+    const res2 = await request(app)
+      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "    " });
+    expect(res2.status).toBe(400);
+    expect(res2.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("❌ Should return 400 VALIDATION_ERROR when removalReason is less than 3 characters", async () => {
+    const att = await prisma.attachment.create({
+      data: {
+        ticketId: testTicketId,
+        fileName: "temp2.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/temp2.png",
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "no" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  test("❌ Should return 400 VALIDATION_ERROR when attachment ID is not a valid UUID on DELETE", async () => {
+    const res = await request(app)
+      .delete(`/api/v1/attachments/not-a-uuid?requesterId=${validRequesterId}`)
+      .send({ removalReason: "Valid reason text." });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res.body.error.message).toBe("Attachment ID must be a valid UUID.");
+  });
+
+  test("❌ Should return 404 ATTACHMENT_NOT_FOUND when soft-removing non-existent attachment", async () => {
+    const nonExistentUuid = "550e8400-e29b-41d4-a716-446655440099";
+    const res = await request(app)
+      .delete(`/api/v1/attachments/${nonExistentUuid}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "Valid reason text." });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
+    expect(res.body.error.message).toBe("Attachment not found.");
+  });
+
+  test("❌ Should return 403 FORBIDDEN when soft-removing another requester's attachment", async () => {
+    const otherAtt = await prisma.attachment.create({
+      data: {
+        ticketId: otherTicketId,
+        fileName: "other-att.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/other-att.png",
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/attachments/${otherAtt.id}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "Attempting to delete someone else's file." });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(res.body.error.message).toBe("You do not have permission to remove this attachment.");
+  });
+
+  test("❌ Should return 409 ATTACHMENT_ALREADY_REMOVED when removing an already removed attachment", async () => {
+    const alreadyRemoved = await prisma.attachment.create({
+      data: {
+        ticketId: testTicketId,
+        fileName: "double-remove.png",
+        fileSize: 1024,
+        mimeType: "image/png",
+        filePath: "uploads/double-remove.png",
+        removedAt: new Date(),
+        removalReason: "First removal",
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/attachments/${alreadyRemoved.id}?requesterId=${validRequesterId}`)
+      .send({ removalReason: "Second removal attempt." });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("ATTACHMENT_ALREADY_REMOVED");
+    expect(res.body.error.message).toBe("This attachment has already been removed.");
+  });
 });
+
