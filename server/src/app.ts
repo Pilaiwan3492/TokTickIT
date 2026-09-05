@@ -1,46 +1,161 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+
 import { getPrisma } from "./prisma.js";
-// getPrisma() is your lazy database handle. Call it INSIDE a route when you
-// need the DB (Issue 4). It is intentionally unused until then.
+import ticketRoutes from "./routes/ticket.routes.js";
+import attachmentRoutes from "./routes/attachment.routes.js";
+
 void getPrisma;
 
-// The Express app is exported separately from app.listen() (see index.ts) so
-// Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+app.use(cors());
 app.use(express.json());
 
-// ---------------------------------------------------------------------------
-// Issue 2 — API health check
-// Make the test in tests/lab-01/health.test.ts pass.
-// It must return HTTP 200 with JSON: { status: "ok", service: "TokTickIT API" }
-// ---------------------------------------------------------------------------
+// Issue 2 — Health check
 app.get("/api/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", service: "TokTickIT API" });
+  res.status(200).json({
+    status: "ok",
+    service: "TokTickIT API",
+  });
 });
 
-// ---------------------------------------------------------------------------
-// Issue 4 — Category list
-// Add:  GET /api/categories
-//   -> read categories from PostgreSQL via getPrisma().category.findMany(...)
-//   -> return each { id, name } in a predictable (id) order
-//   -> on failure, respond 500 with a safe message (no internal details)
-// TODO(Issue 4): implement the route here.
-// ---------------------------------------------------------------------------
+// Issue 4 — Legacy Categories Endpoint
 app.get("/api/categories", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
+
     const categories = await prisma.category.findMany({
-      select: { id: true, name: true },
-      orderBy: { id: "asc" }
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
     });
+
     res.status(200).json(categories);
   } catch (error) {
     console.error("Error fetching categories:", error);
-    res.status(500).json({ error: "Internal server error" });
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
   }
 });
 
-export default app;
+// Lab 2 Reference API — GET /api/v1/categories (Active only)
+app.get("/api/v1/categories", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    const categories = await prisma.category.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    return res.status(200).json({
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Error fetching active categories:", error);
+
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+});
+
+// Lab 2 Reference API — GET /api/v1/related-systems (Active only)
+app.get("/api/v1/related-systems", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    const relatedSystems = await prisma.relatedSystem.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    return res.status(200).json({
+      data: relatedSystems,
+    });
+  } catch (error) {
+    console.error("Error fetching active related systems:", error);
+
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+});
+
+// Issue 12 — Active Requesters Endpoint
+app.get(
+  "/api/v1/requesters/active",
+  async (_req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+
+      const activeRequesters = await prisma.requesterUser.findMany({
+        where: {
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true,
+        },
+        orderBy: {
+          name: "asc",
+        },
+      });
+
+      res.status(200).json(activeRequesters);
+    } catch (error) {
+      console.error("Error fetching active requesters:", error);
+
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Internal server error",
+        },
+      });
+    }
+  }
+);
+
+// Lab 2 — Ticket APIs
+app.use("/api/v1/tickets", ticketRoutes);
+
+// Lab 2 — Attachment APIs (Download & Soft Removal)
+app.use("/api/v1/attachments", attachmentRoutes);
+
+export default app;

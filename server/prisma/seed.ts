@@ -1,22 +1,52 @@
 import { getPrisma } from "../src/prisma.js";
 
-// Issue 3 — seed the four supported categories.
-// The four names are: Account and Access, Hardware, Software, Network.
-// Requirement: running the seed twice must NOT create duplicates.
-// Hint: prisma.category.upsert({ where:{name}, update:{}, create:{name} }).
 async function main() {
   const prisma = getPrisma();
   const categories = ["Account and Access", "Hardware", "Software", "Network"];
 
-  // TODO(Issue 3): upsert each category so the seed is idempotent.
   for (const name of categories) {
     await prisma.category.upsert({
       where: { name },
-      update: {},
-      create: { name }
+      update: { isActive: true },
+      create: { name, isActive: true }
     });
   }
   console.log("Seeded 4 categories successfully!");
+
+  const requesters = [
+    { email: "alice@example.com", name: "Alice Johnson" },
+    { email: "bob@example.com", name: "Bob Smith" },
+    { email: "charlie@example.com", name: "Charlie Brown" },
+    { email: "david@example.com", name: "David Miller", isActive: true },
+    { email: "eve@example.com", name: "Eve Inactive User", isActive: false }
+  ];
+
+  for (const user of requesters) {
+    await prisma.requesterUser.upsert({
+      where: { email: user.email },
+      update: { name: user.name, isActive: user.isActive ?? true },
+      create: { email: user.email, name: user.name, isActive: user.isActive ?? true }
+    });
+  }
+
+  const relatedSystems = [
+    { name: "ERP System", isActive: true },
+    { name: "HR Portal", isActive: true },
+    { name: "Email & Calendar", isActive: true },
+    { name: "VPN & Remote Access", isActive: true },
+    { name: "Internal Wiki", isActive: true },
+    { name: "Finance & Accounting", isActive: true }
+  ];
+
+  for (const sys of relatedSystems) {
+    await prisma.relatedSystem.upsert({
+      where: { name: sys.name },
+      update: { isActive: sys.isActive ?? true },
+      create: { name: sys.name, isActive: sys.isActive ?? true }
+    });
+  }
+
+  console.log("Seeded categories, requesters, and related systems successfully!");
 }
 
 main()
