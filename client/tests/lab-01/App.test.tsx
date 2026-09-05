@@ -1,13 +1,32 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
 
 describe("App", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem(
+      "toktickit_selected_requester",
+      JSON.stringify({
+        id: 1,
+        name: "Alice Johnson",
+        email: "alice@example.com",
+        isActive: true,
+      })
+    );
+  });
+
   it("renders the TokTickIT heading", () => {
-    render(<App />);
-    expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText(/TokTickIT/i)[0]).toBeInTheDocument();
   });
 
   it("shows Online and the seeded categories on success", async () => {
@@ -21,7 +40,11 @@ describe("App", () => {
       ],
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
     const button = screen.getByRole("button", { name: /Check System/i });
     await userEvent.click(button);
 
@@ -37,7 +60,11 @@ describe("App", () => {
       new Error("Unable to connect to TokTickIT API.")
     );
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
     const button = screen.getByRole("button", { name: /Check System/i });
     await userEvent.click(button);
 
