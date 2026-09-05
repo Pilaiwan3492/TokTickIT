@@ -28,6 +28,7 @@
 | [#44](https://github.com/Pilaiwan3492/TokTickIT/pull/44) | `feature/16-attachment-upload` | PR 16: feat implement attachment upload and validation for tickets | Approved |
 | [#45](https://github.com/Pilaiwan3492/TokTickIT/pull/45) | `feature/17-attachment-soft-removal` | PR 17: feat implement attachment download, soft removal, and confirmation modal | Approved |
 | [#46](https://github.com/Pilaiwan3492/TokTickIT/pull/46) | `feature/18-test-suite-evidence` | PR 18: test restructure test suites and finalize test evidence | Approved |
+| [#47](https://github.com/Pilaiwan3492/TokTickIT/pull/47) | `feature/19-peer-review-submission` | PR 19: Peer Review & Submission Package (docs) | Open / Approved |
 
 ---
 
@@ -158,6 +159,11 @@
 - **Author Response (@Pilaiwan3492):**  
   > *"Updated `my-tickets.api.test.ts` with Priority rank assertions (`LOW <= MEDIUM <= HIGH` and `HIGH >= MEDIUM >= LOW`), added test for secondary sorting `id_desc`, and replaced all `if return` with hard assertions. All 96 tests passing with 100% pass rate!"*
 
+#### PR #47: PR 19 : Peer Review & Submission Package (docs)
+- **Scope:** Complete submission package documentation, peer review records, AI reflection, updated setup instructions, and 96 automated tests evidence.
+- **Reviewer Status (@Apichaya251400):** Ready for merge into `lab2-staging`.
+- **Author Notes (@Pilaiwan3492):** Synchronized all review records from both repositories. 100% test suite passing (62 server + 34 client).
+
 ---
 
 ## 2. Pull Requests I Reviewed for My Partner (@Apichaya251400)
@@ -174,6 +180,9 @@
 | [#33](https://github.com/Apichaya251400/TokTickIT/pull/33) | `feat/issue-27-my-tickets` | feat(lab-02): implement my tickets API | Approved |
 | [#35](https://github.com/Apichaya251400/TokTickIT/pull/35) | `feat/issue-34-requester-selector` | feat(lab-02): implement requester selection and context | Approved |
 | [#36](https://github.com/Apichaya251400/TokTickIT/pull/36) | `feat/issue-28-create-ticket-ui` | feat(lab-02): implement Create Ticket requester UI | Approved |
+| [#37](https://github.com/Apichaya251400/TokTickIT/pull/37) | `feat/issue-29-my-tickets-ticket-detail-ui` | feat(lab-02): implement my tickets and ticket detail UI | Approved |
+| [#38](https://github.com/Apichaya251400/TokTickIT/pull/38) | `feat/issue-30-e2e-requester-workflow` | test(lab-02): add requester E2E workflow | Approved |
+| [#40](https://github.com/Apichaya251400/TokTickIT/pull/40) | `fix/issue-31-ui-background` | fix(lab-02): align global page background with UI spec | Approved |
 
 ---
 
@@ -322,3 +331,38 @@
   > *Requester change clears previous retry state ✅*  
   > *Development Mode testing context badge added ✅*  
   > *Everything looks good now. Nice work!!!!"*
+
+#### Partner PR #37: feat(lab-02): implement my tickets and ticket detail UI
+- **My Review Approval (@Pilaiwan3492):**  
+  > *"I rechecked the latest PR against the Lab 2 requirements. My Tickets, Ticket Detail, requester isolation, filtering/sorting/pagination, attachment download/removal, and the related tests all look good. Good to go! 🔥🔥🔥"*
+
+#### Partner PR #38: test(lab-02): add requester E2E workflow
+- **My First Review Comment (@Pilaiwan3492 - Changes Requested):**  
+  > *"Changes requested:*  
+  > *1. `e2e/lab-02/requester-ticket-flow.spec.ts` — AC-06 should test combined filtering*  
+  > *- Current test only filters by Category.*  
+  > *- Please add Related System + Priority + Status filters and verify the result.*  
+  > *2. `e2e/lab-02/requester-ticket-flow.spec.ts` — AC-03 non-owner access is not fully tested*  
+  > *- Switching to Bob and checking that Alice's ticket is not listed is not enough.*  
+  > *- Please open Alice's ticket detail as Bob and verify the 404 / 'Ticket not found' state.*  
+  > *3. `e2e/lab-02/requester-ticket-flow.spec.ts` — active attachment download is only checked for button visibility*  
+  > *- Please actually trigger the Download action and verify that the file is downloaded.*  
+  > *Everything else looks good."*
+- **Partner's Response (@Apichaya251400):**  
+  > *"Thanks for the review! I’ve fixed all 3 comments: AC-06 now checks the combined Category + Related System + Priority + Status filters; AC-03 now opens the actual ticket detail as Bob and verifies the 404 / 'Ticket not found' state; The attachment test now triggers the actual download and verifies the downloaded filename. Reran Playwright tests on desktop and mobile, 2/2 passed. Pushed in `23a46ea`."*
+- **My Second Review Comment (@Pilaiwan3492 - Changes Requested):**  
+  > *"Changes requested:*  
+  > *1. `e2e/lab-02/requester-ticket-flow.spec.ts` — AC-03 UI non-owner test:*  
+  > *- The API 404 check is correct, but the UI test currently accesses React internals via `__reactFiber$` and `hook.queue.dispatch()`.*  
+  > *- Please test the non-owner Ticket Detail through the actual UI/routing flow instead, then verify that 'Ticket not found.' is displayed.*  
+  > *🟢 AC-06 combined filtering and the active attachment download test are fixed and look good. Everything else looks good!"*
+- **Technical Architecture Discussion:**  
+  > **@Apichaya251400:** *"Thanks for the clarification! I removed the React internal state manipulation and tried to implement the AC-03 check using normal browser routing with the actual ticket UUID. However, I found an architecture limitation in the current Lab 2 implementation: Ticket Detail is controlled by the in-memory `selectedTicketId` state in App.tsx, and the application does not currently implement client-side URL routing. Therefore, navigating to `/tickets/<ticketUuid>` reloads the SPA without selecting the ticket. Since Bob cannot see Alice's ticket in My Tickets, there is no user-facing View Details action for Bob to open Alice's ticket. The backend ownership check is working correctly and returns 404. Should we keep the API 404 assertion and note the UI limitation, or treat URL-based routing as a separate production-scope change?"*  
+  > **@Pilaiwan3492:** *"Yeah, I agree! I think adding routing just for this test might be unnecessary since Lab 2 doesn’t require it. Let’s avoid React internals and extra production changes if possible. If there’s no clean way to test the UI state with the current flow, I think we can keep the API 404 test and mention the UI limitation."*
+- **My Final Approval (@Pilaiwan3492):**  
+  > *"Thanks for the clarification. The API 404 test covers the ownership requirement, and the UI limitation is noted. Good to go!"*
+
+#### Partner PR #40: fix(lab-02): align global page background with UI spec
+- **My Review Approval (@Pilaiwan3492):**  
+  > *"Looks good! The scope is clean with no unnecessary changes. Good to go!"*
+
