@@ -29,6 +29,7 @@ All endpoints are versioned under:
 - **Token Payload**:
   ```json
   {
+    "jti": "550e8400-e29b-41d4-a716-446655440000",
     "sub": "usr-uuid-001",
     "email": "user@toktickit.com",
     "name": "Jennifer Anderson",
@@ -40,11 +41,18 @@ All endpoints are versioned under:
   ```
 - **Token Lifecycle & Expiration**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded in Lab 3. When a token expires, the client receives `401 Unauthorized` (`SESSION_EXPIRED`) and redirects to `/login`.
 - **Client Storage**: Managed in client-side React `AuthContext` with persistence to `localStorage` (`toktickit_auth_token`) to preserve session across page refreshes during local testing.
-- **Logout Behavior**: Client-side logout removes the token from `localStorage` and clears in-memory state. Subsequent protected requests will lack the `Authorization` header and be rejected immediately.
+- **Server-Side Logout Invalidation**:
+  When `POST /api/v1/auth/logout` is invoked, the server validates the Bearer token, extracts the unique token identifier (`jti`), and registers it into a server-side revoked token store with TTL matching the token's remaining lifetime. Any subsequent request presenting a revoked `jti` is immediately rejected by `requireAuth` middleware with `401 Unauthorized` (`code: "SESSION_REVOKED"`). The client simultaneously purges the token from `localStorage`.
+- **Token Security Guardrails**:
+  1. Tokens are never exposed in UI markup, rendered into the DOM, or displayed to end users.
+  2. Tokens are never logged to console or included in server access logs.
+  3. Tokens are never transmitted to third-party endpoints or untrusted external origins.
+  4. Authentication secrets (`JWT_SECRET`) are strictly maintained in `.env` and kept out of version control.
+  5. Server error responses never leak tokens or cryptographic material.
 - **CSRF Defense**: Because Bearer tokens are stored in application memory/localStorage and explicitly injected into request headers rather than automatically attached by web browsers (unlike cookies), Cross-Site Request Forgery (CSRF) is prevented by architecture.
 
 ### 2.3 Middleware Guards & Enforcement
-- **Authentication Guard (`requireAuth`)**: Unauthenticated requests to protected endpoints return `401 Unauthorized`.
+- **Authentication Guard (`requireAuth`)**: Unauthenticated requests to protected endpoints return `401 Unauthorized`. Verifies token signature, expiration, active account status, and asserts that `jti` has not been revoked.
 - **Authorization Guard (`requireRole([...])`)**: Authenticated requests lacking the required role per the Authorization Matrix return `403 Forbidden` (`INSUFFICIENT_PERMISSIONS`).
 - **First-Login Gating (`requirePasswordChanged`)**: If the user has `mustChangePassword: true`, all operational endpoints return `403 Forbidden` with error code `PASSWORD_CHANGE_REQUIRED`, allowing access exclusively to `/api/v1/auth/change-password` and `/api/v1/auth/me`.
 
@@ -134,17 +142,25 @@ Standard error response:
     ```
   *(Note: Neither error exposes whether an email address exists in the system).*
 
-### 3.2 Logout
+### 3.2 Logout (Server-Side Invalidation)
 - **Endpoint**: `POST /api/v1/auth/logout`
 - **Access**: Authenticated
+- **Headers**:
+  ```
+  Authorization: Bearer <jwt_token>
+  ```
+- **Behavior**:
+  Extracts `jti` from Bearer token, stores it in server-side revoked tokens registry, and invalidates the session. Any subsequent request with this token will be rejected with `401 Unauthorized` (`SESSION_REVOKED`).
 - **Response 200 OK**:
 ```json
 {
   "data": {
-    "message": "Logged out successfully."
+    "message": "Logged out successfully. Token invalidated on server."
   }
 }
 ```
+- **Error Responses**:
+  - `401 Unauthorized`: Missing, invalid, or already revoked token (`SESSION_REVOKED` / `SESSION_EXPIRED`).
 
 ### 3.3 Current User Profile
 - **Endpoint**: `GET /api/v1/auth/me`
@@ -525,6 +541,7 @@ All Lab 2 endpoints derive Requester identity directly from the authenticated se
 | `401 Unauthorized` | `INVALID_CREDENTIALS` | `"Invalid email or password. Please try again."` | Invalid email or incorrect password. |
 | `401 Unauthorized` | `ACCOUNT_INACTIVE` | `"Your account is currently inactive. Please contact an administrator."` | Valid credentials supplied for inactive account (`isActive: false`). |
 | `401 Unauthorized` | `SESSION_EXPIRED` | `"Your session has expired. Please sign in again."` | Expired or malformed JWT Bearer token. |
+| `401 Unauthorized` | `SESSION_REVOKED` | `"Your session has been revoked. Please sign in again."` | Request presenting a token revoked via server-side logout or deactivation. |
 | `403 Forbidden` | `PASSWORD_CHANGE_REQUIRED` | `"You must change your password before continuing."` | User with `mustChangePassword: true` invoking business APIs. |
 | `403 Forbidden` | `INSUFFICIENT_PERMISSIONS` | `"You do not have permission to perform this action."` | Role mismatch or requester accessing staff/admin endpoints. |
 | `404 Not Found` | `RESOURCE_NOT_FOUND` | `"The requested resource was not found."` | Ticket, user, or attachment not found (or cross-requester protection). |

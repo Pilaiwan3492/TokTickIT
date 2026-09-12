@@ -6,7 +6,7 @@ This document defines the UI/UX specification for TokTickIT Lab 3.
 
 Lab 3 evolves the user experience to support three distinct user roles (**Requester**, **IT Staff**, and **Administrator**), replacing the temporary Development Requester selector with:
 - Dedicated **Login** and **Mandatory First-Login Password Change** screens.
-- An updated **Application Shell** displaying the authenticated user's name, role badge, role-filtered navigation, and Logout action.
+- An updated **Application Shell** displaying the authenticated user's name, role badge, role-filtered navigation, and Logout action with server-side token invalidation.
 - **Public Comments** and **Problem Appears Resolved** workflow for Requesters.
 - An **IT Staff Ticket Queue** with comprehensive search, filters, sorting, and pagination.
 - An **IT Staff Ticket Detail** screen with operational controls (Ownership, IT Priority, Status transitions) and visually segregated tabs for Public Comments vs. Internal Notes.
@@ -85,7 +85,7 @@ Lab 3 evolves the user experience to support three distinct user roles (**Reques
   - Dropdown menu with:
     - User email (muted display)
     - "Change Password" action
-    - "Sign Out" button (clears session and redirects to `/login`).
+    - "Sign Out" button (dispatches `POST /api/v1/auth/logout` to revoke token on the server, clears `toktickit_auth_token` from `localStorage`, and redirects to `/login`).
 - **Selector Removal**: The Lab 2 temporary Development Requester dropdown is completely removed from the navbar.
 
 ---
@@ -217,3 +217,5 @@ Lab 3 evolves the user experience to support three distinct user roles (**Reques
 - [ ] **No Text Clipping / Overlap**: Long ticket summaries, user names, and emails wrap or truncate cleanly without breaking container boundaries.
 - [ ] **Accessible Focus Rings**: Visible high-contrast focus rings appear when navigating with the keyboard (`Tab` key).
 - [ ] **Zero Horizontal Scroll**: No unintended horizontal page scrollbars on mobile ($375\text{px}$) or tablet viewports.
+- [ ] **Token Security**: Tokens are never rendered in the DOM, never printed in console logs, and never exposed in UI error messages.
+- [ ] **Server Logout Invalidation**: The Logout action triggers backend revocation (`POST /api/v1/auth/logout`) and resets client session state.

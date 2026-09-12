@@ -9,7 +9,7 @@ The temporary Development Requester selector served its purpose during early dev
 ## 3. Scope
 
 ### Included
-- **Authentication & Session Lifecycle**: Email/password authentication, password hashing with bcrypt, canonical JWT Bearer token management, current-user retrieval (`/api/v1/auth/me`), and logout.
+- **Authentication & Session Lifecycle**: Email/password authentication, password hashing with bcrypt, canonical JWT Bearer token management, server-side logout invalidation via token revocation, current-user retrieval (`/api/v1/auth/me`), and logout.
 - **Mandatory First-Login Password Change**: Immediate password change enforcement for accounts provisioned with initial passwords, blocking normal application entry until completed.
 - **Role-Based Authorization**: Server-side enforcement for three roles: `Requester`, `IT Staff`, and `Administrator`.
 - **Requester Identity Migration & Regression**: Evolution of Lab 2 Development Requesters into authenticated User entities; removal of the client-side selector while preserving 100% of Lab 2 ticket and attachment operations.
@@ -42,7 +42,7 @@ The temporary Development Requester selector served its purpose during early dev
 - **FR-02**: The system shall reject login attempts for inactive accounts with a distinct safe error code (`ACCOUNT_INACTIVE`) without exposing unnecessary account metadata.
 - **FR-03**: The system shall enforce mandatory password change upon first login for any user marked with an initial password, prohibiting access to standard application views and APIs until updated.
 - **FR-04**: The system shall provide an endpoint to retrieve the current authenticated user's profile and role.
-- **FR-05**: The system shall provide a logout mechanism that terminates the authenticated session.
+- **FR-05**: The system shall provide an endpoint to invalidate the authenticated session and revoke the current active token on the server (`POST /api/v1/auth/logout`), rejecting any subsequent requests using that revoked token with HTTP 401 `SESSION_REVOKED`.
 - **FR-06**: The application shell shall present navigation links and user identity badges corresponding strictly to the authenticated user's assigned role, removing the Lab 2 Development Requester selector.
 
 ### 4.2 Requester Workflows & Regression
@@ -146,9 +146,10 @@ The table below defines the authoritative Authorization Matrix for all operation
 - **BR-24**: Direct API access by non-Administrators to `/api/admin/*` endpoints must return HTTP 403 Forbidden.
 - **BR-25**: Direct API access by Requesters to `/api/tickets/:id/notes` endpoints must return HTTP 403 Forbidden without leaking whether notes exist.
 
-### Login Attempts & Account Security
+### Login Attempts, Account Security & Server-Side Invalidation
 - **BR-26**: Failed login attempts return safe generic errors (`INVALID_CREDENTIALS`). The system does not maintain persistent failed-login counters or execute account-lockout durations. Advanced account recovery, approval, and unlock workflows are explicitly excluded from Lab 3. The frontend disables the login submit button during in-flight requests to prevent accidental duplicate submissions.
-- **BR-27**: When an account is deactivated (`isActive: false`), active tokens are rejected upon subsequent API verification, and future login attempts are rejected with `ACCOUNT_INACTIVE`.
+- **BR-27**: When an account is deactivated (`isActive: false`), active tokens associated with that user are rejected upon subsequent API verification, and future login attempts are rejected with `ACCOUNT_INACTIVE`.
+- **BR-28**: **Server-Side Logout Invalidation**: Each issued JWT contains a unique token identifier (`jti`). When a user invokes `POST /api/v1/auth/logout`, the server records the `jti` in a server-side revoked token registry (active until the token's original expiration time `exp`). Any subsequent request presenting a revoked `jti` is rejected by server middleware with HTTP 401 and error code `SESSION_REVOKED`. The client simultaneously purges the token from local storage.
 
 ---
 
@@ -175,6 +176,7 @@ The UI adheres strictly to the Zen Green design system established in Lab 2. All
   - `role`: Role Enum (`REQUESTER`, `IT_STAFF`, `ADMIN`)
   - `isActive`: Boolean (Default: true, Indexed)
   - `mustChangePassword`: Boolean (Default: false)
+  - `tokenVersion`: Int (Default: 0, for bulk invalidation on deactivation/password change)
   - `createdAt`: DateTime (Default: now())
   - `updatedAt`: DateTime (Updated automatically)
 - **Ticket Model Extensions**:
@@ -235,7 +237,7 @@ Lab 3 requires migrating all Development Requester entities into the authenticat
 The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endpoint groups include:
 - **Authentication**:
   - `POST /api/v1/auth/login`: Authenticate with email/password; returns token and user profile. Distinguishes `INVALID_CREDENTIALS` and `ACCOUNT_INACTIVE`.
-  - `POST /api/v1/auth/logout`: Invalidate session on client.
+  - `POST /api/v1/auth/logout`: Server-side invalidation of session token.
   - `GET /api/v1/auth/me`: Retrieve current authenticated user profile and permissions.
   - `POST /api/v1/auth/change-password`: Change password (required for initial password flow).
 - **Requester Continuation**:
@@ -266,7 +268,7 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
 - **AC-04**: Given a Requester account, when an Internal Note endpoint is requested, then the operation is rejected with HTTP 403 Forbidden without exposing note content.
 - **AC-05**: Given an inactive user account, when attempting to authenticate, then the system rejects access with HTTP 401 and code `ACCOUNT_INACTIVE`.
 - **AC-06**: Given invalid login credentials, when the user submits the login form, then the system rejects access with HTTP 401 and code `INVALID_CREDENTIALS`.
-- **AC-07**: Given an authenticated user, when the user clicks Logout, then authenticated access is terminated and subsequent protected API requests are blocked.
+- **AC-07**: Given an authenticated user, when the user clicks Logout, then the backend registers the token's `jti` as revoked, and any subsequent requests presenting that token are rejected with HTTP 401 `SESSION_REVOKED`.
 - **AC-08**: Given an authenticated user, when accessing the application, then the navigation shell displays only routes and actions permitted for their specific role according to the Authorization Matrix.
 - **AC-09**: Given an authenticated Requester, when creating a ticket, then the ticket is saved with initial status `New`, `itPriority` matching `requestedPriority`, and `ownerId` set to `null`.
 - **AC-10**: Given an authenticated Requester, when viewing My Tickets, then only tickets owned by the current authenticated user are returned.
@@ -292,10 +294,11 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
 
 ### Product Completion
 - [ ] All approved Lab 3 scope is implemented and verified.
-- [ ] All business rules BR-01 through BR-27 are implemented and verified.
+- [ ] All business rules BR-01 through BR-28 are implemented and verified.
 - [ ] All acceptance criteria AC-01 through AC-25 have corresponding passing tests.
 - [ ] Authentication, session management, and password change flow are fully functional.
 - [ ] Server-side role authorization guards strictly enforce the Authorization Matrix.
+- [ ] Server-side logout invalidation (`POST /api/v1/auth/logout`) revokes active tokens.
 - [ ] Requester regression verified: all Lab 2 capabilities work using authenticated identity.
 - [ ] Public Comments and Internal Notes function correctly with strict role visibility.
 - [ ] IT Staff Ticket Queue supports search, filtering, sorting, and pagination.
@@ -325,10 +328,16 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
   Authorization: Bearer <jwt_token>
   ```
   - **Algorithm**: HMAC-SHA256 (HS256) signed using server-side secret `JWT_SECRET` (minimum 32 characters, never committed to source control).
-  - **Token Payload**: `{ sub: userId, email: string, name: string, role: Role, mustChangePassword: boolean, iat: number, exp: number }`.
+  - **Token Payload**: `{ jti: string (UUID), sub: userId, email: string, name: string, role: Role, mustChangePassword: boolean, iat: number, exp: number }`.
   - **Token Expiration**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded from Lab 3 scope; upon expiration, users are prompted to log in again.
   - **Client Token Storage**: Managed in client-side React `AuthContext` (in memory), with persistence to `localStorage` under key `toktickit_auth_token` to maintain authentication state across browser page refreshes in local lab environments.
-  - **Logout Behavior**: Client-side logout clears `localStorage` and resets `AuthContext` state immediately. Protected client routes redirect to `/login`.
+  - **Server-Side Logout Invalidation**: Calling `POST /api/v1/auth/logout` records the token's unique identifier (`jti`) into a server-side token revocation registry until its expiration timestamp (`exp`). Even if a token is copied or stolen, it is rendered immediately invalid upon logout, rejecting any subsequent API access with `401 Unauthorized` (`SESSION_REVOKED`). The client simultaneously clears `toktickit_auth_token` from `localStorage` and resets `AuthContext`.
+  - **Token Security Guardrails**: Because JWT tokens are held in client storage, the application enforces strict security practices:
+    1. Tokens are never displayed in any UI view or rendered into the DOM.
+    2. Tokens are never printed in console logs or backend debug output.
+    3. Tokens are never transmitted to external third-party endpoints or untrusted services.
+    4. Authentication secrets (`JWT_SECRET`) are strictly maintained in `.env` and excluded via `.gitignore`.
+    5. Server error responses never leak tokens, secret keys, or database stack traces.
   - **CSRF Consideration**: Because Bearer tokens are stored in application memory/localStorage and explicitly dispatched by client fetch headers rather than automatically attached by web browsers (as with cookies), standard Cross-Site Request Forgery (CSRF) vulnerabilities are eliminated by architectural design.
 - **Login Attempt Policy**: Failed login attempts return safe generic errors (`INVALID_CREDENTIALS`). The system does not maintain persistent failed-login counters or execute account-lockout durations. Advanced account recovery, approval, and unlock workflows are explicitly excluded from Lab 3.
 - **Requester Identity Source**: Backend middleware extracts `user.id` and verifies `role` from the authenticated token, discarding any client-supplied `requesterId`.
