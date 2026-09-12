@@ -9,7 +9,7 @@ The temporary Development Requester selector served its purpose during early dev
 ## 3. Scope
 
 ### Included
-- **Authentication & Session Lifecycle**: Email/password authentication, password hashing with bcrypt, session token management, current-user retrieval (`/api/auth/me`), and logout.
+- **Authentication & Session Lifecycle**: Email/password authentication, password hashing with bcrypt, canonical JWT Bearer token management, current-user retrieval (`/api/v1/auth/me`), and logout.
 - **Mandatory First-Login Password Change**: Immediate password change enforcement for accounts provisioned with initial passwords, blocking normal application entry until completed.
 - **Role-Based Authorization**: Server-side enforcement for three roles: `Requester`, `IT Staff`, and `Administrator`.
 - **Requester Identity Migration & Regression**: Evolution of Lab 2 Development Requesters into authenticated User entities; removal of the client-side selector while preserving 100% of Lab 2 ticket and attachment operations.
@@ -32,25 +32,25 @@ The temporary Development Requester selector served its purpose during early dev
 - Multi-tenant organizations, departments, customer administration, and profile photo uploads.
 - Multiple roles assigned to a single user.
 - User deletion, bulk user operations, import/export, and account-history/audit screens.
-- Account unlocking, administrator approval workflows, and advanced identity-management functions.
+- Account locking, lockout duration counters, and administrator unlock workflows.
 - Advanced user-list features such as mandatory pagination or multi-column sorting on the Admin user screen.
 
 ## 4. Functional Requirements
 
-### Authentication & Account Security
+### 4.1 Authentication & Account Security
 - **FR-01**: The system shall authenticate active users using a valid email address and password.
-- **FR-02**: The system shall reject login attempts for inactive accounts with safe error messaging that does not leak account status.
+- **FR-02**: The system shall reject login attempts for inactive accounts with a distinct safe error code (`ACCOUNT_INACTIVE`) without exposing unnecessary account metadata.
 - **FR-03**: The system shall enforce mandatory password change upon first login for any user marked with an initial password, prohibiting access to standard application views and APIs until updated.
 - **FR-04**: The system shall provide an endpoint to retrieve the current authenticated user's profile and role.
 - **FR-05**: The system shall provide a logout mechanism that terminates the authenticated session.
 - **FR-06**: The application shell shall present navigation links and user identity badges corresponding strictly to the authenticated user's assigned role, removing the Lab 2 Development Requester selector.
 
-### Requester Workflows & Regression
+### 4.2 Requester Workflows & Regression
 - **FR-07**: The system shall enforce that all Lab 2 ticket and attachment operations (create ticket, my tickets, ticket detail, file upload, file download, soft removal) derive requester identity exclusively from the authenticated session.
 - **FR-08**: The system shall allow Requesters to post and inspect Public Comments on tickets they own.
 - **FR-09**: The system shall allow Requesters to indicate that a reported issue appears resolved on their owned tickets.
 
-### IT Staff Operations
+### 4.3 IT Staff Operations
 - **FR-10**: The system shall provide IT Staff with a shared Ticket Queue displaying Ticket Number, Created Date, Summary, Category, Requested Priority, IT Priority, Status, and Owner.
 - **FR-11**: The system shall allow IT Staff to search the queue (by ticket number or summary), filter by status, priority, and ownership (All / Unassigned / Assigned to Me), sort columns, and navigate through paginated results.
 - **FR-12**: The system shall allow IT Staff to open Ticket Detail from the queue to review full ticket data, attachments, public comments, and internal notes.
@@ -60,7 +60,7 @@ The temporary Development Requester selector served its purpose during early dev
 - **FR-16**: The system shall allow IT Staff to create and view append-only Internal Notes on any ticket.
 - **FR-17**: The system shall allow IT Staff to post Public Comments to communicate directly with the Requester.
 
-### Administrator User Management
+### 4.4 Administrator User Management
 - **FR-18**: The system shall allow Administrators to view a list of all users showing Name, Email, Role, Status, and an Edit action.
 - **FR-19**: The system shall allow Administrators to search users by name or email and filter by role.
 - **FR-20**: The system shall allow Administrators to create new user accounts specifying Name, Email, one permitted role, activation state, and an initial password.
@@ -68,14 +68,47 @@ The temporary Development Requester selector served its purpose during early dev
 - **FR-22**: The system shall allow Administrators to reset/set a new initial password for any user, flagging the user to require a password change on next login.
 - **FR-23**: The system shall enforce Administrator safety guards: preventing duplicate emails, preventing self-deactivation, and preventing deactivation or role change of the last active Administrator.
 
+### 4.5 Required Roles & Authorization Matrix
+
+The table below defines the authoritative Authorization Matrix for all operations in TokTickIT Lab 3. Every protected operation must be enforced by server-side middleware; hiding or disabling frontend controls provides user guidance, not security enforcement.
+
+| Operation / Protected Action | Requester | IT Staff | Administrator | Enforcement & Security Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| **Authenticate / Login** | ✅ | ✅ | ✅ | Active accounts only (`isActive: true`) |
+| **Mandatory Password Change** | ✅ | ✅ | ✅ | Permitted when `mustChangePassword: true` |
+| **Create Own Ticket** | ✅ | ❌ | ❌ | Server assigns `requesterId` from session |
+| **View Own Ticket & Attachments** | ✅ Own Only | ❌ | ❌ | Returns 403/404 for other Requesters |
+| **Upload / Remove Own Attachments** | ✅ Own Only | ❌ | ❌ | Ownership verified against parent ticket |
+| **Mark "Problem Appears Resolved"** | ✅ Own Only | ❌ | ❌ | Sets `isRequesterResolved`; does not alter status |
+| **View Public Comments** | ✅ Own Only | ✅ All | ✅ All | Shared communication on tickets |
+| **Post Public Comments** | ✅ Own Only | ✅ All | ✅ All | Append-only; author set from session |
+| **View Internal Notes** | ❌ (403 Forbidden) | ✅ | ✅ | Strictly blocked for Requesters; no data leak |
+| **Create Internal Notes** | ❌ (403 Forbidden) | ✅ | ✅ | Append-only operational notes |
+| **View IT Staff Ticket Queue** | ❌ (403 Forbidden) | ✅ | ✅ | Shared operational queue with search/filter |
+| **View Full Staff Ticket Detail** | ❌ (403 Forbidden) | ✅ | ✅ | Operational view with internal notes |
+| **Claim / Reassign Ticket Owner** | ❌ (403 Forbidden) | ✅ | ✅ | Target owner must be active IT Staff or Admin |
+| **Update IT Priority** | ❌ (403 Forbidden) | ✅ | ✅ | Independent from Requested Priority |
+| **Transition Ticket Status** | ❌ (403 Forbidden) | ✅ | ✅ | Must strictly follow Status Transition Matrix |
+| **User Management: View / Search Users** | ❌ (403 Forbidden) | ❌ (403 Forbidden) | ✅ | Non-admins rejected with HTTP 403 |
+| **User Management: Create User** | ❌ (403 Forbidden) | ❌ (403 Forbidden) | ✅ | Sets 1 role + initial password |
+| **User Management: Edit User** | ❌ (403 Forbidden) | ❌ (403 Forbidden) | ✅ | Updates name, email, role, active status |
+| **User Management: Reset Initial Password** | ❌ (403 Forbidden) | ❌ (403 Forbidden) | ✅ | Sets new password + `mustChangePassword = true` |
+| **Safety Guard: Deactivate Self** | ❌ (Blocked) | ❌ (Blocked) | ❌ (Blocked by BR-21) | Administrator cannot deactivate own account |
+| **Safety Guard: Deactivate Last Admin** | ❌ (Blocked) | ❌ (Blocked) | ❌ (Blocked by BR-22) | System must retain $\ge 1$ active Administrator |
+
+> [!NOTE]
+> **Administrator Permission Justification**: In Lab 3, Administrator and IT Staff responsibilities are conceptually separate (IT Staff manage tickets, Administrators manage accounts). As specified in Handout Section 4.3, an Administrator does not automatically have IT Staff ticket permissions unless explicitly defined by the approved authorization matrix. In TokTickIT Lab 3, this Authorization Matrix explicitly authorizes Administrators to perform IT Staff ticket operations (Queue, Detail, Assignment, Priority, Status, Comments, Notes) in addition to User Management, allowing Administrators to act as supervisory IT staff when needed.
+
+---
+
 ## 5. Business Rules
 
 ### Authentication & Roles
-- **BR-01**: Only an active user (`isActive: true`) with valid credentials may authenticate. Inactive accounts receive an authentication failure without revealing account existence or status.
+- **BR-01**: Only an active user (`isActive: true`) with valid credentials may authenticate. If credentials are correct but the account is inactive (`isActive: false`), the API returns HTTP 401 with code `ACCOUNT_INACTIVE`. If email or password is invalid, the API returns HTTP 401 with code `INVALID_CREDENTIALS`. Neither error exposes whether an email address exists in the system.
 - **BR-02**: A user marked as requiring a password change (`mustChangePassword: true`) cannot enter the normal application or invoke operational APIs until a new valid password meeting policy is saved.
 - **BR-03**: The authenticated user identity established on the server, not a client-supplied `requesterId`, determines ownership and authorization for all Requester operations.
 - **BR-04**: Each user has exactly one permitted role: `REQUESTER`, `IT_STAFF`, or `ADMINISTRATOR`. Multiple roles per user are prohibited.
-- **BR-05**: Passwords must be hashed using a cryptographically secure algorithm (bcrypt with salt rounds >= 10) before storage. Passwords must never be stored, logged, or returned in plaintext.
+- **BR-05**: Passwords must be hashed using a cryptographically secure algorithm (bcrypt with salt rounds $\ge 10$) before storage. Passwords must never be stored, logged, or returned in plaintext.
 - **BR-06**: Passwords must be at least 8 characters long and include uppercase, lowercase, and a number or special character. When changing password, the new password cannot match the current initial password.
 
 ### Comments & Notes
@@ -113,19 +146,27 @@ The temporary Development Requester selector served its purpose during early dev
 - **BR-24**: Direct API access by non-Administrators to `/api/admin/*` endpoints must return HTTP 403 Forbidden.
 - **BR-25**: Direct API access by Requesters to `/api/tickets/:id/notes` endpoints must return HTTP 403 Forbidden without leaking whether notes exist.
 
+### Login Attempts & Account Security
+- **BR-26**: Failed login attempts return safe generic errors (`INVALID_CREDENTIALS`). The system does not maintain persistent failed-login counters or execute account-lockout durations. Advanced account recovery, approval, and unlock workflows are explicitly excluded from Lab 3. The frontend disables the login submit button during in-flight requests to prevent accidental duplicate submissions.
+- **BR-27**: When an account is deactivated (`isActive: false`), active tokens are rejected upon subsequent API verification, and future login attempts are rejected with `ACCOUNT_INACTIVE`.
+
+---
+
 ## 6. UI Specification Summary
-The UI adheres strictly to the Zen Green design system established in Lab 2. All screens are responsive and verified on Desktop (1280px+), Tablet (768px - 1024px), and Mobile (375px - 480px).
+The UI adheres strictly to the Zen Green design system established in Lab 2. All screens are responsive and verified on Desktop ($\ge 1280\text{px}$), Tablet ($768\text{px} - 1024\text{px}$), and Mobile ($375\text{px} - 480\text{px}$).
 - **Application Shell**: Displays brand logo, active user full name, role badge, role-specific navigation items, and a Logout action. The temporary Development Requester selector is removed.
-- **Login Screen**: Minimalist authentication card featuring email and password inputs, show/hide password toggle, loading spinner on submit, and safe failure messages.
+- **Login Screen**: Minimalist authentication card featuring email and password inputs, show/hide password toggle, loading spinner on submit, and safe failure messages. Distinguishes `INVALID_CREDENTIALS` (Invalid email or password) and `ACCOUNT_INACTIVE` (Account inactive notice).
 - **Mandatory Password Change Screen**: Rendered immediately upon login for users with `mustChangePassword: true`. Normal navigation is suppressed until the user enters their temporary password, sets a valid new password, and confirms it.
 - **IT Staff Ticket Queue**: Table view on desktop showing Ticket Number, Created Date, Summary, Category, Requested Priority, IT Priority, Current Status, and Owner. Transforms into responsive stacked cards on mobile. Includes search input, filter dropdowns (Status, Priority, Ownership), sorting controls, and pagination bar.
 - **IT Staff Ticket Detail**: Header with back button, ticket metadata grid, operational controls (Owner assignment, IT Priority dropdown, Status transition selector), attachments list, and clearly distinguished tabbed sections for Public Comments and Internal Notes.
 - **Administrator User Management**: Simple, professional user table showing Name, Email, Role, Status, and Edit action. Header includes user count, search box, role filter, and "+ Create User" button. Create/Edit drawer or modal handles account details, activation toggle, and initial password assignment.
 - Detailed component states, spacing tokens, colors, and responsive rules are detailed in `docs/lab-03/ui-spec.md`.
 
+---
+
 ## 7. Data Changes & Migration
 
-### Schema Additions & Modifications
+### 7.1 Schema Additions & Modifications
 - **User Model**:
   - `id`: String (UUID / CUID, Primary Key)
   - `email`: String (Unique, Indexed)
@@ -154,13 +195,33 @@ The UI adheres strictly to the Zen Green design system established in Lab 2. All
   - `content`: Text (1 - 2,000 characters)
   - `createdAt`: DateTime (Default: now())
 
-### Migration from Lab 2
-1. Existing Development Requester records are converted into authenticated `User` records with `role = REQUESTER`, `isActive = true`, and a known default initial password with `mustChangePassword = true`.
-2. Existing Ticket `requesterId` foreign keys remain valid and link directly to the migrated User IDs.
-3. Existing ticket attachments remain preserved without modification.
-4. For existing tickets, `itPriority` is initialized to the value of `requestedPriority`, and `status` is mapped to `NEW`.
+### 7.2 Migration Strategy: Development Requester to User Model
 
-### Seed Data Requirements
+Lab 3 requires migrating all Development Requester entities into the authenticated `User` model without breaking existing tickets or attachment associations. The migration strategy executes through the following concrete steps:
+
+1. **Preserve Legacy Identifiers**:
+   When migrating existing Development Requesters (e.g. Alice, Bob, Charlie, David, Eve), their existing primary key `id` values are preserved directly as `User.id`.
+2. **Preserve Foreign Key Integrity**:
+   Because `User.id` reuses the existing legacy `requesterId`, all existing `Ticket.requesterId` foreign keys remain valid without any orphaned references or database integrity constraint violations.
+3. **Deterministic ID Mapping (Fallback)**:
+   If any legacy database record uses an incompatible identifier type during migration, an explicit transactional migration script maps `legacy_requester_id` $\rightarrow$ `new_user_uuid` and updates all corresponding `Ticket.requesterId` values within a single atomic Prisma transaction.
+4. **Provision Initial Credentials**:
+   Each migrated Requester user is provisioned with:
+   - `role`: `REQUESTER`
+   - `passwordHash`: Bcrypt hash of a standardized initial temporary password (e.g., `InitialPass123!`)
+   - `mustChangePassword`: `true` (enforcing password change on first login per BR-02)
+   - `isActive`: Preserves original requester `isActive` state (e.g., active for Alice/Bob/Charlie/David, inactive for Eve).
+5. **Idempotent Seed & Migration Execution**:
+   The migration and seed script uses Prisma `upsert` matching on unique `email` or `id`. For existing users who have already logged in and updated their password (`mustChangePassword: false`), repeated seed/migration runs will **not** reset their password hash or alter ticket ownership.
+6. **Removal of Client-Side Selector State**:
+   The `RequesterContext` and LocalStorage key `selectedRequesterId` from Lab 2 are deprecated and removed. All client requests now supply the canonical Bearer token, and the backend resolves requester identity via authenticated token extraction.
+7. **Verification & Regression Checks**:
+   Post-migration verification scripts assert:
+   - Total ticket count before migration equals total ticket count after migration.
+   - Every ticket's `requesterId` points to an existing `User` record with `role: REQUESTER`.
+   - Existing attachments remain associated with their original tickets.
+
+### 7.3 Seed Data Requirements
 - **Requesters**: At least 4 active Requesters and 1 inactive Requester.
 - **IT Staff**: At least 3 active IT Staff and 1 inactive IT Staff.
 - **Administrators**: At least 1 active Administrator.
@@ -168,30 +229,34 @@ The UI adheres strictly to the Zen Green design system established in Lab 2. All
 - **Comments & Notes**: Realistic sample Public Comments and role-restricted Internal Notes.
 - **Idempotency**: All seed operations use `upsert` and are safe to run repeatedly.
 
+---
+
 ## 8. API Contract Summary
 The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endpoint groups include:
 - **Authentication**:
-  - `POST /api/auth/login`: Authenticate with email/password; returns token/session and user profile.
-  - `POST /api/auth/logout`: Invalidate session.
-  - `GET /api/auth/me`: Retrieve current authenticated user profile and permissions.
-  - `POST /api/auth/change-password`: Change password (required for initial password flow).
+  - `POST /api/v1/auth/login`: Authenticate with email/password; returns token and user profile. Distinguishes `INVALID_CREDENTIALS` and `ACCOUNT_INACTIVE`.
+  - `POST /api/v1/auth/logout`: Invalidate session on client.
+  - `GET /api/v1/auth/me`: Retrieve current authenticated user profile and permissions.
+  - `POST /api/v1/auth/change-password`: Change password (required for initial password flow).
 - **Requester Continuation**:
-  - All Lab 2 endpoints (`GET /api/tickets`, `POST /api/tickets`, `GET /api/tickets/:id`, `/attachments`) are now protected by the authentication guard and extract requester identity from the session.
-  - `POST /api/tickets/:id/resolve-indicator`: Toggle requester resolution flag.
+  - All Lab 2 endpoints (`GET /api/v1/tickets`, `POST /api/v1/tickets`, `GET /api/v1/tickets/:id`, `/attachments`) derive requester identity from the session Bearer token.
+  - `POST /api/v1/tickets/:id/resolve-indicator`: Toggle requester resolution flag.
 - **IT Staff Queue & Operations**:
-  - `GET /api/staff/tickets`: Retrieve queue with `search`, `status`, `priority`, `owner`, `sortBy`, `sortOrder`, `page`, and `pageSize`.
-  - `GET /api/staff/tickets/:id`: Retrieve ticket detail with internal notes and operational fields.
-  - `PATCH /api/staff/tickets/:id/assignment`: Claim or reassign ownership.
-  - `PATCH /api/staff/tickets/:id/priority`: Update IT Priority.
-  - `PATCH /api/staff/tickets/:id/status`: Update status through permitted transition matrix.
+  - `GET /api/v1/staff/tickets`: Retrieve queue with `search`, `status`, `priority`, `owner`, `sortBy`, `sortOrder`, `page`, and `pageSize`.
+  - `GET /api/v1/staff/tickets/:id`: Retrieve ticket detail with internal notes and operational fields.
+  - `PATCH /api/v1/staff/tickets/:id/assignment`: Claim or reassign ownership.
+  - `PATCH /api/v1/staff/tickets/:id/priority`: Update IT Priority.
+  - `PATCH /api/v1/staff/tickets/:id/status`: Update status through permitted transition matrix.
 - **Comments & Notes**:
-  - `GET /api/tickets/:id/comments` & `POST /api/tickets/:id/comments`: Public Comments.
-  - `GET /api/tickets/:id/notes` & `POST /api/tickets/:id/notes`: Internal Notes (IT Staff and Admin only).
+  - `GET /api/v1/tickets/:id/comments` & `POST /api/v1/tickets/:id/comments`: Public Comments.
+  - `GET /api/v1/tickets/:id/notes` & `POST /api/v1/tickets/:id/notes`: Internal Notes (IT Staff and Admin only).
 - **Administrator User Management**:
-  - `GET /api/admin/users`: List users with search and role filters.
-  - `POST /api/admin/users`: Create user with initial password.
-  - `PATCH /api/admin/users/:id`: Edit user profile and active status.
-  - `POST /api/admin/users/:id/reset-password`: Set new initial password.
+  - `GET /api/v1/admin/users`: List users with search and role filters.
+  - `POST /api/v1/admin/users`: Create user with initial password.
+  - `PATCH /api/v1/admin/users/:id`: Edit user profile and active status.
+  - `POST /api/v1/admin/users/:id/reset-password`: Set new initial password.
+
+---
 
 ## 9. Acceptance Criteria
 
@@ -199,10 +264,10 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
 - **AC-02**: Given a user who must change their initial password, when login succeeds, then normal application screens remain unavailable until a valid new password is saved.
 - **AC-03**: Given an authenticated Requester, when the client supplies another `requesterId`, then the backend still applies the authenticated identity and does not return another Requester's data.
 - **AC-04**: Given a Requester account, when an Internal Note endpoint is requested, then the operation is rejected with HTTP 403 Forbidden without exposing note content.
-- **AC-05**: Given an inactive user account, when attempting to authenticate, then the system rejects access with a safe error message without leaking account status.
-- **AC-06**: Given invalid login credentials, when the user submits the login form, then the system rejects access and displays safe failure feedback.
+- **AC-05**: Given an inactive user account, when attempting to authenticate, then the system rejects access with HTTP 401 and code `ACCOUNT_INACTIVE`.
+- **AC-06**: Given invalid login credentials, when the user submits the login form, then the system rejects access with HTTP 401 and code `INVALID_CREDENTIALS`.
 - **AC-07**: Given an authenticated user, when the user clicks Logout, then authenticated access is terminated and subsequent protected API requests are blocked.
-- **AC-08**: Given an authenticated user, when accessing the application, then the navigation shell displays only routes and actions permitted for their specific role.
+- **AC-08**: Given an authenticated user, when accessing the application, then the navigation shell displays only routes and actions permitted for their specific role according to the Authorization Matrix.
 - **AC-09**: Given an authenticated Requester, when creating a ticket, then the ticket is saved with initial status `New`, `itPriority` matching `requestedPriority`, and `ownerId` set to `null`.
 - **AC-10**: Given an authenticated Requester, when viewing My Tickets, then only tickets owned by the current authenticated user are returned.
 - **AC-11**: Given a Requester viewing their owned ticket, when posting a non-empty Public Comment, then the comment is recorded with their author ID and timestamp, and appears in the public feed.
@@ -221,14 +286,16 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
 - **AC-24**: Given an Administrator, when attempting to deactivate their own account, then the operation is blocked with a clear safety validation error.
 - **AC-25**: Given an Administrator, when attempting to deactivate or reassign the role of the system's last active Administrator, then the operation is blocked with a safety error.
 
+---
+
 ## 10. Definition of Done
 
 ### Product Completion
 - [ ] All approved Lab 3 scope is implemented and verified.
-- [ ] All business rules BR-01 through BR-25 are implemented and verified.
+- [ ] All business rules BR-01 through BR-27 are implemented and verified.
 - [ ] All acceptance criteria AC-01 through AC-25 have corresponding passing tests.
 - [ ] Authentication, session management, and password change flow are fully functional.
-- [ ] Server-side role authorization guards protect all endpoints.
+- [ ] Server-side role authorization guards strictly enforce the Authorization Matrix.
 - [ ] Requester regression verified: all Lab 2 capabilities work using authenticated identity.
 - [ ] Public Comments and Internal Notes function correctly with strict role visibility.
 - [ ] IT Staff Ticket Queue supports search, filtering, sorting, and pagination.
@@ -249,9 +316,21 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
 - [ ] Release PR merged from `lab3-staging` to `main`.
 - [ ] Final 9-part PDF report compiled and verified against course rubric.
 
+---
+
 ## 11. Assumptions and Decisions
-- **Session Mechanism**: JWT stored in an HTTP-only secure cookie or Bearer Authorization header to prevent client script tampering.
-- **Password Security**: Bcrypt with salt rounds of 10 for password hashing.
+
+- **Canonical Authentication Mechanism**: Signed JSON Web Token (JWT) transmitted via HTTP header:
+  ```
+  Authorization: Bearer <jwt_token>
+  ```
+  - **Algorithm**: HMAC-SHA256 (HS256) signed using server-side secret `JWT_SECRET` (minimum 32 characters, never committed to source control).
+  - **Token Payload**: `{ sub: userId, email: string, name: string, role: Role, mustChangePassword: boolean, iat: number, exp: number }`.
+  - **Token Expiration**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded from Lab 3 scope; upon expiration, users are prompted to log in again.
+  - **Client Token Storage**: Managed in client-side React `AuthContext` (in memory), with persistence to `localStorage` under key `toktickit_auth_token` to maintain authentication state across browser page refreshes in local lab environments.
+  - **Logout Behavior**: Client-side logout clears `localStorage` and resets `AuthContext` state immediately. Protected client routes redirect to `/login`.
+  - **CSRF Consideration**: Because Bearer tokens are stored in application memory/localStorage and explicitly dispatched by client fetch headers rather than automatically attached by web browsers (as with cookies), standard Cross-Site Request Forgery (CSRF) vulnerabilities are eliminated by architectural design.
+- **Login Attempt Policy**: Failed login attempts return safe generic errors (`INVALID_CREDENTIALS`). The system does not maintain persistent failed-login counters or execute account-lockout durations. Advanced account recovery, approval, and unlock workflows are explicitly excluded from Lab 3.
 - **Requester Identity Source**: Backend middleware extracts `user.id` and verifies `role` from the authenticated token, discarding any client-supplied `requesterId`.
 - **Append-Only Architecture**: Public comments and internal notes cannot be updated or soft-removed in Lab 3 to ensure audit trail integrity.
 - **Separate Models for Comments vs Notes**: Implemented with clear role separation to avoid any possibility of internal notes leaking to Requesters.

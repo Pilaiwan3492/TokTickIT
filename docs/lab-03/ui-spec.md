@@ -75,10 +75,10 @@ Lab 3 evolves the user experience to support three distinct user roles (**Reques
 
 ### 3.1 Header Layout
 - **Brand**: Logo icon + "TokTickIT" text (white, bold) linking to the role's default landing page.
-- **Role Navigation (Filtered dynamically by role)**:
+- **Role Navigation (Filtered dynamically per Authorization Matrix)**:
   - **Requester**: `My Tickets` | `+ Create Ticket`
   - **IT Staff**: `Ticket Queue` | `+ Create Ticket`
-  - **Administrator**: `User Management`
+  - **Administrator**: `Ticket Queue` | `User Management`
 - **User Profile Menu (Right side)**:
   - Circular avatar with user initials (e.g., "JA").
   - User full name + Role badge (e.g., `IT Staff`).
@@ -100,10 +100,12 @@ Lab 3 evolves the user experience to support three distinct user roles (**Reques
 - Form controls:
   - Email address input (type: `email`, autofocus, required).
   - Password input (type: `password`, toggle visibility button, required).
-  - "Sign In" button (Primary Green, displays loading spinner when authenticating).
+  - "Sign In" button (Primary Green, displays loading spinner and disables during submission).
 - Validation & Safe Failure:
-  - Inline message on invalid credentials: `"Invalid email or password. Please try again."` (Safe message; does not disclose user existence).
-  - Inactive account feedback: `"Your account is currently inactive. Please contact an administrator."`
+  - **Error Code `INVALID_CREDENTIALS`**: Renders safe error banner `"Invalid email or password. Please try again."`
+  - **Error Code `ACCOUNT_INACTIVE`**: Renders safe error banner `"Your account is currently inactive. Please contact an administrator."`
+  - **Client Validation**: Prevents form submission if email is malformed or password is blank.
+  - **In-flight Submission State**: Button shows busy state to prevent rapid double-clicks.
 
 #### Mode B: Mandatory Password Change
 - Rendered when user has `mustChangePassword: true`.

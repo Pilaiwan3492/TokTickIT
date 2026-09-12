@@ -2,40 +2,61 @@
 
 ## 1. Purpose
 
-This document defines the REST API contract for TokTickIT Lab 3.
+This document defines the authoritative REST API contract for TokTickIT Lab 3.
 
-Lab 3 replaces the temporary Development Requester selector with real authentication, session management, and server-side role-based authorization for three roles:
+Lab 3 replaces the temporary Development Requester selector with real authentication, session management, and server-side role-based authorization across three roles:
 - **Requester**: Authenticated users who create and manage their own tickets, attachments, and public comments.
-- **IT Staff**: Support staff who manage tickets in the IT queue, claim/reassign tickets, set IT Priority, update workflow status, post public comments, and record internal notes.
-- **Administrator**: System administrators who manage user accounts, assign roles, activate/deactivate users, and issue initial passwords under strict safety rules.
+- **IT Staff**: Support staff who manage tickets in the shared IT queue, claim/reassign tickets, set IT Priority, update workflow status, post public comments, and record internal notes.
+- **Administrator**: System administrators who manage user accounts, assign roles, activate/deactivate users, and issue initial passwords under strict safety rules. As defined in the approved Authorization Matrix (`docs/lab-03/specification.md`), Administrators are also authorized to perform IT Staff ticket operations.
 
 ---
 
-## 2. API Conventions
+## 2. API Conventions & Authentication Decision
 
 ### 2.1 Base URL
 All endpoints are versioned under:
 ```
 /api/v1
 ```
-(For backward compatibility with Lab 2 clients, `/api/` routing aliases can also resolve directly to `/api/v1/`).
+(For backward compatibility with Lab 2 clients, `/api/` routing aliases also resolve directly to `/api/v1/`).
 
-### 2.2 Headers & Authentication
-- **Content-Type**: `application/json` (except multipart file upload: `multipart/form-data`).
-- **Authorization**: `Bearer <jwt_token>` header, or `toktickit_session` HTTP-only cookie.
-- **Authentication Guard**: Unauthenticated requests to protected endpoints return `401 Unauthorized`.
-- **Authorization Guard**: Authenticated requests lacking required role or ownership return `403 Forbidden`.
-- **First-Login Gating**: If the user has `mustChangePassword: true`, all operational endpoints return `403 Forbidden` with error code `PASSWORD_CHANGE_REQUIRED`, allowing access only to `/api/v1/auth/change-password` and `/api/v1/auth/me`.
+### 2.2 Canonical Authentication Architecture
+- **Mechanism**: JSON Web Token (JWT) transmitted via the standard HTTP `Authorization` header:
+  ```
+  Authorization: Bearer <jwt_token>
+  ```
+- **Signing Algorithm**: HMAC-SHA256 (HS256) signed using a server-side secret (`JWT_SECRET`, minimum 32 characters, never exposed to client code or committed to git).
+- **Token Payload**:
+  ```json
+  {
+    "sub": "usr-uuid-001",
+    "email": "user@toktickit.com",
+    "name": "Jennifer Anderson",
+    "role": "REQUESTER",
+    "mustChangePassword": false,
+    "iat": 1789234800,
+    "exp": 1789263600
+  }
+  ```
+- **Token Lifecycle & Expiration**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded in Lab 3. When a token expires, the client receives `401 Unauthorized` (`SESSION_EXPIRED`) and redirects to `/login`.
+- **Client Storage**: Managed in client-side React `AuthContext` with persistence to `localStorage` (`toktickit_auth_token`) to preserve session across page refreshes during local testing.
+- **Logout Behavior**: Client-side logout removes the token from `localStorage` and clears in-memory state. Subsequent protected requests will lack the `Authorization` header and be rejected immediately.
+- **CSRF Defense**: Because Bearer tokens are stored in application memory/localStorage and explicitly injected into request headers rather than automatically attached by web browsers (unlike cookies), Cross-Site Request Forgery (CSRF) is prevented by architecture.
 
-### 2.3 Standard Response Format
-Single resource:
+### 2.3 Middleware Guards & Enforcement
+- **Authentication Guard (`requireAuth`)**: Unauthenticated requests to protected endpoints return `401 Unauthorized`.
+- **Authorization Guard (`requireRole([...])`)**: Authenticated requests lacking the required role per the Authorization Matrix return `403 Forbidden` (`INSUFFICIENT_PERMISSIONS`).
+- **First-Login Gating (`requirePasswordChanged`)**: If the user has `mustChangePassword: true`, all operational endpoints return `403 Forbidden` with error code `PASSWORD_CHANGE_REQUIRED`, allowing access exclusively to `/api/v1/auth/change-password` and `/api/v1/auth/me`.
+
+### 2.4 Standard Response Format
+Single resource response:
 ```json
 {
   "data": {}
 }
 ```
 
-Collection with pagination:
+Collection response with pagination:
 ```json
 {
   "data": [],
@@ -50,7 +71,7 @@ Collection with pagination:
 }
 ```
 
-Error response:
+Standard error response:
 ```json
 {
   "error": {
@@ -63,7 +84,7 @@ Error response:
 
 ---
 
-## 3. Authentication & Session Endpoints
+## 3. Authentication Endpoints
 
 ### 3.1 Login
 - **Endpoint**: `POST /api/v1/auth/login`
@@ -79,7 +100,7 @@ Error response:
 ```json
 {
   "data": {
-    "token": "eyJhbGciOi...",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": "usr-uuid-001",
       "email": "user@toktickit.com",
@@ -92,8 +113,26 @@ Error response:
 }
 ```
 - **Error Responses**:
-  - `400 Bad Request`: Missing email or password.
-  - `401 Unauthorized`: Invalid email or password, or account is inactive (`code: "INVALID_CREDENTIALS"`). Note: Does not disclose whether email exists.
+  - `400 Bad Request`: Missing email or password (`code: "VALIDATION_ERROR"`).
+  - `401 Unauthorized` (Invalid credentials):
+    ```json
+    {
+      "error": {
+        "code": "INVALID_CREDENTIALS",
+        "message": "Invalid email or password. Please try again."
+      }
+    }
+    ```
+  - `401 Unauthorized` (Inactive account):
+    ```json
+    {
+      "error": {
+        "code": "ACCOUNT_INACTIVE",
+        "message": "Your account is currently inactive. Please contact an administrator."
+      }
+    }
+    ```
+  *(Note: Neither error exposes whether an email address exists in the system).*
 
 ### 3.2 Logout
 - **Endpoint**: `POST /api/v1/auth/logout`
@@ -136,7 +175,7 @@ Error response:
 }
 ```
 - **Validation**:
-  - `newPassword` must be $\ge$ 8 characters with uppercase, lowercase, and digit/symbol.
+  - `newPassword` must be $\ge 8$ characters with uppercase, lowercase, and digit/symbol.
   - `newPassword` must equal `confirmPassword`.
   - `newPassword` cannot equal `currentPassword`.
 - **Response 200 OK**:
@@ -163,7 +202,7 @@ Error response:
 
 ## 4. Requester Ticket Continuation & Regression
 
-All Lab 2 endpoints derive the Requester identity directly from the authenticated session token (BR-03). Client-supplied `requesterId` headers or parameters are ignored.
+All Lab 2 endpoints derive Requester identity directly from the authenticated session token (BR-03). Client-supplied `requesterId` headers or parameters are ignored.
 
 ### 4.1 List My Tickets
 - **Endpoint**: `GET /api/v1/tickets`
@@ -477,16 +516,17 @@ All Lab 2 endpoints derive the Requester identity directly from the authenticate
 
 ## 8. Safe Errors & Status Codes Reference
 
-| HTTP Status | Error Code | Scenario |
-| :--- | :--- | :--- |
-| `400 Bad Request` | `VALIDATION_ERROR` | Missing required fields, invalid field lengths, or malformed formats. |
-| `400 Bad Request` | `INVALID_STATUS_TRANSITION` | Attempting status transition not permitted by the transition matrix. |
-| `400 Bad Request` | `CANNOT_DEACTIVATE_SELF` | Administrator attempting to deactivate their own account. |
-| `400 Bad Request` | `LAST_ACTIVE_ADMIN_PROTECTED` | Attempting to deactivate or change role of the last active Administrator. |
-| `401 Unauthorized` | `INVALID_CREDENTIALS` | Invalid email/password, or account is inactive. |
-| `401 Unauthorized` | `SESSION_EXPIRED` | Expired or missing authentication token. |
-| `403 Forbidden` | `PASSWORD_CHANGE_REQUIRED` | User with `mustChangePassword: true` attempting normal operations. |
-| `403 Forbidden` | `INSUFFICIENT_PERMISSIONS` | Non-admin accessing admin APIs, or requester accessing staff APIs / internal notes. |
-| `404 Not Found` | `RESOURCE_NOT_FOUND` | Ticket, user, or attachment does not exist (or cross-user access simulated as 404). |
-| `409 Conflict` | `DUPLICATE_EMAIL` | Attempting to create or update user with an already registered email. |
-| `500 Internal Server Error` | `SERVER_ERROR` | Unhandled exception (sanitized message; no stack trace leaked). |
+| HTTP Status | Error Code | Safe Error Message | Scenario |
+| :--- | :--- | :--- | :--- |
+| `400 Bad Request` | `VALIDATION_ERROR` | `"Validation error occurred."` | Missing required fields, invalid lengths, or malformed data. |
+| `400 Bad Request` | `INVALID_STATUS_TRANSITION` | `"Status transition not permitted from current status."` | Status change violates transition matrix (BR-16). |
+| `400 Bad Request` | `CANNOT_DEACTIVATE_SELF` | `"You cannot deactivate your own administrator account."` | Administrator attempting self-deactivation (BR-21). |
+| `400 Bad Request` | `LAST_ACTIVE_ADMIN_PROTECTED` | `"System must have at least one active administrator."` | Attempting to deactivate or reassign last active admin (BR-22). |
+| `401 Unauthorized` | `INVALID_CREDENTIALS` | `"Invalid email or password. Please try again."` | Invalid email or incorrect password. |
+| `401 Unauthorized` | `ACCOUNT_INACTIVE` | `"Your account is currently inactive. Please contact an administrator."` | Valid credentials supplied for inactive account (`isActive: false`). |
+| `401 Unauthorized` | `SESSION_EXPIRED` | `"Your session has expired. Please sign in again."` | Expired or malformed JWT Bearer token. |
+| `403 Forbidden` | `PASSWORD_CHANGE_REQUIRED` | `"You must change your password before continuing."` | User with `mustChangePassword: true` invoking business APIs. |
+| `403 Forbidden` | `INSUFFICIENT_PERMISSIONS` | `"You do not have permission to perform this action."` | Role mismatch or requester accessing staff/admin endpoints. |
+| `404 Not Found` | `RESOURCE_NOT_FOUND` | `"The requested resource was not found."` | Ticket, user, or attachment not found (or cross-requester protection). |
+| `409 Conflict` | `DUPLICATE_EMAIL` | `"An account with this email address already exists."` | Email uniqueness violation during create/edit (BR-20). |
+| `500 Internal Server Error` | `SERVER_ERROR` | `"An unexpected error occurred. Please try again later."` | Unhandled server error (no internal stack trace leaked). |
