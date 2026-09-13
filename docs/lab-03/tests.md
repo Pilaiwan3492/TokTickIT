@@ -13,7 +13,7 @@ The test plan is established **before implementation** (Test-Driven Development 
 - **API & Integration Testing (Server)**:
   - Framework: Supertest with Vitest.
   - Scope: REST API contracts under `/api/v1/auth/*`, `/api/v1/tickets/*`, `/api/v1/staff/*`, and `/api/v1/admin/*`.
-  - Invariants Tested: HTTP status codes (`200`, `201`, `400`, `401`, `403`, `404`, `409`), Bearer token validation, role authorization guards, server-side logout revocation, first-login password change gating, safe error payloads, and database state transitions.
+  - Invariants Tested: HTTP status codes (`200`, `201`, `400`, `401`, `403`, `404`, `405`, `409`), Bearer token validation, role authorization guards, server-side logout revocation, first-login password change gating, safe error payloads, and database state transitions.
 - **UI Component & Interaction Testing (Client)**:
   - Framework: React Testing Library with Vitest and jsdom.
   - Scope: Authentication forms, password policy checklist, role navigation header, IT Staff Queue table/cards, operational ticket detail controls, public comments feed, internal notes tab, and Administrator user management modal.
@@ -28,7 +28,7 @@ The test plan is established **before implementation** (Test-Driven Development 
   - Invariants Tested: Strict server-side enforcement of the Authorization Matrix. Verification that Requesters cannot access other users' tickets, cannot query or post Internal Notes, cannot view the IT queue, and cannot access Admin user management. Verification that Administrators cannot deactivate themselves or eliminate the last active Administrator.
 - **End-to-End (E2E) Workflow Testing**:
   - Framework: Playwright.
-  - Scope: Complete multi-role user journeys across Login $\rightarrow$ First-login password change $\rightarrow$ Requester ticket creation $\rightarrow$ IT Staff queue pickup & status transition $\rightarrow$ Public comment & internal note conversation $\rightarrow$ Admin user management $\rightarrow$ Server-side logout invalidation.
+  - Scope: Complete multi-role user journeys across Login $\rightarrow$ First-login password change $\rightarrow$ Requester ticket creation defaults $\rightarrow$ IT Staff queue pickup & status transition $\rightarrow$ Public comment & internal note conversation $\rightarrow$ Admin user management $\rightarrow$ Server-side logout invalidation.
 
 ---
 
@@ -83,7 +83,9 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **API-43** | API | FR-22, BR-23 | Administrator resets initial password for user | HTTP 200 OK; sets new hash and `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
 | **API-44** | API | AC-24, BR-21 | Administrator attempts to deactivate their own account | HTTP 400 Bad Request with code `CANNOT_DEACTIVATE_SELF` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
 | **API-45** | API | AC-25, BR-22 | Administrator attempts to deactivate or reassign the last active Admin | HTTP 400 Bad Request with code `LAST_ACTIVE_ADMIN_PROTECTED` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-46** | API | AC-09, BR-02, BR-13, BR-14, BR-15 | Requester creates Ticket with authenticated identity | HTTP 201 Created; asserts `status: "NEW"`, `itPriority: requestedPriority`, `ownerId: null`, `requesterId: session.userId` | `server/tests/lab-03/create-ticket-defaults.api.test.ts` | `Planned` |
+| **API-46** | API | AC-09, BR-03, BR-13, BR-14, BR-15 | Requester creates Ticket with authenticated identity | HTTP 201 Created; asserts `status: "NEW"`, `itPriority: requestedPriority`, `ownerId: null`, `requesterId: session.userId` | `server/tests/lab-03/create-ticket-defaults.api.test.ts` | `Planned` |
+| **API-47** | API | BR-26 | Repeated failed login attempts (5+ consecutive invalid attempts) | HTTP 401 `INVALID_CREDENTIALS` on each attempt; asserts no account lockout or persistent lock state | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
+| **API-48** | API | BR-19 | Direct HTTP DELETE on user endpoint (`DELETE /api/v1/admin/users/:id`) | HTTP 405 Method Not Allowed (or 404); user deletion is prohibited, deactivation is exclusive removal | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
 
 ---
 
@@ -137,6 +139,7 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **E2E-07** | E2E | AC-11, AC-20, BR-07 | Requester & IT Staff Public Comment conversation + Private Note | Public comment visible to both; private note visible only to IT Staff | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Planned` |
 | **E2E-08** | E2E | AC-21, AC-22, BR-04 | Admin creates new IT Staff user; new user logs in and changes pass | Full lifecycle verified from account provisioning to successful entry | `e2e/lab-03/user-administration.spec.ts` | `Planned` |
 | **E2E-09** | E2E | AC-24, AC-25, BR-21 | Admin safety rules: self-deactivation and last admin protection | Deactivation blocked on UI and API; safety feedback displayed | `e2e/lab-03/user-administration.spec.ts` | `Planned` |
+| **E2E-10** | E2E | AC-09, BR-13, BR-14, BR-15 | Requester creates ticket via UI; asserts initial defaults | Ticket created with status `NEW`, matching IT Priority, unassigned | `e2e/lab-03/requester-ticket.spec.ts` | `Planned` |
 
 ---
 
@@ -177,7 +180,7 @@ The test plan is established **before implementation** (Test-Driven Development 
 
 ### 3.1 Acceptance Criteria Traceability Matrix (AC-01 through AC-25)
 
-Every Acceptance Criterion is mapped to its primary automated tests:
+Every Acceptance Criterion is strictly mapped to its primary automated tests:
 
 | Acceptance Criterion | Description Summary | Primary Automated Tests | Test Level |
 | :--- | :--- | :--- | :--- |
@@ -189,7 +192,7 @@ Every Acceptance Criterion is mapped to its primary automated tests:
 | **AC-06** | Invalid credentials safe failure | `API-02`, `API-03`, `UI-02`, `UI-03` | API, UI |
 | **AC-07** | Server-side logout invalidation (`SESSION_REVOKED`) | `API-10`, `API-11`, `UI-12`, `E2E-04` | API, UI, E2E |
 | **AC-08** | Role-filtered navigation in application shell | `API-15`, `API-16`, `UI-11`, `E2E-01` | API, UI, E2E |
-| **AC-09** | Requester ticket creation defaults (`NEW`, unassigned) | `API-46`, `E2E-07` | API, E2E |
+| **AC-09** | Requester ticket creation defaults (`NEW`, unassigned) | `API-46`, `E2E-10` | API, E2E |
 | **AC-10** | Requester My Tickets regression (owned only) | `API-13`, `API-14`, `MIG-04` | API, Regression |
 | **AC-11** | Public Comment posting & visibility | `API-32`, `API-33`, `UI-22`, `E2E-07` | API, UI, E2E |
 | **AC-12** | "Problem Appears Resolved" indication | `API-38`, `UI-24` | API, UI |
@@ -227,20 +230,20 @@ Every Business Rule from `docs/lab-03/specification.md` is mapped to its automat
 | **BR-10** | Content validation: non-empty, 1–2,000 characters | `API-34` | API |
 | **BR-11** | Requester problem resolution indication; no direct status change | `API-38`, `UI-24` | API, UI |
 | **BR-12** | Requesters view and manage only owned tickets & attachments | `API-14`, `MIG-04` | API, Regression |
-| **BR-13** | Zero or one primary owner; active IT Staff/Admin only; initial unassigned | `API-26`, `API-27`, `API-28`, `API-46`, `UI-19`, `E2E-05` | API, UI, E2E |
-| **BR-14** | IT Priority copies Requested Priority initially; modified independently | `API-29`, `API-46`, `UI-20`, `E2E-05` | API, UI, E2E |
-| **BR-15** | 8 permitted ticket statuses (`NEW` through `CANCELLED`) | `API-19`, `API-30`, `API-46` | API |
+| **BR-13** | Zero or one primary owner; active IT Staff/Admin only; initial unassigned | `API-26`, `API-27`, `API-28`, `API-46`, `UI-19`, `E2E-05`, `E2E-10` | API, UI, E2E |
+| **BR-14** | IT Priority copies Requested Priority initially; modified independently | `API-29`, `API-46`, `UI-20`, `E2E-05`, `E2E-10` | API, UI, E2E |
+| **BR-15** | 8 permitted ticket statuses (`NEW` through `CANCELLED`) | `API-19`, `API-30`, `API-46`, `E2E-10` | API, E2E |
 | **BR-16** | Permitted status transition matrix enforcement | `API-30`, `API-31`, `UI-21`, `E2E-06` | API, UI, E2E |
 | **BR-17** | Only active IT Staff & Administrators can transition ticket status | `API-30`, `API-31`, `E2E-06` | API, E2E |
 | **BR-18** | Status resolution without Actions Taken verification (deferred to Lab 4) | `API-30`, `E2E-06` | API, E2E |
-| **BR-19** | User deletion prohibited; deactivation (`isActive: false`) used exclusively | `API-42`, `UI-28` | API, UI |
+| **BR-19** | User deletion prohibited; deactivation used exclusively; HTTP DELETE rejected | `API-42`, `API-48`, `UI-28` | API, UI |
 | **BR-20** | Globally unique email addresses; duplicate returns HTTP 409 Conflict | `API-41`, `UI-27` | API, UI |
 | **BR-21** | Administrator self-deactivation prevention | `API-44`, `UI-28`, `E2E-09` | API, UI, E2E |
 | **BR-22** | Last active administrator protection | `API-45`, `UI-29`, `E2E-09` | API, UI, E2E |
 | **BR-23** | Initial password provisioning flags `mustChangePassword = true` | `API-40`, `API-43`, `E2E-08` | API, E2E |
 | **BR-24** | Direct non-admin access to `/api/v1/admin/*` returns HTTP 403 Forbidden | `API-15`, `API-16`, `API-17`, `API-18` | API |
 | **BR-25** | Direct Requester access to internal notes returns HTTP 403 with no leak | `API-35`, `API-36`, `UI-25` | API, UI |
-| **BR-26** | Failed login safe generic error; no persistent lock counter | `API-02`, `API-03`, `UI-02`, `UI-05` | API, UI |
+| **BR-26** | Failed login safe generic error; no persistent lock counter or lockout | `API-02`, `API-03`, `API-47`, `UI-02`, `UI-05` | API, UI |
 | **BR-27** | Deactivated account tokens rejected; login returns `ACCOUNT_INACTIVE` | `API-04`, `UI-04`, `E2E-03` | API, UI, E2E |
 | **BR-28** | Server-side logout token revocation; subsequent requests return `SESSION_REVOKED` | `API-10`, `API-11`, `UI-12`, `E2E-04` | API, UI, E2E |
 
