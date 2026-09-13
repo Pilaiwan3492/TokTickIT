@@ -19,9 +19,6 @@ ADD COLUMN     "ownerId" TEXT,
 ADD COLUMN     "status" "TicketStatus" NOT NULL DEFAULT 'NEW',
 ADD COLUMN     "userId" TEXT;
 
--- Sync existing ticket status from currentStatus
-UPDATE "Ticket" SET "status" = "currentStatus";
-
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -73,6 +70,9 @@ CREATE TABLE "RevokedToken" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- Case-insensitive unique index on email per Spec #61
+CREATE UNIQUE INDEX "User_lower_email_key" ON "User"(LOWER("email"));
 
 -- CreateIndex
 CREATE INDEX "User_email_idx" ON "User"("email");
@@ -133,3 +133,62 @@ ALTER TABLE "InternalNote" ADD CONSTRAINT "InternalNote_authorId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "RevokedToken" ADD CONSTRAINT "RevokedToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- =========================================================================================
+-- DATA MIGRATION: Migrate existing RequesterUser records to canonical User entities
+-- =========================================================================================
+
+-- 1. Create canonical User records from existing RequesterUser records with initial temporary password
+INSERT INTO "User" ("id", "email", "name", "passwordHash", "role", "isActive", "mustChangePassword", "tokenVersion", "createdAt", "updatedAt")
+SELECT
+    gen_random_uuid()::text,
+    LOWER("email"),
+    "name",
+    '$2b$10$mmnjh86WKnV9oZsR2t69juJAexiFEEB2gnfTtLswlv2WaRmsb/qM6',
+    'REQUESTER'::"Role",
+    "isActive",
+    true,
+    0,
+    "createdAt",
+    NOW()
+FROM "RequesterUser"
+ON CONFLICT ("email") DO NOTHING;
+
+-- 2. Link RequesterUser.userId to newly created User.id
+UPDATE "RequesterUser"
+SET "userId" = "User"."id"
+FROM "User"
+WHERE LOWER("RequesterUser"."email") = LOWER("User"."email");
+
+-- 3. Link existing Ticket.userId to User.id via RequesterUser
+UPDATE "Ticket"
+SET "userId" = "RequesterUser"."userId"
+FROM "RequesterUser"
+WHERE "Ticket"."requesterId" = "RequesterUser"."id";
+
+-- 4. Synchronize initial status from currentStatus for all existing tickets
+UPDATE "Ticket" SET "status" = "currentStatus";
+
+-- =========================================================================================
+-- DATABASE TRIGGER: Guarantee Ticket.status (canonical) and Ticket.currentStatus never diverge
+-- =========================================================================================
+CREATE OR REPLACE FUNCTION sync_ticket_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW."status" IS DISTINCT FROM OLD."status" AND NEW."currentStatus" IS NOT DISTINCT FROM OLD."currentStatus" THEN
+        NEW."currentStatus" := NEW."status";
+    ELSIF NEW."currentStatus" IS DISTINCT FROM OLD."currentStatus" AND NEW."status" IS NOT DISTINCT FROM OLD."status" THEN
+        NEW."status" := NEW."currentStatus";
+    ELSIF NEW."status" IS DISTINCT FROM NEW."currentStatus" THEN
+        -- Canonical Lab 3 status takes precedence
+        NEW."currentStatus" := NEW."status";
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_ticket_status ON "Ticket";
+CREATE TRIGGER trg_sync_ticket_status
+BEFORE INSERT OR UPDATE ON "Ticket"
+FOR EACH ROW
+EXECUTE FUNCTION sync_ticket_status();

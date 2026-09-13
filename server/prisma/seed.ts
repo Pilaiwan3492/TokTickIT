@@ -11,12 +11,15 @@ async function main() {
   const categoryMap = new Map<string, number>();
 
   for (const name of categories) {
-    const record = await prisma.category.upsert({
-      where: { name },
-      update: { isActive: true },
-      create: { name, isActive: true },
-    });
-    categoryMap.set(name, record.id);
+    const existing = await prisma.category.findUnique({ where: { name } });
+    if (existing) {
+      categoryMap.set(name, existing.id);
+    } else {
+      const record = await prisma.category.create({
+        data: { name, isActive: true },
+      });
+      categoryMap.set(name, record.id);
+    }
   }
   console.log("✓ Seeded 4 categories");
 
@@ -32,12 +35,15 @@ async function main() {
   const systemMap = new Map<string, number>();
 
   for (const name of relatedSystems) {
-    const record = await prisma.relatedSystem.upsert({
-      where: { name },
-      update: { isActive: true },
-      create: { name, isActive: true },
-    });
-    systemMap.set(name, record.id);
+    const existing = await prisma.relatedSystem.findUnique({ where: { name } });
+    if (existing) {
+      systemMap.set(name, existing.id);
+    } else {
+      const record = await prisma.relatedSystem.create({
+        data: { name, isActive: true },
+      });
+      systemMap.set(name, record.id);
+    }
   }
   console.log("✓ Seeded 6 related systems");
 
@@ -46,7 +52,7 @@ async function main() {
   const initialPasswordHash = bcrypt.hashSync("InitialPass123!", 10);
 
   // 3. Users (Lab 3 Canonical User Entity)
-  // Define seed users across Requester, IT Staff, and Administrator
+  // All emails are normalized to lowercase to uphold case-insensitive uniqueness
   const seedUsers = [
     // Requesters (>= 4 active, 1 inactive, 1 mandatory password change)
     {
@@ -143,73 +149,75 @@ async function main() {
     },
   ];
 
-  const userMap = new Map<string, string>(); // email -> User.id
+  const userMap = new Map<string, string>(); // lowercase email -> User.id
 
   for (const u of seedUsers) {
-    // Idempotent: Do not overwrite passwordHash or mustChangePassword on existing users
-    const existing = await prisma.user.findUnique({ where: { email: u.email } });
-    if (existing) {
-      const updated = await prisma.user.update({
-        where: { email: u.email },
-        data: {
-          name: u.name,
-          role: u.role,
-          isActive: u.isActive,
+    const normalizedEmail = u.email.trim().toLowerCase();
+    const existing = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: "insensitive",
         },
-      });
-      userMap.set(u.email, updated.id);
-    } else {
-      const created = await prisma.user.create({
-        data: u,
-      });
-      userMap.set(u.email, created.id);
-    }
-  }
-  console.log(`✓ Seeded ${seedUsers.length} Users across REQUESTER, IT_STAFF, and ADMIN`);
-
-  // 4. RequesterUser (Legacy Projection for Lab 2 Compatibility)
-  const requesterMap = new Map<string, number>(); // email -> RequesterUser.id
-  for (const u of seedUsers) {
-    if (u.role === "REQUESTER") {
-      const userId = userMap.get(u.email);
-      const reqUser = await prisma.requesterUser.upsert({
-        where: { email: u.email },
-        update: {
-          name: u.name,
-          isActive: u.isActive,
-          userId,
-        },
-        create: {
-          email: u.email,
-          name: u.name,
-          isActive: u.isActive,
-          userId,
-        },
-      });
-      requesterMap.set(u.email, reqUser.id);
-    }
-  }
-  console.log(`✓ Seeded ${requesterMap.size} RequesterUser legacy projections`);
-
-  // 5. Backfill any existing legacy Tickets with User.id and ensure status == currentStatus
-  const existingTickets = await prisma.ticket.findMany({
-    include: { requester: true },
-  });
-
-  for (const t of existingTickets) {
-    const matchingUserId = t.requester?.email ? userMap.get(t.requester.email) : null;
-    await prisma.ticket.update({
-      where: { id: t.id },
-      data: {
-        userId: t.userId || matchingUserId || undefined,
-        status: t.status || t.currentStatus,
       },
     });
-  }
-  console.log(`✓ Synchronized ${existingTickets.length} pre-existing tickets`);
 
-  // 6. Test-Oriented Seed Tickets
-  // Must cover all 8 statuses, all 4 priorities, unassigned/assigned/admin-owned, resolved flag
+    if (existing) {
+      // True Idempotency: Preserve existing user state completely.
+      // Never overwrite isActive, role, name, mustChangePassword, or passwordHash.
+      userMap.set(normalizedEmail, existing.id);
+    } else {
+      const created = await prisma.user.create({
+        data: {
+          ...u,
+          email: normalizedEmail,
+        },
+      });
+      userMap.set(normalizedEmail, created.id);
+    }
+  }
+  console.log(`✓ Seeded/verified ${seedUsers.length} Users across REQUESTER, IT_STAFF, and ADMIN`);
+
+  // 4. RequesterUser (Legacy Projection for Lab 2 Compatibility)
+  const requesterMap = new Map<string, number>(); // lowercase email -> RequesterUser.id
+  for (const u of seedUsers) {
+    if (u.role === "REQUESTER") {
+      const normalizedEmail = u.email.trim().toLowerCase();
+      const userId = userMap.get(normalizedEmail);
+      const existing = await prisma.requesterUser.findFirst({
+        where: {
+          email: {
+            equals: normalizedEmail,
+            mode: "insensitive",
+          },
+        },
+      });
+
+      if (existing) {
+        // Preserve existing state; link userId if missing
+        if (!existing.userId && userId) {
+          await prisma.requesterUser.update({
+            where: { id: existing.id },
+            data: { userId },
+          });
+        }
+        requesterMap.set(normalizedEmail, existing.id);
+      } else {
+        const created = await prisma.requesterUser.create({
+          data: {
+            email: normalizedEmail,
+            name: u.name,
+            isActive: u.isActive,
+            userId,
+          },
+        });
+        requesterMap.set(normalizedEmail, created.id);
+      }
+    }
+  }
+  console.log(`✓ Seeded/verified ${requesterMap.size} RequesterUser legacy projections`);
+
+  // 5. Test-Oriented Seed Tickets
   const jenniferReqId = requesterMap.get("jennifer.anderson@example.com")!;
   const jenniferUserId = userMap.get("jennifer.anderson@example.com")!;
   const bobReqId = requesterMap.get("bob@example.com")!;
@@ -386,28 +394,24 @@ async function main() {
   const ticketMap = new Map<string, string>(); // ticketNo -> Ticket.id
 
   for (const t of seedTickets) {
-    const upserted = await prisma.ticket.upsert({
+    const existing = await prisma.ticket.findUnique({
       where: { ticketNo: t.ticketNo },
-      update: {
-        userId: t.userId,
-        ownerId: t.ownerId,
-        categoryId: t.categoryId,
-        relatedSystemId: t.relatedSystemId,
-        summary: t.summary,
-        description: t.description,
-        requestedPriority: t.requestedPriority,
-        itPriority: t.itPriority,
-        status: t.status,
-        currentStatus: t.currentStatus,
-        isRequesterResolved: t.isRequesterResolved,
-      },
-      create: t,
     });
-    ticketMap.set(t.ticketNo, upserted.id);
-  }
-  console.log(`✓ Seeded ${seedTickets.length} test-oriented Tickets covering all 8 statuses and 4 priorities`);
 
-  // 7. Seed Public Comments & Internal Notes for Ticket 3
+    if (existing) {
+      // True Idempotency: Preserve existing ticket state.
+      // Do not overwrite status, ownerId, priority, or user edits on subsequent seed runs.
+      ticketMap.set(t.ticketNo, existing.id);
+    } else {
+      const created = await prisma.ticket.create({
+        data: t,
+      });
+      ticketMap.set(t.ticketNo, created.id);
+    }
+  }
+  console.log(`✓ Seeded/verified ${seedTickets.length} test-oriented Tickets covering all 8 statuses and 4 priorities`);
+
+  // 6. Seed Public Comments & Internal Notes for Ticket 3
   const tkt3Id = ticketMap.get("TKT-2026-000003")!;
 
   // Public Comments
@@ -427,16 +431,12 @@ async function main() {
   ];
 
   for (const c of seedComments) {
-    await prisma.comment.upsert({
-      where: { id: c.id },
-      update: {
-        content: c.content,
-        authorId: c.authorId,
-      },
-      create: c,
-    });
+    const existing = await prisma.comment.findUnique({ where: { id: c.id } });
+    if (!existing) {
+      await prisma.comment.create({ data: c });
+    }
   }
-  console.log(`✓ Seeded ${seedComments.length} Public Comments`);
+  console.log(`✓ Seeded/verified ${seedComments.length} Public Comments`);
 
   // Internal Notes (Role-restricted)
   const seedNotes = [
@@ -455,18 +455,14 @@ async function main() {
   ];
 
   for (const n of seedNotes) {
-    await prisma.internalNote.upsert({
-      where: { id: n.id },
-      update: {
-        content: n.content,
-        authorId: n.authorId,
-      },
-      create: n,
-    });
+    const existing = await prisma.internalNote.findUnique({ where: { id: n.id } });
+    if (!existing) {
+      await prisma.internalNote.create({ data: n });
+    }
   }
-  console.log(`✓ Seeded ${seedNotes.length} Internal Notes`);
+  console.log(`✓ Seeded/verified ${seedNotes.length} Internal Notes`);
 
-  console.log("All TokTickIT Lab 3 seed data populated successfully and idempotently!");
+  console.log("All TokTickIT Lab 3 seed data populated successfully and idempotently without state overwrites!");
 }
 
 main()
