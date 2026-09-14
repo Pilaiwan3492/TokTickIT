@@ -63,8 +63,8 @@ export const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     setIsDropdownOpen(false);
-    await logout();
     navigate("/login", { replace: true });
+    await logout();
   };
 
   return (

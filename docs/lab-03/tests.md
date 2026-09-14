@@ -101,13 +101,22 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **UI-03** | UI | AC-06, BR-01 | Login error banner on `INVALID_CREDENTIALS` | Displays `"Invalid email or password. Please try again."` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
 | **UI-04** | UI | AC-05, BR-27 | Login error banner on `ACCOUNT_INACTIVE` | Displays `"Your account is currently inactive. Please contact an administrator."` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
 | **UI-05** | UI | AC-06, BR-26 | Form submission busy state | Submit button disabled and shows spinner while request is in-flight | `client/tests/lab-03/Login.test.tsx` | `Passing` |
-| **UI-06** | UI | AC-01, FR-06 | Successful login navigates to role landing page | Stores token, sets user state, redirects to `/my-tickets` or `/queue` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
+| **UI-06** | UI | AC-01, FR-06 | Successful login navigates to role landing page | Stores token, sets user state, redirects to `/tickets` or `/queue` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
+| **UI-06a** | UI | AC-01, FR-06 | Successful login for IT_STAFF role | Stores token, navigates to `/queue` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
+| **UI-06b** | UI | AC-01, FR-06 | Successful login for ADMIN role | Stores token, navigates to `/queue` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
+| **UI-06c** | UI | AC-02, BR-02 | Login for user requiring password change | Sets state, redirects to `/change-password` | `client/tests/lab-03/Login.test.tsx` | `Passing` |
+| **UI-06d** | UI | FR-01 | Password visibility toggle on login form | Toggles input type between password and text | `client/tests/lab-03/Login.test.tsx` | `Passing` |
 | **UI-07** | UI | AC-02, BR-02 | Mandatory change password screen rendering | Renders current, new, confirm password fields, blocks normal navigation | `client/tests/lab-03/ChangePassword.test.tsx` | `Passing` |
 | **UI-08** | UI | AC-02, BR-06 | Real-time password complexity rule checklist | Checklist items turn green as user satisfies length, case, number/symbol | `client/tests/lab-03/ChangePassword.test.tsx` | `Passing` |
 | **UI-09** | UI | AC-02, BR-06 | Password confirmation mismatch validation | Displays mismatch error and keeps Submit button disabled | `client/tests/lab-03/ChangePassword.test.tsx` | `Passing` |
 | **UI-10** | UI | AC-02, BR-02 | Successful password change unblocks user | Dispatches change API, clears gating, transitions into main application | `client/tests/lab-03/ChangePassword.test.tsx` | `Passing` |
+| **UI-10a** | UI | FR-02 | Password visibility toggles on change password form | Toggles visibility independently on current, new, and confirm inputs | `client/tests/lab-03/ChangePassword.test.tsx` | `Passing` |
 | **UI-11** | UI | AC-08, FR-06 | Application Header role navigation rendering | Displays role badge, role-filtered navigation items, removes dev selector | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
+| **UI-11a** | UI | AC-08, FR-06 | Header role navigation for IT_STAFF | Renders Ticket Queue link; excludes + Create Ticket link | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
+| **UI-11b** | UI | AC-08, FR-06 | Header role navigation for ADMIN | Renders Ticket Queue and User Management links | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
+| **UI-11c** | UI | FR-06 | Profile dropdown menu toggling and items | Displays user email, Change Password link, and Sign Out action | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
 | **UI-12** | UI | AC-07, BR-28 | User clicks Sign Out action in header | Calls logout API, clears local storage token, redirects to `/login` | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
+| **UI-12a** | UI | AC-07, BR-28 | Sign Out action closes profile dropdown | Closes dropdown menu and triggers session termination | `client/tests/lab-03/AppShell.test.tsx` | `Passing` |
 | **UI-13** | UI | AC-13, FR-10 | IT Staff Ticket Queue desktop table render | Table renders Ticket No, Date, Summary, Priority & Status badges, Owner | `client/tests/lab-03/StaffTicketQueue.test.tsx` | `Planned` |
 | **UI-14** | UI | AC-14, FR-11 | Ticket Queue search box input | Debounced search triggers API reload with query parameter | `client/tests/lab-03/StaffTicketQueue.test.tsx` | `Planned` |
 | **UI-15** | UI | AC-14, FR-11 | Ticket Queue Status and Priority filter dropdowns | Selecting filters updates API parameters and reloads table | `client/tests/lab-03/StaffTicketQueue.test.tsx` | `Planned` |

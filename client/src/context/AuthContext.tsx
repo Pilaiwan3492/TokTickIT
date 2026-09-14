@@ -83,6 +83,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
+  // Global session-expired event listener (dispatched by apiFetch on 401 SESSION_*)
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setToken(null);
+      setUser(null);
+      setIsLoading(false);
+    };
+
+    window.addEventListener("toktickit:session-expired", handleSessionExpired);
+    return () => {
+      window.removeEventListener("toktickit:session-expired", handleSessionExpired);
+    };
+  }, []);
+
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<AuthUser> => {
       const authData = await loginApi(credentials);

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/apiClient";
 
 interface Attachment {
   id: string;
@@ -28,6 +29,12 @@ interface Ticket {
   currentStatus: string;
   createdAt: string;
   updatedAt: string;
+  userId?: string;
+  user?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
   requesterId?: number;
   requester?: {
     id: number;
@@ -48,7 +55,7 @@ interface Ticket {
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -67,27 +74,17 @@ export default function TicketDetail() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const fetchTicket = useCallback(async () => {
-    if (!selectedRequester?.id) {
-      navigate("/select-requester");
-      return;
-    }
-
     if (!id) {
       setError("Ticket not found.");
       setLoading(false);
       return;
     }
 
-    const requesterId = selectedRequester.id;
-
     try {
       setLoading(true);
       setError(null);
 
-      // Lab 2 API: GET /api/v1/tickets/:id?requesterId={requesterId}
-      const res = await fetch(
-        `/api/v1/tickets/${id}?requesterId=${requesterId}`
-      );
+      const res = await apiFetch(`/api/v1/tickets/${id}`);
 
       // Cross-requester access.
       if (res.status === 403) {
@@ -118,7 +115,7 @@ export default function TicketDetail() {
     } finally {
       setLoading(false);
     }
-  }, [id, selectedRequester, navigate]);
+  }, [id, user, navigate]);
 
   useEffect(() => {
     fetchTicket();
@@ -133,7 +130,7 @@ export default function TicketDetail() {
 
   const handleAddAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !id || !selectedRequester?.id) return;
+    if (!file || !id || !user) return;
     e.target.value = ""; // reset file input
 
     setUploadError(null);
@@ -156,8 +153,8 @@ export default function TicketDetail() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(
-        `/api/v1/tickets/${id}/attachments?requesterId=${selectedRequester.id}`,
+      const res = await apiFetch(
+        `/api/v1/tickets/${id}/attachments`,
         {
           method: "POST",
           body: formData,
@@ -180,12 +177,12 @@ export default function TicketDetail() {
   };
 
   const handleDownload = async (attachment: Attachment) => {
-    if (!selectedRequester?.id) return;
+    if (!user) return;
     setDownloadError(null);
 
-    const downloadUrl = `/api/v1/attachments/${attachment.id}/download?requesterId=${selectedRequester.id}`;
+    const downloadUrl = `/api/v1/attachments/${attachment.id}/download`;
     try {
-      const res = await fetch(downloadUrl);
+      const res = await apiFetch(downloadUrl);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         if (res.status === 404 && errData.error?.code === "ATTACHMENT_NOT_AVAILABLE") {
@@ -225,7 +222,7 @@ export default function TicketDetail() {
 
   const handleConfirmRemove = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!attachmentToRemove || !selectedRequester?.id) return;
+    if (!attachmentToRemove || !user) return;
 
     const trimmed = removalReason.trim();
     if (trimmed.length === 0) {
@@ -239,11 +236,10 @@ export default function TicketDetail() {
 
     setIsRemoving(true);
     try {
-      const res = await fetch(
-        `/api/v1/attachments/${attachmentToRemove.id}?requesterId=${selectedRequester.id}`,
+      const res = await apiFetch(
+        `/api/v1/attachments/${attachmentToRemove.id}`,
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ removalReason: trimmed }),
         }
       );
@@ -486,10 +482,9 @@ export default function TicketDetail() {
                 </span>
 
                 <span className="fw-semibold text-dark">
-                  {ticket.requester?.name ||
-                    (ticket.requesterId === selectedRequester?.id
-                      ? selectedRequester?.name
-                      : "-")}
+                  {ticket.user?.name ||
+                    ticket.requester?.name ||
+                    (ticket.userId === user?.id ? user?.name : "-")}
                 </span>
               </div>
 

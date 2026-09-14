@@ -63,15 +63,21 @@ export const logoutApi = async (token?: string | null): Promise<void> => {
   const authToken = token || getStoredToken();
   if (!authToken) return;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+
   try {
     await fetch("/api/v1/auth/logout", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${authToken}`,
       },
+      signal: controller.signal,
     });
   } catch (err) {
-    console.warn("Server logout request failed:", err);
+    console.warn("Server logout request failed or timed out:", err);
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 

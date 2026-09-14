@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { checkSystem, Category } from "./api";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { RequesterProvider, useRequester } from "./context/RequesterContext";
 import { Header } from "./components/Header";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -18,7 +17,6 @@ type UiState = "idle" | "loading" | "success" | "error";
 
 // Preserved for Lab 1 system check compliance in test environments
 export function HomeContent() {
-  const { selectedRequester } = useRequester();
   const [state, setState] = useState<UiState>("idle");
   const [categories, setCategories] = useState<Category[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,12 +42,6 @@ export function HomeContent() {
         <h1 className="h4 mb-3">
           TokTickIT <span style={{ color: "#006B3C" }}>IT Service Desk</span>
         </h1>
-
-        {selectedRequester && (
-          <div className="alert alert-success py-2 mb-3 small">
-            Current Active Requester: <strong>{selectedRequester?.name}</strong> ({selectedRequester?.email})
-          </div>
-        )}
 
         <div className="d-flex gap-2">
           <button
@@ -213,10 +205,8 @@ function AppContent() {
 
 export default function App() {
   return (
-    <RequesterProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </RequesterProvider>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

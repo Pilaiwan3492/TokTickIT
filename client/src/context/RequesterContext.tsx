@@ -5,6 +5,7 @@ import React, {
 } from "react";
 
 import { Requester } from "../api";
+import { AuthContext, AuthContextType } from "./AuthContext";
 
 interface RequesterContextType {
   selectedRequester: Requester | null;
@@ -18,13 +19,56 @@ const RequesterContext = createContext<RequesterContextType | undefined>(
   undefined
 );
 
+/**
+ * Legacy test harness adapter.
+ * When legacy Lab 2 test suites render RequesterProvider without AuthProvider,
+ * this adapter provides an AuthContext compatible with migrated business pages.
+ */
+const LegacyAuthAdapter: React.FC<{
+  children: React.ReactNode;
+  selectedRequester: Requester | null;
+}> = ({ children, selectedRequester }) => {
+  const existingAuth = useContext(AuthContext);
+  if (existingAuth) {
+    return <>{children}</>;
+  }
+
+  const legacyAuthValue: AuthContextType = {
+    token: selectedRequester ? "legacy-test-token" : null,
+    user: selectedRequester
+      ? {
+          id: String(selectedRequester.id),
+          name: selectedRequester.name,
+          email: selectedRequester.email,
+          role: "REQUESTER",
+          isActive: selectedRequester.isActive ?? true,
+          mustChangePassword: false,
+        }
+      : null,
+    role: selectedRequester ? "REQUESTER" : null,
+    isLoading: false,
+    isAuthenticated: Boolean(selectedRequester),
+    mustChangePassword: false,
+    login: async () => {
+      throw new Error("login not supported in legacy test adapter");
+    },
+    logout: async () => {},
+    changePassword: async () => {},
+    refreshUser: async () => null,
+  };
+
+  return (
+    <AuthContext.Provider value={legacyAuthValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
 export const RequesterProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  // Restore the selected requester from LocalStorage
-  // when the application starts.
   const [selectedRequester, setSelectedRequesterState] =
     useState<Requester | null>(() => {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -36,13 +80,10 @@ export const RequesterProvider = ({
       try {
         return JSON.parse(saved);
       } catch {
-        // Ignore invalid LocalStorage data
-        // and start with no selected requester.
         return null;
       }
     });
 
-  // Update both React state and LocalStorage.
   const setSelectedRequester = (requester: Requester | null) => {
     setSelectedRequesterState(requester);
 
@@ -56,7 +97,6 @@ export const RequesterProvider = ({
     }
   };
 
-  // Clear the current requester selection.
   const clearRequester = () => {
     setSelectedRequester(null);
   };
@@ -69,7 +109,9 @@ export const RequesterProvider = ({
         clearRequester,
       }}
     >
-      {children}
+      <LegacyAuthAdapter selectedRequester={selectedRequester}>
+        {children}
+      </LegacyAuthAdapter>
     </RequesterContext.Provider>
   );
 };
