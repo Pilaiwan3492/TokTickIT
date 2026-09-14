@@ -1,47 +1,100 @@
 import request from "supertest";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import app from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { signToken } from "../../src/utils/jwt.js";
 
 describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   const prisma = getPrisma();
-  const validRequesterId = 1; // Seeded active requester (e.g. Alice / Jennifer)
-  let otherRequesterId = 2; // Seeded active requester 2
+  let validRequesterId: number;
+  let otherRequesterId: number;
   let testTicketId: string;
   let otherTicketId: string;
+  let token1: string;
+  let token2: string;
 
   beforeAll(async () => {
-    // Ensure test requester users exist
-    const requester1 = await prisma.requesterUser.findFirst({
-      where: { id: validRequesterId, isActive: true },
-    });
-    if (!requester1) {
-      await prisma.requesterUser.create({
-        data: { id: validRequesterId, name: "Test Requester 1", email: "req1@test.com", isActive: true },
-      });
-    }
+    const defaultHash = bcrypt.hashSync("Password123!", 10);
 
-    const requester2 = await prisma.requesterUser.findFirst({
-      where: { id: otherRequesterId, isActive: true },
+    // Dedicated User 1 & Requester 1
+    const user1 = await prisma.user.upsert({
+      where: { email: "attachment.user1@example.com" },
+      update: { isActive: true, mustChangePassword: false, passwordHash: defaultHash },
+      create: {
+        email: "attachment.user1@example.com",
+        name: "Attachment User 1",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
     });
-    if (!requester2) {
-      const created2 = await prisma.requesterUser.create({
-        data: { name: "Test Requester 2", email: "req2@test.com", isActive: true },
-      });
-      otherRequesterId = created2.id;
-    }
+    const requester1 = await prisma.requesterUser.upsert({
+      where: { email: "attachment.user1@example.com" },
+      update: { userId: user1.id, isActive: true },
+      create: {
+        name: "Attachment User 1",
+        email: "attachment.user1@example.com",
+        userId: user1.id,
+        isActive: true,
+      },
+    });
+    validRequesterId = requester1.id;
+
+    token1 = signToken({
+      id: user1.id,
+      email: user1.email,
+      name: user1.name,
+      role: "REQUESTER",
+      mustChangePassword: false,
+    });
+
+    // Dedicated User 2 & Requester 2
+    const user2 = await prisma.user.upsert({
+      where: { email: "attachment.user2@example.com" },
+      update: { isActive: true, mustChangePassword: false, passwordHash: defaultHash },
+      create: {
+        email: "attachment.user2@example.com",
+        name: "Attachment User 2",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+    const requester2 = await prisma.requesterUser.upsert({
+      where: { email: "attachment.user2@example.com" },
+      update: { userId: user2.id, isActive: true },
+      create: {
+        name: "Attachment User 2",
+        email: "attachment.user2@example.com",
+        userId: user2.id,
+        isActive: true,
+      },
+    });
+    otherRequesterId = requester2.id;
+
+    token2 = signToken({
+      id: user2.id,
+      email: user2.email,
+      name: user2.name,
+      role: "REQUESTER",
+      mustChangePassword: false,
+    });
 
     // Get a category and related system
     const category = await prisma.category.findFirst({ where: { isActive: true } });
     const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
 
-    // Create a test ticket for validRequesterId
+    // Create a test ticket for validRequesterId / user1
     const ticket1 = await prisma.ticket.create({
       data: {
         ticketNo: `TKT-TEST-${Date.now().toString().slice(-6)}`,
         requesterId: validRequesterId,
+        userId: user1.id,
         categoryId: category?.id ?? 1,
         relatedSystemId: relatedSystem?.id ?? 1,
         summary: "Attachment test ticket summary",
@@ -52,11 +105,12 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
     testTicketId = ticket1.id;
 
-    // Create a ticket for otherRequesterId
+    // Create a ticket for otherRequesterId / user2
     const ticket2 = await prisma.ticket.create({
       data: {
         ticketNo: `TKT-TEST-${(Date.now() + 1).toString().slice(-6)}`,
         requesterId: otherRequesterId,
+        userId: user2.id,
         categoryId: category?.id ?? 1,
         relatedSystemId: relatedSystem?.id ?? 1,
         summary: "Other requester ticket summary",
@@ -88,7 +142,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     const pngBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", pngBuffer, "screenshot.png");
 
     expect(res.status).toBe(201);
@@ -110,7 +165,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     const pdfBuffer = Buffer.from("%PDF-1.4 sample pdf content %%EOF");
 
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", pdfBuffer, "document.pdf");
 
     expect(res.status).toBe(201);
@@ -124,7 +180,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
   test("❌ Should return 400 VALIDATION_ERROR when file is missing", async () => {
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`);
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBeDefined();
@@ -135,7 +192,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   test("❌ Should return 400 VALIDATION_ERROR when ticket ID is not a valid UUID", async () => {
     const buffer = Buffer.from("dummy");
     const res = await request(app)
-      .post(`/api/v1/tickets/not-a-valid-uuid/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/not-a-valid-uuid/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", buffer, "photo.jpg");
 
     expect(res.status).toBe(400);
@@ -144,31 +202,33 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     expect(res.body.error.message).toBe("Ticket ID must be a valid UUID.");
   });
 
-  test("❌ Should return 400 INVALID_REFERENCE for missing or non-integer requesterId", async () => {
+  test("❌ Should return 401 SESSION_INVALID for missing Authorization header", async () => {
     const buffer = Buffer.from("dummy");
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketId}/attachments`)
       .attach("file", buffer, "photo.jpg");
 
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
   });
 
-  test("❌ Should return 400 INVALID_REFERENCE for nonexistent requesterId (999999)", async () => {
+  test("❌ Should return 401 SESSION_INVALID for invalid or malformed token", async () => {
     const buffer = Buffer.from("dummy");
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=999999`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", "Bearer invalid-token")
       .attach("file", buffer, "photo.jpg");
 
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
   });
 
   test("❌ Should return 404 TICKET_NOT_FOUND when ticket does not exist", async () => {
     const nonExistentUuid = "550e8400-e29b-41d4-a716-446655440099";
     const buffer = Buffer.from("dummy");
     const res = await request(app)
-      .post(`/api/v1/tickets/${nonExistentUuid}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${nonExistentUuid}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", buffer, "photo.jpg");
 
     expect(res.status).toBe(404);
@@ -179,7 +239,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   test("❌ Should return 403 FORBIDDEN when requester does not own the ticket", async () => {
     const buffer = Buffer.from("dummy");
     const res = await request(app)
-      .post(`/api/v1/tickets/${otherTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${otherTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", buffer, "photo.jpg");
 
     expect(res.status).toBe(403);
@@ -190,7 +251,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   test("❌ Should return 415 UNSUPPORTED_FILE_TYPE for unsupported file type (.exe)", async () => {
     const exeBuffer = Buffer.from("MZ fake executable header");
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", exeBuffer, "malware.exe");
 
     expect(res.status).toBe(415);
@@ -202,7 +264,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     // 5 MiB + 10 bytes = 5,242,890 bytes
     const largeBuffer = Buffer.alloc(5242880 + 10, "a");
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", largeBuffer, "large.jpg");
 
     expect(res.status).toBe(413);
@@ -230,7 +293,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
     const pngBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
     const res = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", pngBuffer, "sixth.png");
 
     expect(res.status).toBe(409);
@@ -249,15 +313,16 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     // Upload a real attachment first
     const pngBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
     const uploadRes = await request(app)
-      .post(`/api/v1/tickets/${testTicketId}/attachments?requesterId=${validRequesterId}`)
+      .post(`/api/v1/tickets/${testTicketId}/attachments`)
+      .set("Authorization", `Bearer ${token1}`)
       .attach("file", pngBuffer, "download-me.png");
-
 
     expect(uploadRes.status).toBe(201);
     const attachmentId = uploadRes.body.data.id;
 
     const downloadRes = await request(app)
-      .get(`/api/v1/attachments/${attachmentId}/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/${attachmentId}/download`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.header["content-type"]).toContain("image/png");
@@ -267,25 +332,27 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
   test("❌ Should return 400 VALIDATION_ERROR when download attachment ID is not a valid UUID", async () => {
     const res = await request(app)
-      .get(`/api/v1/attachments/not-a-uuid/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/not-a-uuid/download`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
     expect(res.body.error.message).toBe("Attachment ID must be a valid UUID.");
   });
 
-  test("❌ Should return 400 INVALID_REFERENCE when download requesterId is missing or invalid", async () => {
+  test("❌ Should return 401 SESSION_INVALID when download Authorization header is missing", async () => {
     const res = await request(app)
       .get(`/api/v1/attachments/550e8400-e29b-41d4-a716-446655440000/download`);
 
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
   });
 
   test("❌ Should return 404 ATTACHMENT_NOT_FOUND when downloading non-existent attachment", async () => {
     const nonExistentUuid = "550e8400-e29b-41d4-a716-446655440099";
     const res = await request(app)
-      .get(`/api/v1/attachments/${nonExistentUuid}/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/${nonExistentUuid}/download`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
@@ -293,7 +360,7 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   });
 
   test("❌ Should return 403 FORBIDDEN when downloading attachment belonging to another requester", async () => {
-    // Create an attachment for otherTicketId (owned by otherRequesterId)
+    // Create an attachment for otherTicketId (owned by user2 / otherRequesterId)
     const otherAtt = await prisma.attachment.create({
       data: {
         ticketId: otherTicketId,
@@ -304,9 +371,10 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
       },
     });
 
-    // ValidRequesterId attempts to download otherRequester's attachment
+    // ValidRequesterId (token1) attempts to download otherRequester's attachment
     const res = await request(app)
-      .get(`/api/v1/attachments/${otherAtt.id}/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/${otherAtt.id}/download`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("FORBIDDEN");
@@ -327,7 +395,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
 
     const res = await request(app)
-      .get(`/api/v1/attachments/${removedAtt.id}/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/${removedAtt.id}/download`)
+      .set("Authorization", `Bearer ${token1}`);
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ATTACHMENT_NOT_AVAILABLE");
@@ -350,7 +419,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
 
     const res = await request(app)
-      .delete(`/api/v1/attachments/${attToRemove.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${attToRemove.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "Uploaded the wrong screenshot." });
 
     expect(res.status).toBe(200);
@@ -368,7 +438,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
     // Subsequent download must return 404 ATTACHMENT_NOT_AVAILABLE
     const downloadRes = await request(app)
-      .get(`/api/v1/attachments/${attToRemove.id}/download?requesterId=${validRequesterId}`);
+      .get(`/api/v1/attachments/${attToRemove.id}/download`)
+      .set("Authorization", `Bearer ${token1}`);
     expect(downloadRes.status).toBe(404);
     expect(downloadRes.body.error.code).toBe("ATTACHMENT_NOT_AVAILABLE");
   });
@@ -386,7 +457,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
     // Missing reason
     const res1 = await request(app)
-      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${att.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({});
     expect(res1.status).toBe(400);
     expect(res1.body.error.code).toBe("VALIDATION_ERROR");
@@ -394,7 +466,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
     // Whitespace only
     const res2 = await request(app)
-      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${att.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "    " });
     expect(res2.status).toBe(400);
     expect(res2.body.error.code).toBe("VALIDATION_ERROR");
@@ -412,7 +485,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
 
     const res = await request(app)
-      .delete(`/api/v1/attachments/${att.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${att.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "no" });
 
     expect(res.status).toBe(400);
@@ -421,7 +495,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
 
   test("❌ Should return 400 VALIDATION_ERROR when attachment ID is not a valid UUID on DELETE", async () => {
     const res = await request(app)
-      .delete(`/api/v1/attachments/not-a-uuid?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/not-a-uuid`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "Valid reason text." });
 
     expect(res.status).toBe(400);
@@ -432,7 +507,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
   test("❌ Should return 404 ATTACHMENT_NOT_FOUND when soft-removing non-existent attachment", async () => {
     const nonExistentUuid = "550e8400-e29b-41d4-a716-446655440099";
     const res = await request(app)
-      .delete(`/api/v1/attachments/${nonExistentUuid}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${nonExistentUuid}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "Valid reason text." });
 
     expect(res.status).toBe(404);
@@ -452,7 +528,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
 
     const res = await request(app)
-      .delete(`/api/v1/attachments/${otherAtt.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${otherAtt.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "Attempting to delete someone else's file." });
 
     expect(res.status).toBe(403);
@@ -474,7 +551,8 @@ describe("Attachment Upload API Contract Tests (Lab 2)", () => {
     });
 
     const res = await request(app)
-      .delete(`/api/v1/attachments/${alreadyRemoved.id}?requesterId=${validRequesterId}`)
+      .delete(`/api/v1/attachments/${alreadyRemoved.id}`)
+      .set("Authorization", `Bearer ${token1}`)
       .send({ removalReason: "Second removal attempt." });
 
     expect(res.status).toBe(409);

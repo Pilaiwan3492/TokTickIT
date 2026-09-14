@@ -1,20 +1,67 @@
 import request from "supertest";
 import app from "../../src/app.js";
+import bcrypt from "bcryptjs";
 import { describe, test, expect, beforeAll } from "vitest";
 import { getPrisma } from "../../src/prisma.js";
+import { signToken } from "../../src/utils/jwt.js";
 
 describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   const prisma = getPrisma();
-  const validRequesterId = 1;
+  let validRequesterId: number;
+  let authToken: string;
+  let userId: string;
+  const authGet = (path: string) => request(app).get(path).set("Authorization", `Bearer ${authToken}`);
 
   beforeAll(async () => {
-    // Ensure requester exists
-    const req = await prisma.requesterUser.findFirst({ where: { id: validRequesterId, isActive: true } });
+    const defaultHash = bcrypt.hashSync("Password123!", 10);
+    const user = await prisma.user.upsert({
+      where: { email: "jennifer.anderson@example.com" },
+      update: { isActive: true, mustChangePassword: false, passwordHash: defaultHash },
+      create: {
+        email: "jennifer.anderson@example.com",
+        name: "Jennifer Anderson",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+
+    let req = await prisma.requesterUser.findFirst({
+      where: { email: "jennifer.anderson@example.com" },
+    });
     if (!req) {
-      await prisma.requesterUser.create({
-        data: { id: validRequesterId, name: "Jennifer Anderson", email: "jennifer.anderson@example.com", isActive: true },
+      req = await prisma.requesterUser.create({
+        data: {
+          name: "Jennifer Anderson",
+          email: "jennifer.anderson@example.com",
+          userId: user.id,
+          isActive: true,
+        },
+      });
+    } else {
+      req = await prisma.requesterUser.update({
+        where: { id: req.id },
+        data: { userId: user.id, isActive: true },
       });
     }
+
+    validRequesterId = req.id;
+    userId = user.id;
+
+    // Ensure all existing tickets for requester are assigned userId
+    await prisma.ticket.updateMany({
+      where: { requesterId: validRequesterId, userId: null },
+      data: { userId: user.id },
+    });
+
+    authToken = signToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: "REQUESTER",
+      mustChangePassword: false,
+    });
 
     const category = await prisma.category.findFirst({ where: { isActive: true } });
     const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
@@ -79,7 +126,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   // ---------------------------------------------------------
 
   test("✓ Should return 200 with paginated tickets list for valid requesterId", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}`
     );
 
@@ -105,7 +152,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
       ? sampleTicket!.summary.trim().split(" ")[0]
       : "TCK";
 
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&search=${encodeURIComponent(query)}`
     );
 
@@ -122,14 +169,14 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ Should return empty array when page exceeds totalPages or when no matching records exist", async () => {
-    const resExceed = await request(app).get(
+    const resExceed = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&page=9999`
     );
 
     expect(resExceed.status).toBe(200);
     expect(resExceed.body.data).toEqual([]);
 
-    const resNoMatch = await request(app).get(
+    const resNoMatch = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&search=NON_EXISTENT_QUERY_XYZ_12345`
     );
 
@@ -143,7 +190,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     const category = await prisma.category.findFirst();
     expect(category).not.toBeNull();
 
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&categoryId=${category!.id}`
     );
 
@@ -155,7 +202,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ Should return 200 when filtering by priority", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&priority=HIGH`
     );
 
@@ -167,7 +214,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ Should support pagination parameters (page=1, limit=10)", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&page=1&limit=10`
     );
 
@@ -182,7 +229,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   // ---------------------------------------------------------
 
   test("✓ (AC-11) Should sort tickets by createdAt ascending (sort=createdAt_asc) and verify timestamp order", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_asc&limit=50`
     );
 
@@ -198,7 +245,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ (AC-11) Should sort tickets by createdAt descending (sort=createdAt_desc) as default and verify timestamp order", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
     );
 
@@ -214,7 +261,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ (AC-11) Should sort tickets by ticketNo ascending (sort=ticketNo_asc) and verify alphabetical order", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=ticketNo_asc&limit=50`
     );
 
@@ -228,7 +275,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("✓ (AC-11) Should sort tickets by ticketNo descending (sort=ticketNo_desc) and verify reverse alphabetical order", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=ticketNo_desc&limit=50`
     );
 
@@ -248,7 +295,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
       HIGH: 3,
     };
 
-    const resAsc = await request(app).get(
+    const resAsc = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=priority_asc&limit=50`
     );
     expect(resAsc.status).toBe(200);
@@ -269,7 +316,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
       HIGH: 3,
     };
 
-    const resDesc = await request(app).get(
+    const resDesc = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=priority_desc&limit=50`
     );
     expect(resDesc.status).toBe(200);
@@ -289,13 +336,14 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     expect(category).not.toBeNull();
     expect(relatedSystem).not.toBeNull();
 
-    // Create two tickets with the EXACT SAME createdAt timestamp
-    const tiedTimestamp = new Date("2026-07-07T07:07:07.000Z");
-    const uniqueSuffix = Date.now().toString().slice(-6);
+    // Create two tickets with the EXACT SAME createdAt timestamp in the future so they are guaranteed at the top of createdAt_desc
+    const tiedTimestamp = new Date(Date.now() + 3600000);
+    const uniqueSuffix = `${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6)}`;
 
     const ticketA = await prisma.ticket.create({
       data: {
         ticketNo: `TKT-2026-TIE1-${uniqueSuffix}`,
+        userId,
         requesterId: validRequesterId,
         categoryId: category!.id,
         relatedSystemId: relatedSystem!.id,
@@ -310,6 +358,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     const ticketB = await prisma.ticket.create({
       data: {
         ticketNo: `TKT-2026-TIE2-${uniqueSuffix}`,
+        userId,
         requesterId: validRequesterId,
         categoryId: category!.id,
         relatedSystemId: relatedSystem!.id,
@@ -321,26 +370,32 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
       },
     });
 
-    const res = await request(app).get(
-      `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
-    );
+    try {
+      const res = await authGet(
+        `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
+      );
 
-    expect(res.status).toBe(200);
-    const tiedTickets = res.body.data.filter(
-      (t: any) => t.id === ticketA.id || t.id === ticketB.id
-    );
-    expect(tiedTickets.length).toBe(2);
+      expect(res.status).toBe(200);
+      const tiedTickets = res.body.data.filter(
+        (t: any) => t.id === ticketA.id || t.id === ticketB.id
+      );
+      expect(tiedTickets.length).toBe(2);
 
-    // Secondary sort specification: id_desc (the ticket with larger UUID string must appear first)
-    const expectedFirstId = ticketA.id > ticketB.id ? ticketA.id : ticketB.id;
-    const expectedSecondId = ticketA.id > ticketB.id ? ticketB.id : ticketA.id;
+      // Secondary sort specification: id_desc (the ticket with larger UUID string must appear first)
+      const expectedFirstId = ticketA.id > ticketB.id ? ticketA.id : ticketB.id;
+      const expectedSecondId = ticketA.id > ticketB.id ? ticketB.id : ticketA.id;
 
-    expect(tiedTickets[0].id).toBe(expectedFirstId);
-    expect(tiedTickets[1].id).toBe(expectedSecondId);
+      expect(tiedTickets[0].id).toBe(expectedFirstId);
+      expect(tiedTickets[1].id).toBe(expectedSecondId);
+    } finally {
+      await prisma.ticket.deleteMany({
+        where: { id: { in: [ticketA.id, ticketB.id] } },
+      });
+    }
   });
 
   test("🔴 (AC-11) Should return 400 INVALID_QUERY when sort parameter is invalid", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&sort=unknown_field_asc`
     );
     expect(res.status).toBe(400);
@@ -349,23 +404,23 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   // ---------------------------------------------------------
-  // 3. Reference Validations (400 INVALID_REFERENCE)
+  // 3. Reference & Auth Validations
   // ---------------------------------------------------------
 
-  test("🔴 Should return 400 INVALID_REFERENCE when requesterId is missing", async () => {
+  test("🔴 Should return 401 SESSION_INVALID when auth token is missing", async () => {
     const res = await request(app).get("/api/v1/tickets");
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
   });
 
-  test("🔴 Should return 400 INVALID_REFERENCE for nonexistent requesterId", async () => {
-    const res = await request(app).get("/api/v1/tickets?requesterId=99999");
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("INVALID_REFERENCE");
+  test("✓ Should ignore client-provided requesterId in query and return authenticated user's tickets", async () => {
+    const res = await authGet("/api/v1/tickets?requesterId=99999");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 
   test("🔴 Should return 400 INVALID_REFERENCE for nonexistent categoryId", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&categoryId=99999`
     );
     expect(res.status).toBe(400);
@@ -377,7 +432,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   // ---------------------------------------------------------
 
   test("🔴 Should return 400 INVALID_QUERY when status is CLOSED (Only NEW allowed in Lab 2)", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&status=CLOSED`
     );
     expect(res.status).toBe(400);
@@ -386,7 +441,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
 
   test("🔴 Should return 400 INVALID_QUERY when search exceeds 100 characters", async () => {
     const longSearch = "a".repeat(101);
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&search=${longSearch}`
     );
     expect(res.status).toBe(400);
@@ -394,7 +449,7 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
   });
 
   test("🔴 Should return 400 INVALID_QUERY when limit is not 10, 20, or 50", async () => {
-    const res = await request(app).get(
+    const res = await authGet(
       `/api/v1/tickets?requesterId=${validRequesterId}&limit=15`
     );
     expect(res.status).toBe(400);
