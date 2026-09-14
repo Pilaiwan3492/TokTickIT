@@ -159,3 +159,31 @@ export const requirePasswordChanged = (
 
   next();
 };
+
+/**
+ * Middleware: Enforces role-based access control per the Authorization Matrix.
+ * Returns HTTP 403 INSUFFICIENT_PERMISSIONS when the authenticated user does not have an allowed role.
+ */
+export const requireRole = (allowedRoles: ("REQUESTER" | "IT_STAFF" | "ADMIN")[]) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: {
+          code: "INSUFFICIENT_PERMISSIONS",
+          message: "You do not have permission to access this resource.",
+        },
+      });
+    }
+
+    next();
+  };
+};

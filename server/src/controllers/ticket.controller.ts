@@ -67,8 +67,8 @@ export const createTicketHandler = async (req: AuthenticatedRequest, res: Respon
       });
     }
 
-    // Resolve or link requester profile for database foreign key compatibility
-    let requester = await prisma.requesterUser.findFirst({
+    // Resolve requester profile for database foreign key compatibility (do NOT auto-create per Lab 3 canonical User architecture)
+    const requester = await prisma.requesterUser.findFirst({
       where: {
         OR: [
           { userId },
@@ -77,16 +77,19 @@ export const createTicketHandler = async (req: AuthenticatedRequest, res: Respon
       },
     });
 
-    if (!requester) {
-      requester = await prisma.requesterUser.upsert({
-        where: { email: req.user!.email },
-        update: { userId },
-        create: {
-          name: req.user!.name,
-          email: req.user!.email,
-          userId,
-          isActive: true,
+    if (!requester || requester.isActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "REQUESTER_NOT_FOUND",
+          message: "Requester profile not found or inactive for this user.",
         },
+      });
+    }
+
+    if (requester.userId !== userId) {
+      await prisma.requesterUser.update({
+        where: { id: requester.id },
+        data: { userId },
       });
     }
 
@@ -289,34 +292,45 @@ export const getTicketsHandler = async (req: AuthenticatedRequest, res: Response
       }
     }
 
-    // Strictly enforce ownership by authenticated user; client-supplied requesterId is completely ignored per BR-03
-    const where: any = {
-      OR: [
-        { userId },
-        ...(requester ? [{ requesterId: requester.id }] : []),
-      ],
-    };
+    // Canonical ownership: Ticket.userId === userId.
+    // Legacy fallback ONLY for unmigrated tickets where userId is null but requesterId matches.
+    const ownershipCondition = requester
+      ? {
+          OR: [
+            { userId },
+            { AND: [{ userId: null }, { requesterId: requester.id }] },
+          ],
+        }
+      : { userId };
+
+    const andConditions: any[] = [ownershipCondition];
 
     if (categoryIdNum) {
-      where.categoryId = categoryIdNum;
+      andConditions.push({ categoryId: categoryIdNum });
     }
 
     if (priority && typeof priority === "string") {
-      where.requestedPriority = priority.toUpperCase();
+      andConditions.push({ requestedPriority: priority.toUpperCase() });
     }
 
     if (status && typeof status === "string") {
-      where.currentStatus = status.toUpperCase();
+      andConditions.push({ currentStatus: status.toUpperCase() });
     }
 
     if (search && typeof search === "string" && search.trim() !== "") {
       const queryStr = search.trim();
-      where.OR = [
-        { ticketNo: { contains: queryStr, mode: "insensitive" } },
-        { summary: { contains: queryStr, mode: "insensitive" } },
-        { description: { contains: queryStr, mode: "insensitive" } },
-      ];
+      andConditions.push({
+        OR: [
+          { ticketNo: { contains: queryStr, mode: "insensitive" } },
+          { summary: { contains: queryStr, mode: "insensitive" } },
+          { description: { contains: queryStr, mode: "insensitive" } },
+        ],
+      });
     }
+
+    const where: any = {
+      AND: andConditions,
+    };
 
     let orderBy: any[] = [];
     switch (sortOption) {
@@ -443,7 +457,9 @@ export const getTicketDetailHandler = async (
       },
     });
 
-    const isOwner = ticket.userId === userId || (requester && ticket.requesterId === requester.id);
+    const isOwner =
+      ticket.userId === userId ||
+      (ticket.userId === null && requester && ticket.requesterId === requester.id);
     if (!isOwner) {
       return res.status(403).json({
         error: {

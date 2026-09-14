@@ -109,7 +109,9 @@ export const uploadAttachmentHandler = async (req: AuthenticatedRequest, res: Re
       },
     });
 
-    const isOwner = ticket.userId === userId || (requester && ticket.requesterId === requester.id);
+    const isOwner =
+      ticket.userId === userId ||
+      (ticket.userId === null && requester && ticket.requesterId === requester.id);
     if (!isOwner) {
       return res.status(403).json({
         error: {
@@ -282,7 +284,9 @@ export const downloadAttachmentHandler = async (req: AuthenticatedRequest, res: 
       },
     });
 
-    const isOwner = attachment.ticket.userId === userId || (requester && attachment.ticket.requesterId === requester.id);
+    const isOwner =
+      attachment.ticket.userId === userId ||
+      (attachment.ticket.userId === null && requester && attachment.ticket.requesterId === requester.id);
     if (!isOwner) {
       return res.status(403).json({
         error: {
@@ -414,7 +418,9 @@ export const removeAttachmentHandler = async (req: AuthenticatedRequest, res: Re
       },
     });
 
-    const isOwner = attachment.ticket.userId === userId || (requester && attachment.ticket.requesterId === requester.id);
+    const isOwner =
+      attachment.ticket.userId === userId ||
+      (attachment.ticket.userId === null && requester && attachment.ticket.requesterId === requester.id);
     if (!isOwner) {
       return res.status(403).json({
         error: {

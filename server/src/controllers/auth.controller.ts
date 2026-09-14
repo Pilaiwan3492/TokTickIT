@@ -142,18 +142,50 @@ export const logoutHandler = async (req: AuthenticatedRequest, res: Response) =>
  * Authenticated endpoint: Retrieves current authenticated user profile.
  */
 export const getMeHandler = async (req: AuthenticatedRequest, res: Response) => {
-  const user = req.user!;
+  try {
+    const user = req.user!;
+    const prisma = getPrisma();
 
-  return res.status(200).json({
-    data: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      isActive: user.isActive,
-      mustChangePassword: user.mustChangePassword,
-    },
-  });
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+      },
+    });
+
+    if (!dbUser) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "User not found.",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      data: {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role,
+        isActive: dbUser.isActive,
+        mustChangePassword: dbUser.mustChangePassword,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getMeHandler:", error);
+    return res.status(500).json({
+      error: {
+        code: "SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
+  }
 };
 
 /**
