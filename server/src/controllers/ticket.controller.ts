@@ -86,10 +86,13 @@ export const createTicketHandler = async (req: AuthenticatedRequest, res: Respon
       });
     }
 
+    // Invariant: RequesterUser must already be linked to the authenticated User (established during migration/seed/admin creation)
     if (requester.userId !== userId) {
-      await prisma.requesterUser.update({
-        where: { id: requester.id },
-        data: { userId },
+      return res.status(400).json({
+        error: {
+          code: "REQUESTER_PROFILE_MISMATCH",
+          message: "Requester profile is not linked to the authenticated user.",
+        },
       });
     }
 
@@ -429,8 +432,23 @@ export const getTicketDetailHandler = async (
         id,
       },
       include: {
-        requester: true,
-        user: true,
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            isActive: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
         category: true,
         relatedSystem: true,
         attachments: true,

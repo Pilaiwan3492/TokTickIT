@@ -441,7 +441,7 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
   it("should return HTTP 401 SESSION_INVALID when JWT claims are malformed or missing sub", async () => {
     const secret = getJwtSecret();
     const badClaimsToken = jwt.sign(
-      { jti: "valid-jti", role: "REQUESTER" },
+      { jti: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", role: "REQUESTER", mustChangePassword: false },
       secret,
       { algorithm: "HS256" }
     );
@@ -454,10 +454,38 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     expect(res.body.error.code).toBe("SESSION_INVALID");
   });
 
+  it("should return HTTP 401 SESSION_INVALID when JWT jti is not a valid UUID", async () => {
+    const secret = getJwtSecret();
+    const badJtiToken = jwt.sign(
+      {
+        jti: "not-a-valid-uuid-format",
+        sub: "usr-123",
+        role: "REQUESTER",
+        mustChangePassword: false,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      secret,
+      { algorithm: "HS256" }
+    );
+
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${badJtiToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
   it("should return HTTP 401 SESSION_INVALID when JWT role claim is not a permitted role", async () => {
     const secret = getJwtSecret();
     const badRoleToken = jwt.sign(
-      { jti: "valid-jti", sub: "usr-123", role: "UNAUTHORIZED_ROLE", exp: Math.floor(Date.now() / 1000) + 3600 },
+      {
+        jti: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        sub: "usr-123",
+        role: "UNAUTHORIZED_ROLE",
+        mustChangePassword: false,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
       secret,
       { algorithm: "HS256" }
     );
@@ -465,6 +493,50 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     const res = await request(app)
       .get("/api/v1/auth/me")
       .set("Authorization", `Bearer ${badRoleToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when JWT mustChangePassword claim is missing or not a boolean", async () => {
+    const secret = getJwtSecret();
+    const badMustChangePasswordToken = jwt.sign(
+      {
+        jti: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        sub: "usr-123",
+        role: "REQUESTER",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      secret,
+      { algorithm: "HS256" }
+    );
+
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${badMustChangePasswordToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when JWT iat claim is missing or non-positive", async () => {
+    const secret = getJwtSecret();
+    const badIatToken = jwt.sign(
+      {
+        jti: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        sub: "usr-123",
+        role: "REQUESTER",
+        mustChangePassword: false,
+        iat: 0,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      secret,
+      { algorithm: "HS256", noTimestamp: true }
+    );
+
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${badIatToken}`);
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("SESSION_INVALID");
@@ -558,6 +630,119 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
       expect(res.body.error.code).toBe("FORBIDDEN");
     } finally {
       await prisma.ticket.deleteMany({ where: { id: bobTicket.id } });
+    }
+  });
+
+  // SECURITY-01: Ticket Detail response excludes user passwordHash and tokenVersion
+  it("SECURITY-01: should exclude passwordHash and tokenVersion in Ticket Detail response", async () => {
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "bob@example.com", password: "Password123!" });
+    const bobToken = loginRes.body.data.token;
+    const bobUser = await prisma.user.findUnique({ where: { email: "bob@example.com" } });
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        ticketNo: `TKT-SEC-${Date.now().toString().slice(-6)}`,
+        userId: bobUser!.id,
+        requesterId: 1,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Security verification ticket",
+        description: "Checking that confidential credentials and security counters are completely omitted.",
+        requestedPriority: "MEDIUM",
+        currentStatus: "NEW",
+      },
+    });
+
+    try {
+      const res = await request(app)
+        .get(`/api/v1/tickets/${ticket.id}`)
+        .set("Authorization", `Bearer ${bobToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data.user).toBeDefined();
+      expect(res.body.data.user.passwordHash).toBeUndefined();
+      expect(res.body.data.user.tokenVersion).toBeUndefined();
+      expect(res.body.data.requester.passwordHash).toBeUndefined();
+      expect(res.body.data.requester.tokenVersion).toBeUndefined();
+
+      const rawJson = JSON.stringify(res.body);
+      expect(rawJson).not.toContain("passwordHash");
+      expect(rawJson).not.toContain("tokenVersion");
+    } finally {
+      await prisma.ticket.deleteMany({ where: { id: ticket.id } });
+    }
+  });
+
+  // API-13c: Requester profile mismatch check in createTicketHandler
+  it("API-13c: should return HTTP 400 REQUESTER_PROFILE_MISMATCH when requester profile is not linked to authenticated user", async () => {
+    const daveHash = bcrypt.hashSync("Password123!", 10);
+    const dave = await prisma.user.upsert({
+      where: { email: "dave@example.com" },
+      update: { isActive: true, mustChangePassword: false },
+      create: {
+        email: "dave@example.com",
+        name: "Dave Mismatch",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: daveHash,
+      },
+    });
+
+    const otherUser = await prisma.user.upsert({
+      where: { email: "other-user@example.com" },
+      update: { isActive: true, mustChangePassword: false },
+      create: {
+        email: "other-user@example.com",
+        name: "Other User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: daveHash,
+      },
+    });
+
+    await prisma.requesterUser.upsert({
+      where: { email: "dave@example.com" },
+      update: { userId: otherUser.id, isActive: true },
+      create: {
+        name: "Dave Mismatch",
+        email: "dave@example.com",
+        userId: otherUser.id,
+        isActive: true,
+      },
+    });
+
+    const daveLogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dave@example.com", password: "Password123!" });
+    const daveToken = daveLogin.body.data.token;
+
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+
+    try {
+      const res = await request(app)
+        .post("/api/v1/tickets")
+        .set("Authorization", `Bearer ${daveToken}`)
+        .send({
+          categoryId: category!.id,
+          relatedSystemId: relatedSystem!.id,
+          summary: "Ticket with mismatched requester profile",
+          description: "Testing invariant check in createTicketHandler.",
+          requestedPriority: "LOW",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("REQUESTER_PROFILE_MISMATCH");
+    } finally {
+      await prisma.requesterUser.deleteMany({ where: { email: "dave@example.com" } });
+      await prisma.user.deleteMany({ where: { email: { in: ["dave@example.com", "other-user@example.com"] } } });
     }
   });
 

@@ -58,13 +58,15 @@ export const signToken = (user: TokenUserPayload): string => {
  * Cryptographically verifies token signature, algorithm, and expiration.
  * Throws jwt.TokenExpiredError or jwt.JsonWebTokenError on failure.
  */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const verifyToken = (token: string): TokenPayload => {
   const secret = getJwtSecret();
   const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
   }) as any;
 
-  // Strict claim validation per Point 8
+  // Strict claim validation per TokenPayload specification
   const validRoles = ["REQUESTER", "IT_STAFF", "ADMIN"];
   if (
     !payload ||
@@ -72,8 +74,11 @@ export const verifyToken = (token: string): TokenPayload => {
     typeof payload.sub !== "string" ||
     payload.sub.trim().length === 0 ||
     typeof payload.jti !== "string" ||
-    payload.jti.trim().length === 0 ||
+    !UUID_REGEX.test(payload.jti) ||
     !validRoles.includes(payload.role) ||
+    typeof payload.mustChangePassword !== "boolean" ||
+    typeof payload.iat !== "number" ||
+    payload.iat <= 0 ||
     typeof payload.exp !== "number" ||
     payload.exp <= 0
   ) {
