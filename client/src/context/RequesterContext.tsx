@@ -28,6 +28,11 @@ const LegacyAuthAdapter: React.FC<{
   children: React.ReactNode;
   selectedRequester: Requester | null;
 }> = ({ children, selectedRequester }) => {
+  // Strict production safeguard: legacy adapter only executes inside automated test runner
+  if (import.meta.env.MODE !== "test") {
+    return <>{children}</>;
+  }
+
   const existingAuth = useContext(AuthContext);
   if (existingAuth) {
     return <>{children}</>;

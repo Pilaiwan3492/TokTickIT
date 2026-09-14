@@ -26,8 +26,18 @@ export const notifySessionExpired = () => {
 };
 
 /**
+ * Global mandatory password change dispatcher.
+ * Dispatched when a protected API responds with HTTP 403 PASSWORD_CHANGE_REQUIRED.
+ */
+export const notifyPasswordChangeRequired = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("toktickit:password-change-required"));
+  }
+};
+
+/**
  * Centralized fetch client that injects Authorization Bearer tokens,
- * sets Content-Type for JSON payloads, and handles 401 SESSION_* errors globally.
+ * sets Content-Type for JSON payloads, and handles 401 SESSION_* and 403 PASSWORD_CHANGE_REQUIRED errors globally.
  */
 export async function apiFetch(
   path: string,
@@ -79,20 +89,37 @@ export async function apiFetch(
 
   if (res.status === 401) {
     // Intercept session invalidation codes and notify AuthContext
-    const clone = res.clone();
     try {
-      const errJson = await clone.json();
-      const code = errJson?.error?.code;
-      if (
-        code === "SESSION_REVOKED" ||
-        code === "SESSION_EXPIRED" ||
-        code === "SESSION_INVALID" ||
-        code === "PASSWORD_CHANGE_REQUIRED"
-      ) {
+      const clone = typeof res.clone === "function" ? res.clone() : null;
+      if (clone) {
+        const errJson = await clone.json();
+        const code = errJson?.error?.code;
+        if (
+          code === "SESSION_REVOKED" ||
+          code === "SESSION_EXPIRED" ||
+          code === "SESSION_INVALID"
+        ) {
+          notifySessionExpired();
+        }
+      } else {
         notifySessionExpired();
       }
     } catch {
       notifySessionExpired();
+    }
+  } else if (res.status === 403) {
+    // Intercept mandatory password change required from backend guard
+    try {
+      const clone = typeof res.clone === "function" ? res.clone() : null;
+      if (clone) {
+        const errJson = await clone.json();
+        const code = errJson?.error?.code;
+        if (code === "PASSWORD_CHANGE_REQUIRED") {
+          notifyPasswordChangeRequired();
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 

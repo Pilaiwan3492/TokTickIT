@@ -97,6 +97,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
+  // Global password-change-required listener (dispatched by apiFetch on 403 PASSWORD_CHANGE_REQUIRED)
+  useEffect(() => {
+    const handlePasswordChangeRequired = () => {
+      setUser((prev) => (prev ? { ...prev, mustChangePassword: true } : null));
+    };
+
+    window.addEventListener(
+      "toktickit:password-change-required",
+      handlePasswordChangeRequired
+    );
+    return () => {
+      window.removeEventListener(
+        "toktickit:password-change-required",
+        handlePasswordChangeRequired
+      );
+    };
+  }, []);
+
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<AuthUser> => {
       const authData = await loginApi(credentials);

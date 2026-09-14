@@ -135,6 +135,11 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **UI-28** | UI | AC-24, BR-21 | Admin Edit User modal: Self-deactivation disabled | Active toggle disabled with safety tooltip when editing own account | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
 | **UI-29** | UI | AC-25, BR-22 | Admin Edit User modal: Last admin deactivation disabled | Active toggle disabled with safety tooltip when editing last admin | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
 | **UI-30** | UI | FR-22, BR-23 | Admin Reset Initial Password modal flow | Displays confirmation modal and dispatches reset request | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
+| **CLIENT-AUTH-01** | UI | AC-03, AC-10, BR-03 | MyTickets requests `/api/v1/tickets` with Bearer header and omits `requesterId` | HTTP 200; uses session token; zero `requesterId` in query | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
+| **CLIENT-AUTH-02** | UI | AC-03, AC-09, BR-03 | CreateTicket posts ticket with Bearer header and omits `requesterId` from body | HTTP 201; server enforces `userId` from token; body excludes `requesterId` | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
+| **CLIENT-AUTH-03** | UI | AC-03, AC-10, BR-12 | TicketDetail loads ticket using Bearer token and omits `requesterId` from GET url | HTTP 200; retrieves ticket via session token | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
+| **CLIENT-AUTH-04** | UI | BR-12, Migration | Attachment actions (upload, download, remove) use Bearer authentication | Dispatches requests with Bearer token; zero `requesterId` query params | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
+| **CLIENT-AUTH-05** | UI | AC-02, BR-02 | HTTP 403 `PASSWORD_CHANGE_REQUIRED` dispatches `password-change-required` event | `apiFetch` detects 403 code; fires window event; flags `mustChangePassword` | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
 
 ---
 
