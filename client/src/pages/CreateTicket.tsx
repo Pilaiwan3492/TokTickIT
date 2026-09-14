@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/apiClient";
 
 interface Category {
   id: number;
@@ -25,7 +26,7 @@ const formatFileSize = (bytes: number): string => {
 
 export default function CreateTicket() {
   const navigate = useNavigate();
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -50,7 +51,7 @@ export default function CreateTicket() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/v1/categories");
+        const res = await apiFetch("/api/v1/categories");
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.data || [];
@@ -63,7 +64,7 @@ export default function CreateTicket() {
 
     const fetchRelatedSystems = async () => {
       try {
-        const res = await fetch("/api/v1/related-systems");
+        const res = await apiFetch("/api/v1/related-systems");
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.data || [];
@@ -114,8 +115,8 @@ export default function CreateTicket() {
     setGeneralError("");
     setAttachmentWarning("");
 
-    if (!selectedRequester?.id) {
-      setGeneralError("Please select a requester before creating a ticket.");
+    if (!user) {
+      setGeneralError("Authentication required. Please sign in.");
       return;
     }
 
@@ -142,11 +143,9 @@ export default function CreateTicket() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/v1/tickets", {
+      const response = await apiFetch("/api/v1/tickets", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          requesterId: Number(selectedRequester.id),
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,
@@ -175,8 +174,8 @@ export default function CreateTicket() {
             try {
               const formData = new FormData();
               formData.append("file", file);
-              const attachRes = await fetch(
-                `/api/v1/tickets/${newTicketId}/attachments?requesterId=${selectedRequester.id}`,
+              const attachRes = await apiFetch(
+                `/api/v1/tickets/${newTicketId}/attachments`,
                 {
                   method: "POST",
                   body: formData,

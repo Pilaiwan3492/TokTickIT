@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useRequester } from "../context/RequesterContext";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/apiClient";
 
 interface Category {
   id: number;
@@ -29,7 +30,7 @@ interface Ticket {
 
 export default function MyTickets() {
   const navigate = useNavigate();
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -60,15 +61,6 @@ export default function MyTickets() {
     debouncedSearch || categoryId || priority || status
   );
 
-  // BR-22:
-  // If no Development Requester is selected,
-  // return to the Requester Selection screen.
-  useEffect(() => {
-    if (!selectedRequester?.id) {
-      navigate("/select-requester");
-    }
-  }, [selectedRequester, navigate]);
-
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -83,7 +75,7 @@ export default function MyTickets() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/v1/categories");
+        const res = await apiFetch("/api/v1/categories");
 
         if (res.ok) {
           const data = await res.json();
@@ -99,20 +91,15 @@ export default function MyTickets() {
     fetchCategories();
   }, []);
 
-  // Fetch tickets whenever requester, filters, sorting,
+  // Fetch tickets whenever filters, sorting,
   // or pagination changes.
   useEffect(() => {
-    if (!selectedRequester?.id) {
-      return;
-    }
-
     const fetchTickets = async () => {
       setIsLoading(true);
       setError("");
 
       try {
         const params = new URLSearchParams({
-          requesterId: String(selectedRequester.id),
           page: String(page),
           limit: String(limit),
           sort,
@@ -134,7 +121,7 @@ export default function MyTickets() {
           params.append("status", status);
         }
 
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/v1/tickets?${params.toString()}`
         );
 
@@ -172,7 +159,7 @@ export default function MyTickets() {
 
     fetchTickets();
   }, [
-    selectedRequester,
+    user,
     debouncedSearch,
     categoryId,
     priority,
