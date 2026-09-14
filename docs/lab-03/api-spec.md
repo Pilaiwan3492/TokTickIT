@@ -540,7 +540,8 @@ All Lab 2 endpoints derive Requester identity directly from the authenticated se
 | `400 Bad Request` | `LAST_ACTIVE_ADMIN_PROTECTED` | `"System must have at least one active administrator."` | Attempting to deactivate or reassign last active admin (BR-22). |
 | `401 Unauthorized` | `INVALID_CREDENTIALS` | `"Invalid email or password. Please try again."` | Invalid email or incorrect password. |
 | `401 Unauthorized` | `ACCOUNT_INACTIVE` | `"Your account is currently inactive. Please contact an administrator."` | Valid credentials supplied for inactive account (`isActive: false`). |
-| `401 Unauthorized` | `SESSION_EXPIRED` | `"Your session has expired. Please sign in again."` | Expired or malformed JWT Bearer token. |
+| `401 Unauthorized` | `SESSION_EXPIRED` | `"Your session has expired. Please sign in again."` | Token signature is valid but expiration timestamp (`exp`) has passed. |
+| `401 Unauthorized` | `SESSION_INVALID` | `"Authentication token is invalid or corrupted."` | Forged token, invalid signature, corrupted payload, or signed with wrong secret. |
 | `401 Unauthorized` | `SESSION_REVOKED` | `"Your session has been revoked. Please sign in again."` | Request presenting a token revoked via server-side logout or deactivation. |
 | `403 Forbidden` | `PASSWORD_CHANGE_REQUIRED` | `"You must change your password before continuing."` | User with `mustChangePassword: true` invoking business APIs. |
 | `403 Forbidden` | `INSUFFICIENT_PERMISSIONS` | `"You do not have permission to perform this action."` | Role mismatch or requester accessing staff/admin endpoints. |

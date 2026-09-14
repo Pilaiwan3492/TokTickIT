@@ -289,9 +289,9 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
     expect(category).not.toBeNull();
     expect(relatedSystem).not.toBeNull();
 
-    // Create two tickets with the EXACT SAME createdAt timestamp
-    const tiedTimestamp = new Date("2026-07-07T07:07:07.000Z");
-    const uniqueSuffix = Date.now().toString().slice(-6);
+    // Create two tickets with the EXACT SAME createdAt timestamp in the future so they are guaranteed at the top of createdAt_desc
+    const tiedTimestamp = new Date(Date.now() + 3600000);
+    const uniqueSuffix = `${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6)}`;
 
     const ticketA = await prisma.ticket.create({
       data: {
@@ -321,22 +321,28 @@ describe("My Tickets API Contract Tests (Lab 2 — Section 12)", () => {
       },
     });
 
-    const res = await request(app).get(
-      `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
-    );
+    try {
+      const res = await request(app).get(
+        `/api/v1/tickets?requesterId=${validRequesterId}&sort=createdAt_desc&limit=50`
+      );
 
-    expect(res.status).toBe(200);
-    const tiedTickets = res.body.data.filter(
-      (t: any) => t.id === ticketA.id || t.id === ticketB.id
-    );
-    expect(tiedTickets.length).toBe(2);
+      expect(res.status).toBe(200);
+      const tiedTickets = res.body.data.filter(
+        (t: any) => t.id === ticketA.id || t.id === ticketB.id
+      );
+      expect(tiedTickets.length).toBe(2);
 
-    // Secondary sort specification: id_desc (the ticket with larger UUID string must appear first)
-    const expectedFirstId = ticketA.id > ticketB.id ? ticketA.id : ticketB.id;
-    const expectedSecondId = ticketA.id > ticketB.id ? ticketB.id : ticketA.id;
+      // Secondary sort specification: id_desc (the ticket with larger UUID string must appear first)
+      const expectedFirstId = ticketA.id > ticketB.id ? ticketA.id : ticketB.id;
+      const expectedSecondId = ticketA.id > ticketB.id ? ticketB.id : ticketA.id;
 
-    expect(tiedTickets[0].id).toBe(expectedFirstId);
-    expect(tiedTickets[1].id).toBe(expectedSecondId);
+      expect(tiedTickets[0].id).toBe(expectedFirstId);
+      expect(tiedTickets[1].id).toBe(expectedSecondId);
+    } finally {
+      await prisma.ticket.deleteMany({
+        where: { id: { in: [ticketA.id, ticketB.id] } },
+      });
+    }
   });
 
   test("🔴 (AC-11) Should return 400 INVALID_QUERY when sort parameter is invalid", async () => {

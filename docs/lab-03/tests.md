@@ -38,18 +38,19 @@ The test plan is established **before implementation** (Test-Driven Development 
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **API-01** | API | AC-01, BR-01, BR-05 | Valid login with active account credentials | HTTP 200 OK; returns valid JWT Bearer token and safe user profile | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-02** | API | AC-06, BR-01, BR-26 | Login with incorrect password | HTTP 401 Unauthorized with safe code `INVALID_CREDENTIALS` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-03** | API | AC-06, BR-01, BR-26 | Login with unregistered email address | HTTP 401 Unauthorized with safe code `INVALID_CREDENTIALS` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-04** | API | AC-05, BR-01, BR-27 | Login attempt for inactive account (`isActive: false`) | HTTP 401 Unauthorized with code `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-05** | API | AC-02, BR-02 | User with `mustChangePassword: true` invoking normal API | HTTP 403 Forbidden with code `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-06** | API | AC-02, BR-05, BR-06 | Change password with valid credentials meeting policy | HTTP 200 OK; updates password hash and sets `mustChangePassword: false` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-07** | API | AC-02, BR-06 | Change password where new password matches initial password | HTTP 400 Bad Request with validation error | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-08** | API | AC-02, BR-06 | Change password failing complexity rule (< 8 chars, no symbol) | HTTP 400 Bad Request with validation details | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-09** | API | FR-04, BR-03 | Retrieve profile of authenticated user (`GET /api/v1/auth/me`) | HTTP 200 OK with authenticated user ID, name, email, role | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-10** | API | AC-07, BR-28 | Invoke logout (`POST /api/v1/auth/logout`) with active Bearer token | HTTP 200 OK; server adds `jti` to revoked token registry | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-11** | API | AC-07, BR-28 | Request protected endpoint using a revoked token | HTTP 401 Unauthorized with code `SESSION_REVOKED` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-12** | API | BR-05, BR-28 | Request protected endpoint with expired or forged JWT | HTTP 401 Unauthorized with code `SESSION_EXPIRED` | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
+| **API-01** | API | AC-01, BR-01, BR-05 | Valid login with active account credentials | HTTP 200 OK; returns valid JWT Bearer token and safe user profile | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-02** | API | AC-06, BR-01, BR-26 | Login with incorrect password | HTTP 401 Unauthorized with safe code `INVALID_CREDENTIALS` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-03** | API | AC-06, BR-01, BR-26 | Login with unregistered email address | HTTP 401 Unauthorized with safe code `INVALID_CREDENTIALS` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-04** | API | AC-05, BR-01, BR-27 | Login attempt for inactive account (`isActive: false`) | HTTP 401 Unauthorized with code `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-05** | API | AC-02, BR-02 | User with `mustChangePassword: true` invoking normal API | HTTP 403 Forbidden with code `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-06** | API | AC-02, BR-05, BR-06 | Change password with valid credentials meeting policy | HTTP 200 OK; updates password hash and sets `mustChangePassword: false` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-07** | API | AC-02, BR-06 | Change password where new password matches initial password | HTTP 400 Bad Request with validation error | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-08** | API | AC-02, BR-06 | Change password failing complexity rule (< 8 chars, no symbol) | HTTP 400 Bad Request with validation details | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-09** | API | FR-04, BR-03 | Retrieve profile of authenticated user (`GET /api/v1/auth/me`) | HTTP 200 OK with authenticated user ID, name, email, role | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-10** | API | AC-07, BR-28 | Invoke logout (`POST /api/v1/auth/logout`) with active Bearer token | HTTP 200 OK; server adds `jti` to revoked token registry | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-11** | API | AC-07, BR-28 | Request protected endpoint using a revoked token | HTTP 401 Unauthorized with code `SESSION_REVOKED` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-12a** | API | BR-05, BR-28 | Request protected endpoint with expired JWT | HTTP 401 Unauthorized with code `SESSION_EXPIRED` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
+| **API-12b** | API | BR-05, BR-28 | Request protected endpoint with forged or tampered JWT | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-03/auth.api.test.ts` | `Passing` |
 | **API-13** | API | AC-03, BR-03 | Requester ticket operation ignoring client-provided `requesterId` | HTTP 200/201; server enforces `requesterId` from session token | `server/tests/lab-03/authorization.api.test.ts` | `Planned` |
 | **API-14** | API | AC-03, BR-12 | Requester attempts to access another Requester's ticket | HTTP 403 Forbidden (or 404); cross-requester access blocked | `server/tests/lab-03/authorization.api.test.ts` | `Planned` |
 | **API-15** | API | AC-08, BR-24 | Requester attempts to query IT Staff Queue (`/api/v1/staff/*`) | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-03/authorization.api.test.ts` | `Planned` |
@@ -222,7 +223,7 @@ Every Business Rule from `docs/lab-03/specification.md` is mapped to its automat
 | **BR-02** | Mandatory password change gating before normal app access | `API-05`, `API-06`, `UI-07`, `UI-10`, `E2E-02`, `MIG-01` | API, UI, E2E, Mig |
 | **BR-03** | Server-side identity determines Requester ownership, ignoring client ID | `API-09`, `API-13`, `API-46`, `MIG-02` | API, Migration |
 | **BR-04** | Exactly one permitted role per user (`REQUESTER`, `IT_STAFF`, `ADMIN`) | `API-40`, `UI-27`, `E2E-08` | API, UI, E2E |
-| **BR-05** | Bcrypt password hashing ($\ge 10$ rounds); never stored in plaintext | `API-01`, `API-06`, `API-12`, `API-40`, `MIG-01` | API, Migration |
+| **BR-05** | Bcrypt password hashing ($\ge 10$ rounds); never stored in plaintext | `API-01`, `API-06`, `API-12a`, `API-12b`, `API-40`, `MIG-01` | API, Migration |
 | **BR-06** | Password complexity ($\ge 8$ chars, upper, lower, symbol, diff from temp) | `API-06`, `API-07`, `API-08`, `UI-08`, `UI-09`, `E2E-02` | API, UI, E2E |
 | **BR-07** | Public Comments visible to all; Internal Notes restricted to Staff/Admin | `API-32`, `API-33`, `API-37`, `UI-22`, `UI-23`, `E2E-07` | API, UI, E2E |
 | **BR-08** | Append-only architecture for comments & notes; no editing or deletion | `API-32`, `API-37` | API |

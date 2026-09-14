@@ -1,0 +1,82 @@
+import { randomUUID } from "crypto";
+import jwt from "jsonwebtoken";
+
+export interface TokenUserPayload {
+  id: string;
+  email: string;
+  name: string;
+  role: "REQUESTER" | "IT_STAFF" | "ADMIN";
+  mustChangePassword: boolean;
+}
+
+export interface TokenPayload extends TokenUserPayload {
+  jti: string;
+  sub: string;
+  iat: number;
+  exp: number;
+}
+
+/**
+ * Validates and retrieves the JWT signing secret from environment.
+ * Throws a fatal security error if JWT_SECRET is missing or under 32 characters.
+ * Zero hardcoded fallback exists by design.
+ */
+export const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.trim().length < 32) {
+    throw new Error(
+      "FATAL SECURITY ERROR: JWT_SECRET environment variable is missing or shorter than 32 characters."
+    );
+  }
+  return secret.trim();
+};
+
+/**
+ * Signs a canonical Bearer JWT token with HS256, 8-hour expiry, and unique UUID jti.
+ */
+export const signToken = (user: TokenUserPayload): string => {
+  const secret = getJwtSecret();
+  const jti = randomUUID();
+
+  const payload = {
+    jti,
+    sub: user.id,
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+  };
+
+  return jwt.sign(payload, secret, {
+    algorithm: "HS256",
+    expiresIn: "8h",
+  });
+};
+
+/**
+ * Cryptographically verifies token signature, algorithm, and expiration.
+ * Throws jwt.TokenExpiredError or jwt.JsonWebTokenError on failure.
+ */
+export const verifyToken = (token: string): TokenPayload => {
+  const secret = getJwtSecret();
+  return jwt.verify(token, secret, {
+    algorithms: ["HS256"],
+  }) as TokenPayload;
+};
+
+/**
+ * Decodes a token without verifying its cryptographic signature.
+ *
+ * WARNING: This function is strictly informational/diagnostic and
+ * MUST NEVER be used for authentication, authorization, or security decisions.
+ * All security decisions and logout revocations must rely on claims verified by verifyToken().
+ */
+export const decodeToken = (token: string): TokenPayload | null => {
+  try {
+    const decoded = jwt.decode(token);
+    return decoded as TokenPayload | null;
+  } catch {
+    return null;
+  }
+};

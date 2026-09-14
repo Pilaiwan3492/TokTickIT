@@ -329,7 +329,7 @@ The REST API contract is fully documented in `docs/lab-03/api-spec.md`. Key endp
   ```
   - **Algorithm**: HMAC-SHA256 (HS256) signed using server-side secret `JWT_SECRET` (minimum 32 characters, never committed to source control).
   - **Token Payload**: `{ jti: string (UUID), sub: userId, email: string, name: string, role: Role, mustChangePassword: boolean, iat: number, exp: number }`.
-  - **Token Expiration**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded from Lab 3 scope; upon expiration, users are prompted to log in again.
+  - **Token Expiration & Security**: 8 hours from issuance. Refresh tokens and sliding sessions are explicitly excluded from Lab 3 scope. When an expired token is presented, the server returns `401 Unauthorized` (`SESSION_EXPIRED`). When an invalid, forged, or tampered token is presented, the server returns `401 Unauthorized` (`SESSION_INVALID`).
   - **Client Token Storage**: Managed in client-side React `AuthContext` (in memory), with persistence to `localStorage` under key `toktickit_auth_token` to maintain authentication state across browser page refreshes in local lab environments.
   - **Server-Side Logout Invalidation**: Calling `POST /api/v1/auth/logout` records the token's unique identifier (`jti`) into a server-side token revocation registry until its expiration timestamp (`exp`). Even if a token is copied or stolen, it is rendered immediately invalid upon logout, rejecting any subsequent API access with `401 Unauthorized` (`SESSION_REVOKED`). The client simultaneously clears `toktickit_auth_token` from `localStorage` and resets `AuthContext`.
   - **Token Security Guardrails**: Because JWT tokens are held in client storage, the application enforces strict security practices:
