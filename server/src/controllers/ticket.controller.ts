@@ -1,29 +1,26 @@
 import { Response } from "express";
-import { RequesterRequest } from "../middleware/requesterGuard.js";
+import { AuthenticatedRequest } from "../middleware/authGuard.js";
 import { getPrisma } from "../prisma.js";
 import { generateTicketNumber } from "../utils/ticketNoGenerator.js";
 
-export const createTicketHandler = async (req: RequesterRequest, res: Response) => {
+export const createTicketHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma();
     const { categoryId, relatedSystemId, summary, description, requestedPriority } = req.body;
     
-    const requesterId = req.body?.requesterId || req.requester?.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
 
     const trimmedSummary = typeof summary === "string" ? summary.trim() : "";
     const trimmedDescription = typeof description === "string" ? description.trim() : "";
     const fields: Record<string, string> = {};
-
-    const requesterIdNum = Number(requesterId);
-    if (
-      requesterId === undefined ||
-      requesterId === null ||
-      typeof requesterId === "boolean" ||
-      !Number.isInteger(requesterIdNum) ||
-      requesterIdNum <= 0
-    ) {
-      fields.requesterId = "Requester ID is required and must be a positive integer.";
-    }
 
     const validPriorities = ["LOW", "MEDIUM", "HIGH"];
     if (!requestedPriority || !validPriorities.includes(requestedPriority)) {
@@ -70,17 +67,38 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
       });
     }
 
-    const [requester, category, relatedSystem] = await Promise.all([
-      prisma.requesterUser.findUnique({ where: { id: requesterIdNum } }),
+    // Resolve or link requester profile for database foreign key compatibility
+    let requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    if (!requester) {
+      requester = await prisma.requesterUser.upsert({
+        where: { email: req.user!.email },
+        update: { userId },
+        create: {
+          name: req.user!.name,
+          email: req.user!.email,
+          userId,
+          isActive: true,
+        },
+      });
+    }
+
+    const [category, relatedSystem] = await Promise.all([
       prisma.category.findUnique({ where: { id: categoryIdNum } }),
       prisma.relatedSystem.findUnique({ where: { id: relatedSystemIdNum } }),
     ]);
 
-    const isRequesterInvalid = !requester || (requester as any).isActive === false;
     const isCategoryInvalid = !category || (category as any).isActive === false;
     const isSystemInvalid = !relatedSystem || (relatedSystem as any).isActive === false;
 
-    if (isRequesterInvalid || isCategoryInvalid || isSystemInvalid) {
+    if (isCategoryInvalid || isSystemInvalid) {
       return res.status(400).json({
         error: {
           code: "INVALID_REFERENCE",
@@ -94,13 +112,16 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
     const newTicket = await prisma.ticket.create({
       data: {
         ticketNo,
-        requesterId: requesterIdNum,
+        userId,
+        requesterId: requester.id,
         categoryId: categoryIdNum,
         relatedSystemId: relatedSystemIdNum,
         summary: trimmedSummary,
         description: trimmedDescription,
         requestedPriority,
+        itPriority: requestedPriority,
         currentStatus: "NEW",
+        status: "NEW",
       },
     });
 
@@ -118,39 +139,28 @@ export const createTicketHandler = async (req: RequesterRequest, res: Response) 
   }
 };
 
-export const getTicketsHandler = async (req: RequesterRequest, res: Response) => {
+export const getTicketsHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma();
 
-    const rawRequesterId = req.query.requesterId || req.requester?.id;
-
-    if (
-      !rawRequesterId ||
-      typeof rawRequesterId === "boolean" ||
-      !/^\d+$/.test(String(rawRequesterId)) ||
-      Number(rawRequesterId) <= 0
-    ) {
-      return res.status(400).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
         error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester ID is required and must be a positive integer.",
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
         },
       });
     }
-    const requesterIdNum = Number(rawRequesterId);
 
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: requesterIdNum },
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
     });
-
-    if (!requester || (requester as any).isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester not found or inactive.",
-        },
-      });
-    }
 
     const { search, categoryId, priority, status, page, limit, sort } = req.query;
 
@@ -279,8 +289,12 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
       }
     }
 
+    // Strictly enforce ownership by authenticated user; client-supplied requesterId is completely ignored per BR-03
     const where: any = {
-      requesterId: requesterIdNum,
+      OR: [
+        { userId },
+        ...(requester ? [{ requesterId: requester.id }] : []),
+      ],
     };
 
     if (categoryIdNum) {
@@ -367,30 +381,19 @@ export const getTicketsHandler = async (req: RequesterRequest, res: Response) =>
 };
 
 export const getTicketDetailHandler = async (
-  req: RequesterRequest,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const prisma = getPrisma();
-
     const { id } = req.params;
 
-    const rawRequesterId =
-      req.query.requesterId ?? req.requester?.id;
-
-    // Validate requester context
-    if (
-      rawRequesterId === undefined ||
-      rawRequesterId === null ||
-      typeof rawRequesterId === "boolean" ||
-      !/^\d+$/.test(String(rawRequesterId)) ||
-      Number(rawRequesterId) <= 0
-    ) {
-      return res.status(400).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
         error: {
-          code: "INVALID_REFERENCE",
-          message:
-            "Requester ID is required and must be a positive integer.",
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
         },
       });
     }
@@ -406,25 +409,6 @@ export const getTicketDetailHandler = async (
       });
     }
 
-
-    const requesterId = Number(rawRequesterId);
-
-    // Verify requester exists and is active
-    const requester = await prisma.requesterUser.findUnique({
-      where: {
-        id: requesterId,
-      },
-    });
-
-    if (!requester || requester.isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester not found or inactive.",
-        },
-      });
-    }
-
     // Find ticket together with required detail data and attachments.
     const ticket = await prisma.ticket.findUnique({
       where: {
@@ -432,6 +416,7 @@ export const getTicketDetailHandler = async (
       },
       include: {
         requester: true,
+        user: true,
         category: true,
         relatedSystem: true,
         attachments: true,
@@ -448,8 +433,18 @@ export const getTicketDetailHandler = async (
       });
     }
 
-    // Ownership enforcement
-    if (ticket.requesterId !== requesterId) {
+    // Ownership enforcement: ticket.userId is canonical Lab 3 owner; fallback to linked requesterId
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    const isOwner = ticket.userId === userId || (requester && ticket.requesterId === requester.id);
+    if (!isOwner) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",

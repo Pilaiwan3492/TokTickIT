@@ -60,9 +60,27 @@ export const signToken = (user: TokenUserPayload): string => {
  */
 export const verifyToken = (token: string): TokenPayload => {
   const secret = getJwtSecret();
-  return jwt.verify(token, secret, {
+  const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
-  }) as TokenPayload;
+  }) as any;
+
+  // Strict claim validation per Point 8
+  const validRoles = ["REQUESTER", "IT_STAFF", "ADMIN"];
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    typeof payload.sub !== "string" ||
+    payload.sub.trim().length === 0 ||
+    typeof payload.jti !== "string" ||
+    payload.jti.trim().length === 0 ||
+    !validRoles.includes(payload.role) ||
+    typeof payload.exp !== "number" ||
+    payload.exp <= 0
+  ) {
+    throw new jwt.JsonWebTokenError("Malformed or invalid JWT claims payload.");
+  }
+
+  return payload as TokenPayload;
 };
 
 /**

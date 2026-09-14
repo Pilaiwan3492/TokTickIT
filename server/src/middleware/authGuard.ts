@@ -10,6 +10,7 @@ export interface AuthenticatedRequest extends Request {
     email: string;
     name: string;
     role: "REQUESTER" | "IT_STAFF" | "ADMIN";
+    isActive: boolean;
     mustChangePassword: boolean;
     jti: string;
     exp: number;
@@ -27,11 +28,20 @@ export const requireAuth = async (
 ) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || typeof authHeader !== "string") {
     return res.status(401).json({
       error: {
-        code: "SESSION_EXPIRED",
+        code: "SESSION_INVALID",
         message: "Authentication token is required.",
+      },
+    });
+  }
+
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      error: {
+        code: "SESSION_INVALID",
+        message: "Authorization header must use Bearer scheme.",
       },
     });
   }
@@ -40,8 +50,8 @@ export const requireAuth = async (
   if (!token) {
     return res.status(401).json({
       error: {
-        code: "SESSION_EXPIRED",
-        message: "Authentication token is required.",
+        code: "SESSION_INVALID",
+        message: "Bearer token cannot be empty.",
       },
     });
   }
@@ -111,6 +121,7 @@ export const requireAuth = async (
       email: user.email,
       name: user.name,
       role: user.role,
+      isActive: user.isActive,
       mustChangePassword: user.mustChangePassword,
       jti: payload.jti,
       exp: payload.exp,

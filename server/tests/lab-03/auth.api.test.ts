@@ -18,7 +18,11 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     // Active Requester (Bob)
     await prisma.user.upsert({
       where: { email: "bob@example.com" },
-      update: {},
+      update: {
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
       create: {
         email: "bob@example.com",
         name: "Bob Smith",
@@ -32,7 +36,11 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     // Inactive Requester (Eve)
     await prisma.user.upsert({
       where: { email: "eve@example.com" },
-      update: {},
+      update: {
+        isActive: false,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
       create: {
         email: "eve@example.com",
         name: "Eve Inactive User",
@@ -46,7 +54,11 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     // User requiring password change (Alice)
     await prisma.user.upsert({
       where: { email: "alice@example.com" },
-      update: {},
+      update: {
+        isActive: true,
+        mustChangePassword: true,
+        passwordHash: initialHash,
+      },
       create: {
         email: "alice@example.com",
         name: "Alice Johnson",
@@ -117,7 +129,7 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     expect(res.body.error.message).toBe("Your account is currently inactive. Please contact an administrator.");
   });
 
-  // API-05: User with mustChangePassword: true invoking gated normal API
+  // API-05: User with mustChangePassword: true invoking normal API (First-login gating)
   it("API-05: should return HTTP 403 PASSWORD_CHANGE_REQUIRED when user with mustChangePassword invokes normal API", async () => {
     const loginRes = await request(app)
       .post("/api/v1/auth/login")
@@ -127,8 +139,9 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     const aliceToken = loginRes.body.data.token;
     expect(loginRes.body.data.user.mustChangePassword).toBe(true);
 
+    // Enforced on real business endpoint per Point 3 & 7
     const gatedRes = await request(app)
-      .get("/api/v1/auth/gated-check")
+      .get("/api/v1/tickets")
       .set("Authorization", `Bearer ${aliceToken}`);
 
     expect(gatedRes.status).toBe(403);
@@ -239,23 +252,36 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
     expect(res.body.data.role).toBe("REQUESTER");
   });
 
-  // API-10 & API-10b: Logout and repeated logout
-  it("API-10: should return HTTP 200 on logout and reject repeated logout with HTTP 401 SESSION_REVOKED", async () => {
+  // API-10: Logout with active Bearer token
+  it("API-10: should return HTTP 200 on logout and invalidate session on server", async () => {
     const loginRes = await request(app)
       .post("/api/v1/auth/login")
       .send({ email: "bob@example.com", password: "Password123!" });
 
     const token = loginRes.body.data.token;
 
-    // First logout -> HTTP 200
     const logoutRes = await request(app)
       .post("/api/v1/auth/logout")
       .set("Authorization", `Bearer ${token}`);
 
     expect(logoutRes.status).toBe(200);
     expect(logoutRes.body.data.message).toContain("invalidated");
+  });
 
-    // Second logout with same token -> HTTP 401 SESSION_REVOKED
+  // API-10b: Repeated logout with same token
+  it("API-10b: should return HTTP 401 SESSION_REVOKED on repeated logout with the same token", async () => {
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "bob@example.com", password: "Password123!" });
+
+    const token = loginRes.body.data.token;
+
+    // First logout -> 200
+    await request(app)
+      .post("/api/v1/auth/logout")
+      .set("Authorization", `Bearer ${token}`);
+
+    // Second logout -> 401 SESSION_REVOKED
     const repeatLogoutRes = await request(app)
       .post("/api/v1/auth/logout")
       .set("Authorization", `Bearer ${token}`);
@@ -328,6 +354,152 @@ describe("Lab 3 Authentication Foundation API Tests", () => {
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  // Bearer Header Format Validation (Point 8 & 9)
+  it("should return HTTP 401 SESSION_INVALID when Authorization header is missing on protected endpoint", async () => {
+    const res = await request(app).get("/api/v1/auth/me");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when Authorization header uses non-Bearer scheme", async () => {
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", "Basic dXNlcjpwYXNzd29yZA==");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when Bearer token is empty", async () => {
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", "Bearer ");
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when JWT claims are malformed or missing sub", async () => {
+    const secret = getJwtSecret();
+    const badClaimsToken = jwt.sign(
+      { jti: "valid-jti", role: "REQUESTER" },
+      secret,
+      { algorithm: "HS256" }
+    );
+
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${badClaimsToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  it("should return HTTP 401 SESSION_INVALID when JWT role claim is not a permitted role", async () => {
+    const secret = getJwtSecret();
+    const badRoleToken = jwt.sign(
+      { jti: "valid-jti", sub: "usr-123", role: "UNAUTHORIZED_ROLE", exp: Math.floor(Date.now() / 1000) + 3600 },
+      secret,
+      { algorithm: "HS256" }
+    );
+
+    const res = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${badRoleToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("SESSION_INVALID");
+  });
+
+  // API-13: Requester ticket operation ignoring client-provided requesterId (BR-03, AC-03)
+  it("API-13: should ignore client-provided requesterId and enforce identity from authenticated session token", async () => {
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "bob@example.com", password: "Password123!" });
+    expect(loginRes.status).toBe(200);
+    const bobToken = loginRes.body.data.token;
+    const bobId = loginRes.body.data.user.id;
+
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+
+    // Bob creates ticket sending requesterId: 999999 in request body (spoof attempt)
+    const createRes = await request(app)
+      .post("/api/v1/tickets")
+      .set("Authorization", `Bearer ${bobToken}`)
+      .send({
+        requesterId: 999999,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Bob authenticated ticket creation summary",
+        description: "Testing that client provided requesterId is completely ignored.",
+        requestedPriority: "MEDIUM",
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.data.userId).toBe(bobId);
+    expect(createRes.body.data.requesterId).not.toBe(999999);
+
+    // Query tickets with spoof query parameter requesterId=999999
+    const listRes = await request(app)
+      .get("/api/v1/tickets?requesterId=999999")
+      .set("Authorization", `Bearer ${bobToken}`);
+
+    expect(listRes.status).toBe(200);
+    for (const t of listRes.body.data) {
+      expect(t.userId === bobId || t.requester?.userId === bobId).toBe(true);
+    }
+  });
+
+  // API-14: Cross-requester ticket access blocked (BR-12, AC-03)
+  it("API-14: should return HTTP 403 FORBIDDEN when Requester attempts to access another Requester's ticket", async () => {
+    const charlieHash = bcrypt.hashSync("Password123!", 10);
+    await prisma.user.upsert({
+      where: { email: "charlie@example.com" },
+      update: { isActive: true, mustChangePassword: false },
+      create: {
+        email: "charlie@example.com",
+        name: "Charlie Brown",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: charlieHash,
+      },
+    });
+
+    const charlieLogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "charlie@example.com", password: "Password123!" });
+    const charlieToken = charlieLogin.body.data.token;
+
+    const bob = await prisma.user.findUnique({ where: { email: "bob@example.com" } });
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+
+    const bobTicket = await prisma.ticket.create({
+      data: {
+        ticketNo: `TKT-BOB-${Date.now().toString().slice(-6)}`,
+        userId: bob!.id,
+        requesterId: 1,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Bob private workstation issue",
+        description: "Only Bob and IT Staff should be able to view this ticket.",
+        requestedPriority: "LOW",
+        currentStatus: "NEW",
+      },
+    });
+
+    try {
+      const res = await request(app)
+        .get(`/api/v1/tickets/${bobTicket.id}`)
+        .set("Authorization", `Bearer ${charlieToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("FORBIDDEN");
+    } finally {
+      await prisma.ticket.deleteMany({ where: { id: bobTicket.id } });
+    }
   });
 
   // API-ENV: Throws fatal error on missing or short JWT_SECRET

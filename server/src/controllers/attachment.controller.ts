@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
 import { getPrisma } from "../prisma.js";
+import { AuthenticatedRequest } from "../middleware/authGuard.js";
 
 // Allowed MIME types mapped by extension
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
@@ -56,14 +57,23 @@ export const uploadMiddleware = (req: Request, res: Response, next: NextFunction
 };
 
 /**
- * POST /api/v1/tickets/:id/attachments?requesterId={requesterId}
- * Upload attachment to an existing ticket
+ * POST /api/v1/tickets/:id/attachments
+ * Authenticated endpoint: Upload attachment to an existing ticket owned by caller
  */
-export const uploadAttachmentHandler = async (req: Request, res: Response) => {
+export const uploadAttachmentHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const rawRequesterId = req.query.requesterId;
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
 
     // 1. Validate Ticket ID (must be valid UUID)
     if (!id || !UUID_REGEX.test(id)) {
@@ -75,39 +85,7 @@ export const uploadAttachmentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Validate Requester Context
-    if (
-      rawRequesterId === undefined ||
-      rawRequesterId === null ||
-      typeof rawRequesterId === "boolean" ||
-      !/^\d+$/.test(String(rawRequesterId)) ||
-      Number(rawRequesterId) <= 0
-    ) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester ID is required and must be a positive integer.",
-        },
-      });
-    }
-
-    const requesterId = Number(rawRequesterId);
-
-    // Verify requester exists and is active
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: requesterId },
-    });
-
-    if (!requester || requester.isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "The selected Requester is invalid.",
-        },
-      });
-    }
-
-    // 3. Verify Ticket exists
+    // 2. Verify Ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id },
     });
@@ -121,8 +99,18 @@ export const uploadAttachmentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // 4. Verify Ticket Ownership
-    if (ticket.requesterId !== requesterId) {
+    // 3. Verify Ticket Ownership via authenticated identity
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    const isOwner = ticket.userId === userId || (requester && ticket.requesterId === requester.id);
+    if (!isOwner) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",
@@ -241,14 +229,23 @@ export const uploadAttachmentHandler = async (req: Request, res: Response) => {
 };
 
 /**
- * GET /api/v1/attachments/:id/download?requesterId={requesterId}
- * Download an active attachment
+ * GET /api/v1/attachments/:id/download
+ * Authenticated endpoint: Download an active attachment owned by caller
  */
-export const downloadAttachmentHandler = async (req: Request, res: Response) => {
+export const downloadAttachmentHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const rawRequesterId = req.query.requesterId;
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
 
     // 1. Validate Attachment ID (must be valid UUID)
     if (!id || !UUID_REGEX.test(id)) {
@@ -260,39 +257,7 @@ export const downloadAttachmentHandler = async (req: Request, res: Response) => 
       });
     }
 
-    // 2. Validate Requester Context
-    if (
-      rawRequesterId === undefined ||
-      rawRequesterId === null ||
-      typeof rawRequesterId === "boolean" ||
-      !/^\d+$/.test(String(rawRequesterId)) ||
-      Number(rawRequesterId) <= 0
-    ) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester ID is required and must be a positive integer.",
-        },
-      });
-    }
-
-    const requesterId = Number(rawRequesterId);
-
-    // Verify requester exists and is active
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: requesterId },
-    });
-
-    if (!requester || requester.isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "The selected Requester is invalid.",
-        },
-      });
-    }
-
-    // 3. Find attachment with parent ticket
+    // 2. Find attachment with parent ticket
     const attachment = await prisma.attachment.findUnique({
       where: { id },
       include: { ticket: true },
@@ -307,8 +272,18 @@ export const downloadAttachmentHandler = async (req: Request, res: Response) => 
       });
     }
 
-    // 4. Verify Ticket Ownership
-    if (attachment.ticket.requesterId !== requesterId) {
+    // 3. Verify Ticket Ownership via authenticated identity
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    const isOwner = attachment.ticket.userId === userId || (requester && attachment.ticket.requesterId === requester.id);
+    if (!isOwner) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",
@@ -354,15 +329,24 @@ export const downloadAttachmentHandler = async (req: Request, res: Response) => 
 };
 
 /**
- * DELETE /api/v1/attachments/:id?requesterId={requesterId}
- * Soft-remove an attachment while retaining metadata
+ * DELETE /api/v1/attachments/:id
+ * Authenticated endpoint: Soft-remove an attachment while retaining metadata
  */
-export const removeAttachmentHandler = async (req: Request, res: Response) => {
+export const removeAttachmentHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const rawRequesterId = req.query.requesterId;
     const { removalReason } = req.body || {};
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
 
     // 1. Validate Attachment ID (must be valid UUID)
     if (!id || !UUID_REGEX.test(id)) {
@@ -374,39 +358,7 @@ export const removeAttachmentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Validate Requester Context
-    if (
-      rawRequesterId === undefined ||
-      rawRequesterId === null ||
-      typeof rawRequesterId === "boolean" ||
-      !/^\d+$/.test(String(rawRequesterId)) ||
-      Number(rawRequesterId) <= 0
-    ) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "Requester ID is required and must be a positive integer.",
-        },
-      });
-    }
-
-    const requesterId = Number(rawRequesterId);
-
-    // Verify requester exists and is active
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: requesterId },
-    });
-
-    if (!requester || requester.isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "INVALID_REFERENCE",
-          message: "The selected Requester is invalid.",
-        },
-      });
-    }
-
-    // 3. Validate removalReason
+    // 2. Validate removalReason
     if (
       removalReason === undefined ||
       removalReason === null ||
@@ -437,7 +389,7 @@ export const removeAttachmentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // 4. Find attachment with parent ticket
+    // 3. Find attachment with parent ticket
     const attachment = await prisma.attachment.findUnique({
       where: { id },
       include: { ticket: true },
@@ -452,8 +404,18 @@ export const removeAttachmentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // 5. Verify Ticket Ownership
-    if (attachment.ticket.requesterId !== requesterId) {
+    // 4. Verify Ticket Ownership via authenticated identity
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    const isOwner = attachment.ticket.userId === userId || (requester && attachment.ticket.requesterId === requester.id);
+    if (!isOwner) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",
