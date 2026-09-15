@@ -10,7 +10,8 @@ import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import MyTickets from "./pages/MyTickets";
 import TicketDetail from "./pages/TicketDetail";
-import StaffQueuePlaceholder from "./pages/StaffQueuePlaceholder";
+import StaffTicketQueue from "./pages/StaffTicketQueue";
+import StaffTicketDetail from "./pages/StaffTicketDetail";
 import AdminUsersPlaceholder from "./pages/AdminUsersPlaceholder";
 
 type UiState = "idle" | "loading" | "success" | "error";
@@ -119,6 +120,11 @@ function RootRoute() {
   return <Navigate to={role === "REQUESTER" ? "/tickets" : "/queue"} replace />;
 }
 
+function TicketDetailDispatcher() {
+  const { role } = useAuth();
+  return role === "REQUESTER" ? <TicketDetail /> : <StaffTicketDetail />;
+}
+
 function AppContent() {
   const { isAuthenticated } = useAuth();
 
@@ -167,18 +173,26 @@ function AppContent() {
         <Route
           path="/tickets/:id"
           element={
-            <ProtectedRoute allowedRoles={["REQUESTER"]}>
-              <TicketDetail />
+            <ProtectedRoute allowedRoles={["REQUESTER", "IT_STAFF", "ADMIN"]}>
+              <TicketDetailDispatcher />
             </ProtectedRoute>
           }
         />
 
-        {/* IT Staff & Admin Queue Placeholder */}
+        {/* IT Staff & Admin Queue & Detail */}
         <Route
           path="/queue"
           element={
             <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
-              <StaffQueuePlaceholder />
+              <StaffTicketQueue />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/queue/:id"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffTicketDetail />
             </ProtectedRoute>
           }
         />
