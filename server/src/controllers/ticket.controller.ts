@@ -426,7 +426,53 @@ export const getTicketDetailHandler = async (
       });
     }
 
-    // Find ticket together with required detail data and attachments.
+    // Step 1: Lightweight lookup with select id + userId + requesterId
+    const ticketMeta = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        userId: true,
+        requesterId: true,
+      },
+    });
+
+    // Ticket does not exist
+    if (!ticketMeta) {
+      return res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    // Step 2: Ownership enforcement for REQUESTER before querying sensitive full detail
+    if (req.user!.role === "REQUESTER") {
+      const requester = await prisma.requesterUser.findFirst({
+        where: {
+          OR: [
+            { userId },
+            { email: req.user!.email },
+          ],
+        },
+      });
+
+      const isOwner =
+        ticketMeta.userId === userId ||
+        (ticketMeta.userId === null && requester && ticketMeta.requesterId === requester.id);
+      if (!isOwner) {
+        return res.status(403).json({
+          error: {
+            code: "FORBIDDEN",
+            message: "You do not have permission to access this ticket.",
+          },
+        });
+      }
+    }
+
+    // Step 3: Authorized: query full ticket detail including comments, attachments, relations
     const ticket = await prisma.ticket.findUnique({
       where: {
         id,
@@ -452,37 +498,30 @@ export const getTicketDetailHandler = async (
         category: true,
         relatedSystem: true,
         attachments: true,
+        comments: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            ticketId: true,
+            content: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    // Ticket does not exist
     if (!ticket) {
       return res.status(404).json({
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
-        },
-      });
-    }
-
-    // Ownership enforcement: ticket.userId is canonical Lab 3 owner; fallback to linked requesterId
-    const requester = await prisma.requesterUser.findFirst({
-      where: {
-        OR: [
-          { userId },
-          { email: req.user!.email },
-        ],
-      },
-    });
-
-    const isOwner =
-      ticket.userId === userId ||
-      (ticket.userId === null && requester && ticket.requesterId === requester.id);
-    if (!isOwner) {
-      return res.status(403).json({
-        error: {
-          code: "FORBIDDEN",
-          message: "You do not have permission to access this ticket.",
         },
       });
     }
@@ -496,6 +535,114 @@ export const getTicketDetailHandler = async (
   } catch (error) {
     console.error("Error fetching ticket detail:", error);
 
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    });
+  }
+};
+
+/**
+ * POST /api/v1/tickets/:id/resolve-indicator
+ * Allows ticket owner (REQUESTER) to indicate that the problem appears resolved.
+ * Sets isRequesterResolved = true idempotently without changing official ticket status.
+ */
+export const setResolutionIndicatorHandler = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "Authentication token is required.",
+        },
+      });
+    }
+
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Ticket ID must be a valid UUID.",
+        },
+      });
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        requesterId: true,
+        isRequesterResolved: true,
+        currentStatus: true,
+        status: true,
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    const requester = await prisma.requesterUser.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: req.user!.email },
+        ],
+      },
+    });
+
+    const isOwner =
+      ticket.userId === userId ||
+      (ticket.userId === null && requester && ticket.requesterId === requester.id);
+
+    if (!isOwner) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have permission to indicate resolution on this ticket.",
+        },
+      });
+    }
+
+    // Idempotent update: set isRequesterResolved = true without modifying official status
+    const updated = await prisma.ticket.update({
+      where: { id },
+      data: {
+        isRequesterResolved: true,
+      },
+      select: {
+        id: true,
+        isRequesterResolved: true,
+        currentStatus: true,
+        status: true,
+      },
+    });
+
+    return res.status(200).json({
+      data: {
+        ticketId: updated.id,
+        isRequesterResolved: updated.isRequesterResolved,
+        message: "Problem resolution indicated successfully.",
+      },
+    });
+  } catch (error) {
+    console.error("Error setting resolution indicator:", error);
     return res.status(500).json({
       error: {
         code: "INTERNAL_SERVER_ERROR",
