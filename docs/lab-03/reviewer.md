@@ -124,7 +124,8 @@
 - **Issue Reference:** GitHub Issue #55 (Sprint 3 / Lab 3)
 - **Scope & Changes:**
   1. **IT Staff Shared Queue Endpoint (`GET /api/v1/staff/tickets`):**
-     - Implemented in `server/src/controllers/staff.controller.ts` with comprehensive filtering (status, priority, ownership: `ALL`, `UNASSIGNED`, `ASSIGNED_TO_ME`), debounced search, and pagination.
+     - Implemented in `server/src/controllers/staff.controller.ts` with comprehensive filter combination (AND array chaining: status, priority, ownership: `ALL`, `UNASSIGNED`, `ASSIGNED_TO_ME`), debounced search (by ticketNo, summary, requester name, and requester email), and pagination.
+     - Resolved filter collision: all filters combine seamlessly without any condition overwriting (API-24b).
      - Deterministic secondary sort on `id desc` when `createdAt` dates are equal (API-24, BR-23).
      - Guarded by `requireRole(["IT_STAFF", "ADMIN"])`. Requesters are blocked with HTTP 403 `INSUFFICIENT_PERMISSIONS` before any ticket queries execute (API-15, BR-24).
   2. **Operational Ticket Detail Endpoint (`GET /api/v1/staff/tickets/:id`):**
@@ -153,6 +154,7 @@
      - Search input with 300ms debounce (UI-14), Status and Priority dropdown filters (UI-15), Ownership filter toggle buttons (`All`, `Unassigned`, `Assigned to Me`) (UI-16), pagination controls (UI-17), and empty / no-results states (UI-18).
   8. **Client UI — Operational Ticket Detail (`StaffTicketDetail.tsx`):**
      - Prominent Operational Controls header card: Claim shortcut button, Owner assignment dropdown, IT Priority dropdown, and Status transition dropdown strictly presenting only permitted next states (UI-19, UI-20, UI-21).
+     - Replaced browser `alert()` popups with consistent inline error toast notifications.
      - Core ticket read-only information card with Requester information, Category, Related System, and Requester resolution banner indicator.
      - Tabbed communication interface: Public Comments tab, Attachments tab, and Internal Notes tab with distinct amber styling (`#854D0E` text/border, `#FFFBEB` card, `#FEFCE8` banner) clearly marking internal notes as private from requesters (UI-23).
   9. **Client Routing & Shell Navigation (`App.tsx`, `Header.tsx`):**
@@ -161,17 +163,17 @@
   10. **Test Coverage & Verification:**
       - Server tests:
         - `server/tests/lab-03/authorization.api.test.ts` (4/4 passing: `API-15`..`API-18`)
-        - `server/tests/lab-03/staff-queue.api.test.ts` (6/6 passing: `API-19`..`API-24`)
+        - `server/tests/lab-03/staff-queue.api.test.ts` (8/8 passing: `API-19`..`API-24`, `API-20b`, `API-24b`)
         - `server/tests/lab-03/staff-ticket-detail.api.test.ts` (7/7 passing: `API-25`..`API-31`)
       - Client tests:
         - `client/tests/lab-03/StaffTicketQueue.test.tsx` (6/6 passing: `UI-13`..`UI-18`)
         - `client/tests/lab-03/StaffTicketDetail.test.tsx` (6/6 passing: `UI-19`..`UI-21`, `UI-23`)
       - Full suites:
-        - Server: **12 test files, 125/125 tests passing.**
+        - Server: **12 test files, 127/127 tests passing.**
         - Client: **14 test files, 91/91 tests passing.**
       - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
 - **Reviewer Comment (@Apichaya251400):**  
-  > *[Pending Review]*
+  > *[Pending Review of updated fix]*
 - **Author Response (@Pilaiwan3492):**  
-  > *[Pending Response]*
+  > *"Addressed Changes Requested: refactored where clause to use AND array chaining for Search + Priority + Status + Ownership without overwriting, added email search, replaced browser alerts with error toast notifications, and added API-20b and API-24b combination filter tests."*
 

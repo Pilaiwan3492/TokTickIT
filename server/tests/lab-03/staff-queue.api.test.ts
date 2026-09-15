@@ -335,4 +335,83 @@ describe("IT Staff Ticket Queue API Tests (Lab 3 — Issue 26: API-19..API-24)",
       expect(firstId > secondId).toBe(true);
     }
   });
+
+  // --- API-20b: Search queue by requester email address ---
+  it("API-20b: should search queue by requester email address", async () => {
+    const resEmail = await request(app)
+      .get("/api/v1/staff/tickets?search=requester.queue@example.com")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resEmail.status).toBe(200);
+    expect(resEmail.body.data.length).toBeGreaterThan(0);
+    expect(resEmail.body.data.some((t: any) => t.id === ticket1Id)).toBe(true);
+  });
+
+  // --- API-24b: Combination filters (Search + Priority + Status + Ownership) ---
+  it("API-24b: should apply combination filters together without overwriting each other", async () => {
+    // 1. Search + Priority match
+    const resMatchSearchPrio = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&priority=URGENT")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMatchSearchPrio.status).toBe(200);
+    expect(resMatchSearchPrio.body.data.some((t: any) => t.id === ticket1Id)).toBe(true);
+
+    // 2. Search + Priority mismatch (Search matches Ticket 1, but Priority is LOW -> Ticket 1 is URGENT -> 0 matches)
+    const resMismatchSearchPrio = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&priority=LOW")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMismatchSearchPrio.status).toBe(200);
+    expect(resMismatchSearchPrio.body.data.some((t: any) => t.id === ticket1Id)).toBe(false);
+
+    // 3. Search + Status match
+    const resMatchSearchStatus = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&status=NEW")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMatchSearchStatus.status).toBe(200);
+    expect(resMatchSearchStatus.body.data.some((t: any) => t.id === ticket1Id)).toBe(true);
+
+    // 4. Search + Status mismatch
+    const resMismatchSearchStatus = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&status=RESOLVED")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMismatchSearchStatus.status).toBe(200);
+    expect(resMismatchSearchStatus.body.data.length).toBe(0);
+
+    // 5. Search + Ownership match (Ticket 1 is unassigned)
+    const resMatchSearchOwnership = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&ownership=UNASSIGNED")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMatchSearchOwnership.status).toBe(200);
+    expect(resMatchSearchOwnership.body.data.some((t: any) => t.id === ticket1Id)).toBe(true);
+
+    // 6. Search + Ownership mismatch (Ticket 1 is not assigned to staff)
+    const resMismatchSearchOwnership = await request(app)
+      .get("/api/v1/staff/tickets?search=Core+router&ownership=ASSIGNED_TO_ME")
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resMismatchSearchOwnership.status).toBe(200);
+    expect(resMismatchSearchOwnership.body.data.some((t: any) => t.id === ticket1Id)).toBe(false);
+
+    // 7. Full combination: Search + Priority + Status + Ownership (ALL MATCHING)
+    const resFullMatch = await request(app)
+      .get(`/api/v1/staff/tickets?search=${ticket1No}&priority=URGENT&status=NEW&ownership=UNASSIGNED`)
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resFullMatch.status).toBe(200);
+    expect(resFullMatch.body.data.length).toBe(1);
+    expect(resFullMatch.body.data[0].id).toBe(ticket1Id);
+
+    // 8. Full combination with 1 conflicting condition -> returns 0
+    const resFullMismatch = await request(app)
+      .get(`/api/v1/staff/tickets?search=${ticket1No}&priority=URGENT&status=NEW&ownership=ASSIGNED_TO_ME`)
+      .set("Authorization", `Bearer ${tokenStaff}`);
+
+    expect(resFullMismatch.status).toBe(200);
+    expect(resFullMismatch.body.data.length).toBe(0);
+  });
 });

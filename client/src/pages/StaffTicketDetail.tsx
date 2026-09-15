@@ -43,6 +43,7 @@ export const StaffTicketDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Active Tab: "comments" | "notes" | "attachments"
   const [activeTab, setActiveTab] = useState<"comments" | "notes" | "attachments">("comments");
@@ -94,10 +95,15 @@ export const StaffTicketDetail: React.FC = () => {
     fetchTicketData();
   }, [fetchTicketData]);
 
-  // Toast Helper
+  // Toast Helpers
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const showErrorToast = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(null), 4000);
   };
 
   // 1. Claim / Reassign Ticket Owner
@@ -119,7 +125,7 @@ export const StaffTicketDetail: React.FC = () => {
       setTicket((prev) => (prev ? { ...prev, owner: data.data.owner } : prev));
       showToast(targetOwnerId ? "Ticket assigned successfully." : "Ticket unassigned.");
     } catch (err: any) {
-      alert(err.message);
+      showErrorToast(err.message || "Failed to update ticket assignment.");
     } finally {
       setIsUpdatingOwner(false);
     }
@@ -144,7 +150,7 @@ export const StaffTicketDetail: React.FC = () => {
       setTicket((prev) => (prev ? { ...prev, itPriority: newPriority } : prev));
       showToast("IT Priority updated successfully.");
     } catch (err: any) {
-      alert(err.message);
+      showErrorToast(err.message || "Failed to update IT Priority.");
     } finally {
       setIsUpdatingPriority(false);
     }
@@ -177,7 +183,7 @@ export const StaffTicketDetail: React.FC = () => {
       );
       showToast(`Status updated to ${STATUS_LABELS[targetStatus]}.`);
     } catch (err: any) {
-      alert(err.message);
+      showErrorToast(err.message || "Failed to transition ticket status.");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -211,7 +217,7 @@ export const StaffTicketDetail: React.FC = () => {
       setNewComment("");
       showToast("Comment posted successfully.");
     } catch (err: any) {
-      alert(err.message);
+      showErrorToast(err.message || "Failed to post comment.");
     } finally {
       setIsPostingComment(false);
     }
@@ -245,7 +251,7 @@ export const StaffTicketDetail: React.FC = () => {
       setNewNote("");
       showToast("Internal note added.");
     } catch (err: any) {
-      alert(err.message);
+      showErrorToast(err.message || "Failed to add internal note.");
     } finally {
       setIsPostingNote(false);
     }
@@ -340,6 +346,15 @@ export const StaffTicketDetail: React.FC = () => {
           style={{ minWidth: 300, backgroundColor: "#EAF6EF", borderColor: "#0B7A46", color: "#006B3C" }}
         >
           {toastMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div
+          className="alert alert-danger position-fixed top-0 start-50 translate-middle-x mt-4 shadow-sm z-3 py-2 px-4"
+          role="alert"
+          style={{ minWidth: 300 }}
+        >
+          {errorMessage}
         </div>
       )}
 

@@ -55,26 +55,38 @@ export const getStaffQueueHandler = async (
     const rawLimit = pageSize || limit || "10";
     const parsedPageSize = Math.max(1, Math.min(100, parseInt(String(rawLimit), 10) || 10));
 
-    // Construct Prisma where clause
-    const where: any = {};
+    // Construct Prisma where clause using AND conditions to allow all filters to combine seamlessly
+    const andConditions: any[] = [];
 
-    // 1. Search (matches ticketNo, summary, or requester name)
+    // 1. Search (matches ticketNo, summary, requester name, or requester email)
     if (search && typeof search === "string" && search.trim() !== "") {
       const term = search.trim();
-      where.OR = [
-        { ticketNo: { contains: term } },
-        { summary: { contains: term } },
-        {
-          user: {
-            name: { contains: term },
+      andConditions.push({
+        OR: [
+          { ticketNo: { contains: term } },
+          { summary: { contains: term } },
+          {
+            user: {
+              name: { contains: term },
+            },
           },
-        },
-        {
-          requester: {
-            name: { contains: term },
+          {
+            user: {
+              email: { contains: term },
+            },
           },
-        },
-      ];
+          {
+            requester: {
+              name: { contains: term },
+            },
+          },
+          {
+            requester: {
+              email: { contains: term },
+            },
+          },
+        ],
+      });
     }
 
     // 2. Status filter (supports comma-separated list or single status)
@@ -85,9 +97,9 @@ export const getStaffQueueHandler = async (
         .filter((s) => Object.values(TicketStatus).includes(s as TicketStatus));
 
       if (statusTokens.length === 1) {
-        where.currentStatus = statusTokens[0] as TicketStatus;
+        andConditions.push({ currentStatus: statusTokens[0] as TicketStatus });
       } else if (statusTokens.length > 1) {
-        where.currentStatus = { in: statusTokens as TicketStatus[] };
+        andConditions.push({ currentStatus: { in: statusTokens as TicketStatus[] } });
       }
     }
 
@@ -95,25 +107,29 @@ export const getStaffQueueHandler = async (
     if (priority && typeof priority === "string" && priority.trim() !== "") {
       const prioUpper = priority.trim().toUpperCase();
       if (Object.values(Priority).includes(prioUpper as Priority)) {
-        where.OR = [
-          { itPriority: prioUpper as Priority },
-          {
-            AND: [
-              { itPriority: null },
-              { requestedPriority: prioUpper as Priority },
-            ],
-          },
-        ];
+        andConditions.push({
+          OR: [
+            { itPriority: prioUpper as Priority },
+            {
+              AND: [
+                { itPriority: null },
+                { requestedPriority: prioUpper as Priority },
+              ],
+            },
+          ],
+        });
       }
     }
 
     // 4. Ownership filter: ALL, UNASSIGNED, ASSIGNED_TO_ME
     const ownershipUpper = String(ownership).toUpperCase();
     if (ownershipUpper === "UNASSIGNED") {
-      where.ownerId = null;
+      andConditions.push({ ownerId: null });
     } else if (ownershipUpper === "ASSIGNED_TO_ME") {
-      where.ownerId = userId;
+      andConditions.push({ ownerId: userId });
     }
+
+    const where: any = andConditions.length > 0 ? { AND: andConditions } : {};
 
     // 5. Deterministic sorting (API-24: primary sort + secondary id desc)
     const validSortFields: Record<string, string> = {
