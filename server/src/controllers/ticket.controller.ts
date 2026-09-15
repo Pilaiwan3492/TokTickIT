@@ -426,7 +426,53 @@ export const getTicketDetailHandler = async (
       });
     }
 
-    // Find ticket together with required detail data and attachments.
+    // Step 1: Lightweight lookup with select id + userId + requesterId
+    const ticketMeta = await prisma.ticket.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        userId: true,
+        requesterId: true,
+      },
+    });
+
+    // Ticket does not exist
+    if (!ticketMeta) {
+      return res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    // Step 2: Ownership enforcement for REQUESTER before querying sensitive full detail
+    if (req.user!.role === "REQUESTER") {
+      const requester = await prisma.requesterUser.findFirst({
+        where: {
+          OR: [
+            { userId },
+            { email: req.user!.email },
+          ],
+        },
+      });
+
+      const isOwner =
+        ticketMeta.userId === userId ||
+        (ticketMeta.userId === null && requester && ticketMeta.requesterId === requester.id);
+      if (!isOwner) {
+        return res.status(403).json({
+          error: {
+            code: "FORBIDDEN",
+            message: "You do not have permission to access this ticket.",
+          },
+        });
+      }
+    }
+
+    // Step 3: Authorized: query full ticket detail including comments, attachments, relations
     const ticket = await prisma.ticket.findUnique({
       where: {
         id,
@@ -471,7 +517,6 @@ export const getTicketDetailHandler = async (
       },
     });
 
-    // Ticket does not exist
     if (!ticket) {
       return res.status(404).json({
         error: {
@@ -479,30 +524,6 @@ export const getTicketDetailHandler = async (
           message: "Ticket not found.",
         },
       });
-    }
-
-    // Ownership enforcement for REQUESTER: ticket.userId is canonical Lab 3 owner; fallback to linked requesterId
-    if (req.user!.role === "REQUESTER") {
-      const requester = await prisma.requesterUser.findFirst({
-        where: {
-          OR: [
-            { userId },
-            { email: req.user!.email },
-          ],
-        },
-      });
-
-      const isOwner =
-        ticket.userId === userId ||
-        (ticket.userId === null && requester && ticket.requesterId === requester.id);
-      if (!isOwner) {
-        return res.status(403).json({
-          error: {
-            code: "FORBIDDEN",
-            message: "You do not have permission to access this ticket.",
-          },
-        });
-      }
     }
 
     // Return ticket detail.

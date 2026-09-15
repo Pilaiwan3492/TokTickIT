@@ -384,13 +384,23 @@ describe("Lab 3 Comments, Notes & Resolution API Tests (Issue 25)", () => {
 
   // --- Cross-Requester Security Tests ---
   describe("Cross-Requester Security Boundary Tests", () => {
-    it("should reject Requester A trying to GET Ticket B with HTTP 403", async () => {
+    it("should reject Requester A trying to GET Ticket B with HTTP 403 and leak NO ticket data", async () => {
       const res = await request(app)
         .get(`/api/v1/tickets/${ticketBId}`)
         .set("Authorization", `Bearer ${tokenRequesterA}`);
 
       expect(res.status).toBe(403);
+      expect(res.body.error).toBeDefined();
+      expect(res.body.error.code).toBe("FORBIDDEN");
       expect(res.body.data).toBeUndefined();
+
+      // Explicitly assert zero data leakage of ticket fields
+      expect(res.body.summary).toBeUndefined();
+      expect(res.body.description).toBeUndefined();
+      expect(res.body.comments).toBeUndefined();
+      expect(res.body.attachments).toBeUndefined();
+      expect(res.body.user).toBeUndefined();
+      expect(res.body.requester).toBeUndefined();
     });
 
     it("should reject Requester A trying to GET comments on Ticket B with HTTP 403", async () => {

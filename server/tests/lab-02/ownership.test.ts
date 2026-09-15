@@ -163,7 +163,7 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
   });
 
   // 4. Other Requester (Cross-user access) -> HTTP 403
-  it("should return 403 Forbidden when Requester B attempts to access Requester A's ticket", async () => {
+  it("should return 403 Forbidden when Requester B attempts to access Requester A's ticket with zero data leakage", async () => {
     const res = await request(app)
       .get(`/api/v1/tickets/${ticketAId}`)
       .set("Authorization", `Bearer ${tokenB}`);
@@ -172,6 +172,13 @@ describe("Ticket Ownership Guard & Requester Context Middleware", () => {
     expect(res.body.error.message).toBe(
       "You do not have permission to access this ticket."
     );
+    expect(res.body.data).toBeUndefined();
+    expect(res.body.summary).toBeUndefined();
+    expect(res.body.description).toBeUndefined();
+    expect(res.body.comments).toBeUndefined();
+    expect(res.body.attachments).toBeUndefined();
+    expect(res.body.user).toBeUndefined();
+    expect(res.body.requester).toBeUndefined();
   });
 
   // 5. Owner Access -> HTTP 200

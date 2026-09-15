@@ -95,13 +95,17 @@
      - Idempotently updates `isRequesterResolved = true` for the ticket owner.
      - Strictly preserves official ticket status (`currentStatus`) without alteration.
      - Accessible exclusively to the Requester who owns the ticket.
-  4. **Requester Ticket Detail UI Enhancements:**
+  4. **Pre-Query Ticket Detail Ownership Guard (Zero Data Leakage):**
+     - Refactored `getTicketDetailHandler` in `server/src/controllers/ticket.controller.ts` to perform a lightweight lookup (`select: { id, userId, requesterId }`) first.
+     - Performs Requester ownership check immediately; returns HTTP 403 `FORBIDDEN` before executing any query on ticket summary, description, comments, attachments, or user relations.
+     - Verified with tests asserting response body contains zero ticket details on 403.
+  5. **Requester Ticket Detail UI Enhancements:**
      - Enhanced `client/src/pages/TicketDetail.tsx` with Public Comments feed displaying author avatar, author name, role badge, timestamp, and content.
      - Added comment creation form with live character counter (`0 / 2000`), validation, and busy state.
      - Added "Problem Appears Resolved" action button and confirmed green banner indicator.
      - Verified complete absence of Internal Notes tab, header, or notes content for Requester users (UI-25).
      - Expanded `renderStatusBadge` to support all 8 Lab 3 ticket statuses (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `CANCELLED`, `REOPENED`).
-  5. **Verification & Test Coverage:**
+  6. **Verification & Test Coverage:**
      - Server API tests: `server/tests/lab-03/comments-notes.api.test.ts` (13/13 passing, covering `API-32` through `API-38`).
      - Client component tests: `client/tests/lab-03/RequesterTicketDetail.test.tsx` (4/4 passing, covering `UI-22`, `UI-24`, `UI-25`, and pre-resolved ticket state).
      - Server suite: **9 test files, 108/108 tests passing.**
