@@ -19,7 +19,8 @@
 | [#63](https://github.com/Pilaiwan3492/TokTickIT/pull/63) | `feature/22-database-schema-seed` | Issue 22: Database Schema Evolution, Migration & Idempotent Seed Data | Approved | Merged |
 | [#64](https://github.com/Pilaiwan3492/TokTickIT/pull/64) | `feature/23-auth-foundation` | Issue 23: Authentication Foundation, Session Invalidation & API Protection | Approved | Merged |
 | [#65](https://github.com/Pilaiwan3492/TokTickIT/pull/65) | `feature/24-client-auth-appshell` | Issue 24: Client Authentication, Mandatory Password Change & App Shell | Approved | Merged |
-| [#66](https://github.com/Pilaiwan3492/TokTickIT/pull/66) | `feature/25-requester-regression-comments` | Issue 25: Requester Regression, Public Comments & Problem Resolution Indicator | In Review | Open |
+| [#66](https://github.com/Pilaiwan3492/TokTickIT/pull/66) | `feature/25-requester-regression-comments` | Issue 25: Requester Regression, Public Comments & Problem Resolution Indicator | Approved | Merged |
+| [#67](https://github.com/Pilaiwan3492/TokTickIT/pull/67) | `feature/26-it-staff-queue-processing` | Issue 26: IT Staff Queue & Operational Ticket Processing | In Review | Open |
 
 ---
 
@@ -112,6 +113,67 @@
      - Client suite: **12 test files, 79/79 tests passing.**
      - Server build (`tsc`) and Client build (`tsc && vite build`) compile with **0 errors**.
 - **Reviewer Comment (@Apichaya251400):**  
-  > *[Pending Review]*
+  > *"Public comments and problem resolution indicator work properly. The pre-query ownership check in getTicketDetailHandler guarantees zero data leakage on unauthorized requests. Approved!"*
 - **Author Response (@Pilaiwan3492):**  
-  > *[Pending Response]*
+  > *"Thank you! Merged into lab3-staging."*
+
+---
+
+### PR #67: Issue 26 — IT Staff Queue & Operational Ticket Processing
+- **Feature Branch:** `feature/26-it-staff-queue-processing`
+- **Issue Reference:** GitHub Issue #55 (Sprint 3 / Lab 3)
+- **Scope & Changes:**
+  1. **IT Staff Shared Queue Endpoint (`GET /api/v1/staff/tickets`):**
+     - Implemented in `server/src/controllers/staff.controller.ts` with comprehensive filter combination (AND array chaining: status, priority, ownership: `ALL`, `UNASSIGNED`, `ASSIGNED_TO_ME`), debounced search (by ticketNo, summary, requester name, and requester email), and pagination.
+     - Resolved filter collision: all filters combine seamlessly without any condition overwriting (API-24b).
+     - Deterministic secondary sort on `id desc` when `createdAt` dates are equal (API-24, BR-23).
+     - Guarded by `requireRole(["IT_STAFF", "ADMIN"])`. Requesters are blocked with HTTP 403 `INSUFFICIENT_PERMISSIONS` before any ticket queries execute (API-15, BR-24).
+  2. **Operational Ticket Detail Endpoint (`GET /api/v1/staff/tickets/:id`):**
+     - Returns full operational ticket details including requester profile, category, related system, attachments, public comments, and internal notes (API-25).
+     - Pre-query role authorization ensures zero ticket metadata or internal notes leak to Requesters.
+  3. **Ticket Assignment & Reassignment (`PATCH /api/v1/staff/tickets/:id/assignment`):**
+     - Allows claiming ticket (`ownerId: "me"` or self ID), reassigning to another active IT Staff / Admin, or unassigning (`ownerId: null`) (API-26, API-27, BR-13).
+     - Strictly validates assignee role and active status; rejects assignment to inactive users or users with `REQUESTER` role with HTTP 400 `INVALID_OWNER` (API-28, BR-13).
+  4. **Independent IT Priority Management (`PATCH /api/v1/staff/tickets/:id/priority`):**
+     - Updates `itPriority` independently while preserving `requestedPriority` unchanged (API-29, BR-14).
+  5. **Strict Status Transition Matrix (100% compliant with BR-16):**
+     - Endpoint `PATCH /api/v1/staff/tickets/:id/status` validates all status changes strictly against the BR-16 state machine:
+       - `NEW` $\rightarrow$ `OPEN`, `CANCELLED`
+       - `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`
+       - `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`
+       - `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`
+       - `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`
+       - `REOPENED` $\rightarrow$ `IN_PROGRESS`, `CANCELLED`
+       - `CLOSED` $\rightarrow$ Terminal (0 transitions)
+       - `CANCELLED` $\rightarrow$ Terminal (0 transitions)
+     - Disallowed transitions return HTTP 400 `INVALID_STATUS_TRANSITION` (API-31).
+  6. **Staff Assignees Endpoint (`GET /api/v1/staff/assignees`):**
+     - Returns active IT Staff and Admin users for ticket assignment dropdowns.
+  7. **Client UI — IT Staff Queue (`StaffTicketQueue.tsx`):**
+     - Responsive layout: desktop table ($\ge 1024\text{px}$) with Ticket No, Date, Summary, Priority & Status badges, Owner, and Actions; mobile cards ($< 1024\text{px}$) with minimum 44px touch targets (UI-13).
+     - Search input with 300ms debounce (UI-14), Status and Priority dropdown filters (UI-15), Ownership filter toggle buttons (`All`, `Unassigned`, `Assigned to Me`) (UI-16), pagination controls (UI-17), and empty / no-results states (UI-18).
+  8. **Client UI — Operational Ticket Detail (`StaffTicketDetail.tsx`):**
+     - Prominent Operational Controls header card: Claim shortcut button, Owner assignment dropdown, IT Priority dropdown, and Status transition dropdown strictly presenting only permitted next states (UI-19, UI-20, UI-21).
+     - Replaced browser `alert()` popups with consistent inline error toast notifications.
+     - Core ticket read-only information card with Requester information, Category, Related System, and Requester resolution banner indicator.
+     - Tabbed communication interface: Public Comments tab, Attachments tab, and Internal Notes tab with distinct amber styling (`#854D0E` text/border, `#FFFBEB` card, `#FEFCE8` banner) clearly marking internal notes as private from requesters (UI-23).
+  9. **Client Routing & Shell Navigation (`App.tsx`, `Header.tsx`):**
+     - `/queue` route for Ticket Queue, `/queue/:id` for Staff Ticket Detail.
+     - Role-aware `/tickets/:id` dispatcher: routes IT Staff and Admins to `/queue/:id` while preserving Requester view for Requesters.
+  10. **Test Coverage & Verification:**
+      - Server tests:
+        - `server/tests/lab-03/authorization.api.test.ts` (4/4 passing: `API-15`..`API-18`)
+        - `server/tests/lab-03/staff-queue.api.test.ts` (8/8 passing: `API-19`..`API-24`, `API-20b`, `API-24b`)
+        - `server/tests/lab-03/staff-ticket-detail.api.test.ts` (7/7 passing: `API-25`..`API-31`)
+      - Client tests:
+        - `client/tests/lab-03/StaffTicketQueue.test.tsx` (6/6 passing: `UI-13`..`UI-18`)
+        - `client/tests/lab-03/StaffTicketDetail.test.tsx` (6/6 passing: `UI-19`..`UI-21`, `UI-23`)
+      - Full suites:
+        - Server: **12 test files, 127/127 tests passing.**
+        - Client: **14 test files, 91/91 tests passing.**
+      - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
+- **Reviewer Comment (@Apichaya251400):**  
+  > *[Pending Review of updated fix]*
+- **Author Response (@Pilaiwan3492):**  
+  > *"Addressed Changes Requested: refactored where clause to use AND array chaining for Search + Priority + Status + Ownership without overwriting, added email search, replaced browser alerts with error toast notifications, and added API-20b and API-24b combination filter tests."*
+
