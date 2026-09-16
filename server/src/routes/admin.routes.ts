@@ -1,5 +1,12 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authGuard.js";
+import {
+  listUsersHandler,
+  createUserHandler,
+  updateUserHandler,
+  resetUserPasswordHandler,
+  deleteUserMethodNotAllowedHandler,
+} from "../controllers/admin.controller.js";
 
 const router = Router();
 
@@ -7,9 +14,19 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireRole(["ADMIN"]));
 
-// Initial placeholder endpoint for users list (fully implemented in Issue 27)
-router.get("/users", (_req: Request, res: Response) => {
-  return res.status(200).json({ data: [] });
-});
+// 1. List Users with search & role filter
+router.get("/users", listUsersHandler);
+
+// 2. Create User with 1 role and initial password
+router.post("/users", createUserHandler);
+
+// 3. Edit User (name, email, role, isActive with safety guards)
+router.patch("/users/:id", updateUserHandler);
+
+// 4. Reset User Initial Password
+router.post("/users/:id/reset-password", resetUserPasswordHandler);
+
+// 5. Prohibited User Deletion (BR-19: returns 405 Method Not Allowed)
+router.delete("/users/:id", deleteUserMethodNotAllowedHandler);
 
 export default router;

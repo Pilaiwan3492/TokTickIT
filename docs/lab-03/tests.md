@@ -81,16 +81,16 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **API-36** | API | AC-04, BR-25 | Requester attempts to create Internal Note (`POST /api/v1/tickets/:id/notes`) | HTTP 403 Forbidden; note creation rejected | `server/tests/lab-03/comments-notes.api.test.ts` | `Passing` |
 | **API-37** | API | AC-20, BR-07, BR-08, BR-09 | IT Staff / Admin creates and retrieves Internal Notes | HTTP 200/201; returns internal note payload with author & time | `server/tests/lab-03/comments-notes.api.test.ts` | `Passing` |
 | **API-38** | API | AC-12, BR-11 | Requester marks ticket as "Problem Appears Resolved" | HTTP 200 OK; sets `isRequesterResolved: true`, status unchanged | `server/tests/lab-03/comments-notes.api.test.ts` | `Passing` |
-| **API-39** | API | AC-21, FR-18, FR-19 | Administrator retrieves user list with search by name/email & role | HTTP 200 OK; returns list of users with safe fields | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-40** | API | AC-22, BR-04, BR-05, BR-23 | Administrator creates new user with one role and initial password | HTTP 201 Created; hashes password, sets `mustChangePassword: true` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-41** | API | AC-23, BR-20 | Administrator attempts to create user with existing duplicate email | HTTP 409 Conflict with code `DUPLICATE_EMAIL` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-42** | API | AC-24, BR-19, FR-21 | Administrator updates user name, email, role, and active status | HTTP 200 OK; updates persisted | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-43** | API | FR-22, BR-23 | Administrator resets initial password for user | HTTP 200 OK; sets new hash and `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-44** | API | AC-24, BR-21 | Administrator attempts to deactivate their own account | HTTP 400 Bad Request with code `CANNOT_DEACTIVATE_SELF` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
-| **API-45** | API | AC-25, BR-22 | Administrator attempts to deactivate or reassign the last active Admin | HTTP 400 Bad Request with code `LAST_ACTIVE_ADMIN_PROTECTED` | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
+| **API-39** | API | AC-21, FR-18, FR-19 | Administrator retrieves user list with search by name/email & role | HTTP 200 OK; returns list of users with safe fields | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-40** | API | AC-22, BR-04, BR-05, BR-23 | Administrator creates new user with one role and initial password | HTTP 201 Created; hashes password, sets `mustChangePassword: true` | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-41** | API | AC-23, BR-20 | Administrator attempts to create user with existing duplicate email | HTTP 409 Conflict with code `DUPLICATE_EMAIL` | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-42** | API | AC-24, BR-19, FR-21 | Administrator updates user name, email, role, and active status | HTTP 200 OK; updates persisted | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-43** | API | FR-22, BR-23 | Administrator resets initial password for user | HTTP 200 OK; sets new hash and `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-44** | API | AC-24, BR-21 | Administrator attempts to deactivate their own account | HTTP 400 Bad Request with code `CANNOT_DEACTIVATE_SELF` | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-45** | API | AC-25, BR-22 | Administrator attempts to deactivate or reassign the last active Admin | HTTP 400 Bad Request with code `LAST_ACTIVE_ADMIN_PROTECTED` | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
 | **API-46** | API | AC-09, BR-03, BR-13, BR-14, BR-15 | Requester creates Ticket with authenticated identity | HTTP 201 Created; asserts `status: "NEW"`, `itPriority: requestedPriority`, `ownerId: null`, `requesterId: session.userId` | `server/tests/lab-03/create-ticket-defaults.api.test.ts` | `Planned` |
 | **API-47** | API | BR-26 | Repeated failed login attempts (5+ consecutive invalid attempts) | HTTP 401 `INVALID_CREDENTIALS` on each attempt; asserts no account lockout or persistent lock state | `server/tests/lab-03/auth.api.test.ts` | `Planned` |
-| **API-48** | API | BR-19 | Direct HTTP DELETE on user endpoint (`DELETE /api/v1/admin/users/:id`) | HTTP 405 Method Not Allowed (or 404); user deletion is prohibited, deactivation is exclusive removal | `server/tests/lab-03/users-admin.api.test.ts` | `Planned` |
+| **API-48** | API | BR-19 | Direct HTTP DELETE on user endpoint (`DELETE /api/v1/admin/users/:id`) | HTTP 405 Method Not Allowed (or 404); user deletion is prohibited, deactivation is exclusive removal | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
 
 ---
 
@@ -132,11 +132,11 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **UI-23** | UI | AC-20, BR-07 | Internal Notes tab with amber distinction styling | Displays amber distinction banner, private notes list, and note form | `client/tests/lab-03/StaffTicketDetail.test.tsx` | `Passing` |
 | **UI-24** | UI | AC-12, BR-11 | Requester Ticket Detail: "Problem Appears Resolved" button | Clicking button shows confirmed indicator; official status unchanged | `client/tests/lab-03/RequesterTicketDetail.test.tsx` | `Passing` |
 | **UI-25** | UI | AC-04, BR-25 | Requester Ticket Detail: Internal Notes tab absence | Internal Notes tab is completely hidden from Requester view | `client/tests/lab-03/RequesterTicketDetail.test.tsx` | `Passing` |
-| **UI-26** | UI | AC-21, FR-18 | Administrator User Management table render | Displays user rows with Name, Email, Role badge, Status dot, Edit button | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
-| **UI-27** | UI | AC-22, BR-20 | Admin Create User modal validation & submission | Validates email, role, initial password; handles duplicate email error | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
-| **UI-28** | UI | AC-24, BR-21 | Admin Edit User modal: Self-deactivation disabled | Active toggle disabled with safety tooltip when editing own account | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
-| **UI-29** | UI | AC-25, BR-22 | Admin Edit User modal: Last admin deactivation disabled | Active toggle disabled with safety tooltip when editing last admin | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
-| **UI-30** | UI | FR-22, BR-23 | Admin Reset Initial Password modal flow | Displays confirmation modal and dispatches reset request | `client/tests/lab-03/UserManagement.test.tsx` | `Planned` |
+| **UI-26** | UI | AC-21, FR-18 | Administrator User Management table render | Displays user rows with Name, Email, Role badge, Status dot, Edit button | `client/tests/lab-03/UserManagement.test.tsx` | `Passing` |
+| **UI-27** | UI | AC-22, BR-20 | Admin Create User modal validation & submission | Validates email, role, initial password; handles duplicate email error | `client/tests/lab-03/UserManagement.test.tsx` | `Passing` |
+| **UI-28** | UI | AC-24, BR-21 | Admin Edit User modal: Self-deactivation disabled | Active toggle disabled with safety tooltip when editing own account | `client/tests/lab-03/UserManagement.test.tsx` | `Passing` |
+| **UI-29** | UI | AC-25, BR-22 | Admin Edit User modal: Last admin deactivation disabled | Active toggle disabled with safety tooltip when editing last admin | `client/tests/lab-03/UserManagement.test.tsx` | `Passing` |
+| **UI-30** | UI | FR-22, BR-23 | Admin Reset Initial Password modal flow | Displays confirmation modal and dispatches reset request | `client/tests/lab-03/UserManagement.test.tsx` | `Passing` |
 | **CLIENT-AUTH-01** | UI | AC-03, AC-10, BR-03 | MyTickets requests `/api/v1/tickets` with Bearer header and omits `requesterId` | HTTP 200; uses session token; zero `requesterId` in query | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
 | **CLIENT-AUTH-02** | UI | AC-03, AC-09, BR-03 | CreateTicket posts ticket with Bearer header and omits `requesterId` from body | HTTP 201; server enforces `userId` from token; body excludes `requesterId` | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
 | **CLIENT-AUTH-03** | UI | AC-03, AC-10, BR-12 | TicketDetail loads ticket using Bearer token and omits `requesterId` from GET url | HTTP 200; retrieves ticket via session token | `client/tests/lab-03/BusinessPagesAuth.test.tsx` | `Passing` |
@@ -226,8 +226,8 @@ Every Acceptance Criterion is strictly mapped to its primary automated tests:
 | **AC-21** | Administrator user list with search & role filter | `API-39`, `UI-26`, `E2E-08` | API, UI, E2E |
 | **AC-22** | Administrator creates user with initial password | `API-40`, `UI-27`, `E2E-08` | API, UI, E2E |
 | **AC-23** | Duplicate email registration rejected (HTTP 409) | `API-41`, `UI-27` | API, UI |
-| **AC-24** | Admin edits user & self-deactivation prevented | `API-42`, `API-44`, `UI-28`, `E2E-09` | API, UI, E2E |
-| **AC-25** | Last active administrator protected from removal | `API-45`, `UI-29`, `E2E-09` | API, UI, E2E |
+| **AC-24** | Admin edits user & self-deactivation prevented | `API-42`, `API-42b`, `API-42c`, `API-44`, `UI-28`, `E2E-09` | API, UI, E2E |
+| **AC-25** | Last active administrator protected from removal | `API-45`, `API-45b`, `UI-29`, `E2E-09` | API, UI, E2E |
 
 ---
 

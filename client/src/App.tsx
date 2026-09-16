@@ -12,7 +12,7 @@ import MyTickets from "./pages/MyTickets";
 import TicketDetail from "./pages/TicketDetail";
 import StaffTicketQueue from "./pages/StaffTicketQueue";
 import StaffTicketDetail from "./pages/StaffTicketDetail";
-import AdminUsersPlaceholder from "./pages/AdminUsersPlaceholder";
+import UserManagement from "./pages/UserManagement";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -197,12 +197,12 @@ function AppContent() {
           }
         />
 
-        {/* Admin User Management Placeholder */}
+        {/* Admin User Management */}
         <Route
           path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={["ADMIN"]}>
-              <AdminUsersPlaceholder />
+              <UserManagement />
             </ProtectedRoute>
           }
         />

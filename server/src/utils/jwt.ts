@@ -7,6 +7,7 @@ export interface TokenUserPayload {
   name: string;
   role: "REQUESTER" | "IT_STAFF" | "ADMIN";
   mustChangePassword: boolean;
+  tokenVersion?: number;
 }
 
 export interface TokenPayload extends TokenUserPayload {
@@ -14,6 +15,7 @@ export interface TokenPayload extends TokenUserPayload {
   sub: string;
   iat: number;
   exp: number;
+  tokenVersion?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export const signToken = (user: TokenUserPayload): string => {
     name: user.name,
     role: user.role,
     mustChangePassword: user.mustChangePassword,
+    tokenVersion: user.tokenVersion ?? 0,
   };
 
   return jwt.sign(payload, secret, {

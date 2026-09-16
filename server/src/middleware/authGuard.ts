@@ -80,7 +80,7 @@ export const requireAuth = async (
   try {
     const prisma = getPrisma();
 
-    // Check server-side revocation registry
+    // Check server-side revocation registry by token jti (e.g. from logout)
     const revoked = await prisma.revokedToken.findUnique({
       where: { jti: payload.jti },
     });
@@ -104,14 +104,37 @@ export const requireAuth = async (
         role: true,
         isActive: true,
         mustChangePassword: true,
+        tokenVersion: true,
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_INVALID",
+          message: "User account no longer exists.",
+        },
+      });
+    }
+
+    if (!user.isActive) {
       return res.status(401).json({
         error: {
           code: "ACCOUNT_INACTIVE",
           message: "Your account is currently inactive. Please contact an administrator.",
+        },
+      });
+    }
+
+    // Token Version Invalidation Check:
+    // Any token with a version older than user's current tokenVersion (from password reset/deactivation) is revoked
+    const tokenVersionInPayload =
+      typeof payload.tokenVersion === "number" ? payload.tokenVersion : 0;
+    if (tokenVersionInPayload < user.tokenVersion) {
+      return res.status(401).json({
+        error: {
+          code: "SESSION_REVOKED",
+          message: "Your session has been revoked. Please sign in again.",
         },
       });
     }

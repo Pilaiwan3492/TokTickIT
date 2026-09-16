@@ -76,6 +76,7 @@ export const loginHandler = async (req: Request, res: Response) => {
       name: user.name,
       role: user.role,
       mustChangePassword: user.mustChangePassword,
+      tokenVersion: user.tokenVersion,
     });
 
     return res.status(200).json({
