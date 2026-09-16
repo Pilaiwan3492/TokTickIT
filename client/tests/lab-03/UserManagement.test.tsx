@@ -305,8 +305,8 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
     });
   });
 
-  // --- UI-29: Edit User Modal with Safety Guards ---
-  it("UI-29: should enforce self-deactivation guard and update user details", async () => {
+  // --- UI-28: Edit User Modal: Self-deactivation disabled ---
+  it("UI-28: should disable Active toggle and show notice when administrator edits own account", async () => {
     let updatedPayload: any = null;
     globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, opts: any) => {
       const urlStr = url.toString();
@@ -346,11 +346,11 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
       expect(screen.getByTestId(`btn-edit-user-${mockAdminUser.id}`)).toBeInTheDocument();
     });
 
-    // 1. Test Self-Deactivation Guard on Current Admin
+    // 1. Open edit modal on current admin
     fireEvent.click(screen.getByTestId(`btn-edit-user-${mockAdminUser.id}`));
     expect(screen.getByTestId("admin-edit-user-modal")).toBeInTheDocument();
 
-    // Active toggle must be disabled for self
+    // Active toggle must be disabled for self with self-deactivation notice
     const activeSwitch = screen.getByTestId("switch-edit-active");
     expect(activeSwitch).toBeDisabled();
     expect(screen.getByTestId("self-deactivation-notice")).toBeInTheDocument();
@@ -358,19 +358,17 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
     // Close modal
     fireEvent.click(screen.getByText("Cancel"));
 
-    // 2. Test Editing Other User (Staff)
+    // 2. Editing other non-admin user has active switch enabled
     fireEvent.click(screen.getByTestId(`btn-edit-user-${mockStaffUser.id}`));
     expect(screen.getByTestId("admin-edit-user-modal")).toBeInTheDocument();
 
     const staffActiveSwitch = screen.getByTestId("switch-edit-active");
     expect(staffActiveSwitch).not.toBeDisabled();
 
-    // Change Name
+    // Change Name and submit
     fireEvent.change(screen.getByTestId("input-edit-name"), {
       target: { value: "Samuel Staff Senior" },
     });
-
-    // Submit update
     fireEvent.click(screen.getByTestId("btn-submit-edit-user"));
 
     await waitFor(() => {
@@ -385,6 +383,49 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
     await waitFor(() => {
       expect(screen.getByTestId("admin-success-alert")).toBeInTheDocument();
     });
+  });
+
+  // --- UI-29: Edit User Modal: Last admin deactivation disabled ---
+  it("UI-29: should disable Active toggle and show last-admin guard notice when editing the last active administrator", async () => {
+    // Single active admin system
+    const singleAdminList = [mockAdminUser, mockStaffUser, mockRequesterUser];
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockAdminUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/admin/users")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: singleAdminList }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    renderAdminPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`btn-edit-user-${mockAdminUser.id}`)).toBeInTheDocument();
+    });
+
+    // Open edit modal on the sole active admin
+    fireEvent.click(screen.getByTestId(`btn-edit-user-${mockAdminUser.id}`));
+    expect(screen.getByTestId("admin-edit-user-modal")).toBeInTheDocument();
+
+    // Active toggle must be disabled
+    const activeSwitch = screen.getByTestId("switch-edit-active");
+    expect(activeSwitch).toBeDisabled();
+
+    // Must display last-admin guard notice in DOM
+    expect(screen.getByTestId("last-admin-guard-notice")).toBeInTheDocument();
+    expect(screen.getByText(/LAST_ACTIVE_ADMIN_PROTECTED/i)).toBeInTheDocument();
   });
 
   // --- UI-30: Reset Initial Password Modal ---

@@ -226,12 +226,12 @@
       - Reset Initial Password Modal with complexity requirements and clear notice of session invalidation.
    11. **Test Coverage & Verification:**
        - Server tests: `server/tests/lab-03/users-admin.api.test.ts` (13/13 passing: `API-39`..`API-48`, `API-42b`, `API-42c`, `API-45b`).
-       - Client tests: `client/tests/lab-03/UserManagement.test.tsx` (6/6 passing: `UI-26`..`UI-30` + role access control).
+       - Client tests: `client/tests/lab-03/UserManagement.test.tsx` (7/7 passing: `UI-26`..`UI-30` + role access control).
        - Full suites:
          - Server: **13 test files, 140/140 tests passing.**
-         - Client: **15 test files, 97/97 tests passing.**
+         - Client: **15 test files, 98/98 tests passing.**
        - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
 - **Reviewer Comment (@Apichaya251400):**  
-  > *"🔴 Verdict: CHANGES REQUESTED — 1. Blocker: Password reset allows old session to be reused after new login due to deleteMany. 2. Blocker: Last Active Admin needs true concurrency safety (Serializable/locking). 3. RequesterUser sync needed during role transitions (IT_STAFF <-> REQUESTER) with ownership safeguard to avoid hijacking records belonging to other users."*
+  > *"Before approving, I just have a few things I'd like to see improved: 1. Add an API test for deactivation/reactivation (true -> false -> true in API-42). 2. Add a test for deactivating the last active Administrator ({ isActive: false } -> 400 LAST_ACTIVE_ADMIN_PROTECTED in API-45). 3. Align UI-29 with tests.md (last active admin deactivation disabled test). 4. Calculate activeAdminCount from full user list rather than filtered users list."*
 - **Author Response (@Pilaiwan3492):**  
-  > *"Addressed all review feedback: 1. Removed deleteMany() and implemented permanent token versioning (`User.tokenVersion`) ensuring old tokens stay revoked even after new login (verified in API-43). 2. Enhanced Last Active Admin with PostgreSQL advisory locking (`pg_advisory_xact_lock`) and Serializable isolation with retries, verified with concurrent demotion test (`API-45b`). 3. Implemented safe bidirectional RequesterUser synchronization across role transitions (`API-42b`), querying by userId first, falling back to email only if unlinked/unassigned to avoid re-linking another user's record, verified in `API-42c`. All 140 server tests and 97 client tests passing with 0 build errors."*
+  > *"All 4 improvements completed: 1. Enhanced API-42 with full deactivation and reactivation cycle (true -> false -> true). 2. Re-ordered Last Active Admin Guard before Self-Deactivation Guard and added deactivation test ({ isActive: false } -> 400 LAST_ACTIVE_ADMIN_PROTECTED) in API-45. 3. Added distinct UI-28 (self-deactivation disabled) and UI-29 (last active admin disabled with LAST_ACTIVE_ADMIN_PROTECTED notice) tests in UserManagement.test.tsx perfectly matching tests.md. 4. Updated activeAdminCount to query all active administrators independently of current search or role filters. All 140 server tests and 98 client tests passing with 0 build errors."*

@@ -79,10 +79,24 @@ export default function UserManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Active Admin Count in system
-  const activeAdminCount = useMemo(() => {
-    return users.filter((u) => u.role === "ADMIN" && u.isActive).length;
-  }, [users]);
+  // Independent Active Admin Count across whole database (immune to current search/role filter)
+  const [totalActiveAdminCount, setTotalActiveAdminCount] = useState<number>(1);
+
+  const refreshActiveAdminCount = useCallback(async () => {
+    try {
+      const allAdmins = await listUsersApi("", "ADMIN");
+      const count = allAdmins.filter((u) => u.role === "ADMIN" && u.isActive).length;
+      setTotalActiveAdminCount(count);
+    } catch {
+      // fallback to current users count if error
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshActiveAdminCount();
+  }, [refreshActiveAdminCount]);
+
+  const activeAdminCount = totalActiveAdminCount;
 
   // Password Policy Checks (for create & reset)
   const validateComplexity = (pwd: string) => {
@@ -150,6 +164,7 @@ export default function UserManagement() {
       setCreateRole("REQUESTER");
       setCreateIsActive(true);
       fetchUsers();
+      refreshActiveAdminCount();
     } catch (err: any) {
       setCreateError(err.message || "Failed to create user account.");
     } finally {
@@ -192,6 +207,7 @@ export default function UserManagement() {
       setIsEditOpen(false);
       setSelectedUser(null);
       fetchUsers();
+      refreshActiveAdminCount();
     } catch (err: any) {
       setEditError(err.message || "Failed to update user account.");
     } finally {
@@ -972,7 +988,10 @@ export default function UserManagement() {
                       type="checkbox"
                       id="editActiveSwitch"
                       checked={editIsActive}
-                      disabled={selectedUser.id === currentUser?.id}
+                      disabled={
+                        selectedUser.id === currentUser?.id ||
+                        (selectedUser.role === "ADMIN" && selectedUser.isActive && activeAdminCount <= 1)
+                      }
                       onChange={(e) => setEditIsActive(e.target.checked)}
                       data-testid="switch-edit-active"
                     />
@@ -993,8 +1012,7 @@ export default function UserManagement() {
                   )}
 
                   {/* Last Admin Deactivation Guard notice */}
-                  {selectedUser.id !== currentUser?.id &&
-                    selectedUser.role === "ADMIN" &&
+                  {selectedUser.role === "ADMIN" &&
                     selectedUser.isActive &&
                     activeAdminCount <= 1 && (
                       <div

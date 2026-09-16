@@ -291,16 +291,6 @@ export const updateUserHandler = async (
       });
     }
 
-    // Safety Guard #1: Self-Deactivation (BR-21)
-    if (currentAdminId === targetId && isActive === false) {
-      return res.status(400).json({
-        error: {
-          code: "CANNOT_DEACTIVATE_SELF",
-          message: "You cannot deactivate your own administrator account.",
-        },
-      });
-    }
-
     const updateData: any = {};
 
     // Validate Name if provided
@@ -400,6 +390,16 @@ export const updateUserHandler = async (
           },
         });
       }
+    }
+
+    // Safety Guard #1: Administrator Self-Deactivation Guard (BR-21)
+    if (currentAdminId === targetId && newIsActive === false) {
+      return res.status(400).json({
+        error: {
+          code: "CANNOT_DEACTIVATE_SELF",
+          message: "You cannot deactivate your own administrator account.",
+        },
+      });
     }
 
     try {

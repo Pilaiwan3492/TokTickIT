@@ -213,25 +213,43 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
   });
 
   // --- API-42: Administrator updates user name, email, role, and active status ---
-  it("API-42: should update user profile fields and active status", async () => {
+  it("API-42: should update user profile fields, deactivate, and reactivate user (true -> false -> true)", async () => {
     const updatedEmail = `updated.${Date.now()}@example.com`;
 
-    const res = await request(app)
+    // 1. Update profile fields and deactivate user (true -> false)
+    const resDeactivate = await request(app)
       .patch(`/api/v1/admin/users/${testUserId}`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
         name: "Updated Requester Name",
         email: updatedEmail,
         role: "IT_STAFF",
+        isActive: false,
+      });
+
+    expect(resDeactivate.status).toBe(200);
+    expect(resDeactivate.body.data.name).toBe("Updated Requester Name");
+    expect(resDeactivate.body.data.email).toBe(updatedEmail);
+    expect(resDeactivate.body.data.role).toBe("IT_STAFF");
+    expect(resDeactivate.body.data.isActive).toBe(false);
+    expect(resDeactivate.body.data).not.toHaveProperty("passwordHash");
+
+    const checkDeactivated = await prisma.user.findUnique({ where: { id: testUserId } });
+    expect(checkDeactivated?.isActive).toBe(false);
+
+    // 2. Reactivate user (false -> true)
+    const resReactivate = await request(app)
+      .patch(`/api/v1/admin/users/${testUserId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
         isActive: true,
       });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.name).toBe("Updated Requester Name");
-    expect(res.body.data.email).toBe(updatedEmail);
-    expect(res.body.data.role).toBe("IT_STAFF");
-    expect(res.body.data.isActive).toBe(true);
-    expect(res.body.data).not.toHaveProperty("passwordHash");
+    expect(resReactivate.status).toBe(200);
+    expect(resReactivate.body.data.isActive).toBe(true);
+
+    const checkReactivated = await prisma.user.findUnique({ where: { id: testUserId } });
+    expect(checkReactivated?.isActive).toBe(true);
   });
 
   // --- API-43: Administrator resets initial password for user ---
@@ -350,6 +368,15 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
 
       expect(resDemote.status).toBe(400);
       expect(resDemote.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
+
+      // Case B: Attempting to deactivate last active admin ({ isActive: false })
+      const resDeactivate = await request(app)
+        .patch(`/api/v1/admin/users/${adminUserId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ isActive: false });
+
+      expect(resDeactivate.status).toBe(400);
+      expect(resDeactivate.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
     } finally {
       // Restore other admins
       if (otherActiveAdmins.length > 0) {
