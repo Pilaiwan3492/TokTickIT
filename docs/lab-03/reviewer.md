@@ -210,26 +210,28 @@
   8. **True Concurrency-Safe Last Active Admin Protection (BR-22):**
      - Uses PostgreSQL transaction-scoped advisory locking (`pg_advisory_xact_lock`) combined with `Serializable` transaction isolation level and backoff retries.
      - Guarantees that concurrent requests attempting to demote or deactivate active administrators serialize deterministically, preventing the active administrator count from ever dropping to zero.
-  9. **Bidirectional RequesterUser Role Transition Synchronization:**
-     - Transitioning to `REQUESTER` (`IT_STAFF -> REQUESTER` or `ADMIN -> REQUESTER`) automatically provisions or re-links a `RequesterUser` record in an atomic transaction.
-     - Transitioning from `REQUESTER` to `IT_STAFF` or `ADMIN` safely preserves the historical `RequesterUser` record to maintain database foreign key referential integrity for legacy tickets while synchronizing `name`, `email`, and `isActive`.
-  10. **Client UI — Administrator User Management (`UserManagement.tsx`):**
-     - Zen Green styling (`#006B3C`, `#EAF6EF`, `#DCFCE7`).
-     - Responsive design: desktop table ($\ge 1024\text{px}$) and mobile cards ($< 1024\text{px}$) with touch-friendly controls ($\ge 44\text{px}$ touch targets).
-     - Search with 300ms debounce and single-role filter dropdown.
-     - Create User Modal with real-time password complexity checklist ($\ge 8$ chars, uppercase, lowercase, number, symbol). Newly created users are flagged with `mustChangePassword = true`.
-     - Edit User Modal with self-deactivation disabled and last-admin protections.
-     - Reset Initial Password Modal with complexity requirements and clear notice of session invalidation.
-  11. **Test Coverage & Verification:**
-      - Server tests: `server/tests/lab-03/users-admin.api.test.ts` (12/12 passing: `API-39`..`API-48`, `API-42b`, `API-45b`).
-      - Client tests: `client/tests/lab-03/UserManagement.test.tsx` (6/6 passing: `UI-26`..`UI-30` + role access control).
-      - Full suites:
-        - Server: **13 test files, 139/139 tests passing.**
-        - Client: **15 test files, 97/97 tests passing.**
-      - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
+   9. **Bidirectional RequesterUser Role Transition Synchronization & Ownership Safeguard:**
+      - Transitioning to `REQUESTER` (`IT_STAFF -> REQUESTER` or `ADMIN -> REQUESTER`) uses a safe 4-step lookup:
+        1. Search by `userId = targetId` first.
+        2. Fallback to searching by `email` only if not found by `userId`.
+        3. If a record is found by email, it will **never** be re-linked if it already belongs to another user (`existingByEmail.userId && existingByEmail.userId !== targetId`), preventing data corruption and record hijacking.
+        4. If no record is found, automatically create a new `RequesterUser`.
+      - Transitioning from `REQUESTER` to `IT_STAFF` or `ADMIN` safely preserves the historical `RequesterUser` record to maintain database foreign key referential integrity for legacy tickets while synchronizing `name`, `email`, and `isActive`.
+   10. **Client UI — Administrator User Management (`UserManagement.tsx`):**
+      - Zen Green styling (`#006B3C`, `#EAF6EF`, `#DCFCE7`).
+      - Responsive design: desktop table ($\ge 1024\text{px}$) and mobile cards ($< 1024\text{px}$) with touch-friendly controls ($\ge 44\text{px}$ touch targets).
+      - Search with 300ms debounce and single-role filter dropdown.
+      - Create User Modal with real-time password complexity checklist ($\ge 8$ chars, uppercase, lowercase, number, symbol). Newly created users are flagged with `mustChangePassword = true`.
+      - Edit User Modal with self-deactivation disabled and last-admin protections.
+      - Reset Initial Password Modal with complexity requirements and clear notice of session invalidation.
+   11. **Test Coverage & Verification:**
+       - Server tests: `server/tests/lab-03/users-admin.api.test.ts` (13/13 passing: `API-39`..`API-48`, `API-42b`, `API-42c`, `API-45b`).
+       - Client tests: `client/tests/lab-03/UserManagement.test.tsx` (6/6 passing: `UI-26`..`UI-30` + role access control).
+       - Full suites:
+         - Server: **13 test files, 140/140 tests passing.**
+         - Client: **15 test files, 97/97 tests passing.**
+       - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
 - **Reviewer Comment (@Apichaya251400):**  
-  > *"🔴 Verdict: CHANGES REQUESTED — 1. Blocker: Password reset allows old session to be reused after new login due to deleteMany. 2. Blocker: Last Active Admin needs true concurrency safety (Serializable/locking). 3. RequesterUser sync needed during role transitions (IT_STAFF <-> REQUESTER)."*
+  > *"🔴 Verdict: CHANGES REQUESTED — 1. Blocker: Password reset allows old session to be reused after new login due to deleteMany. 2. Blocker: Last Active Admin needs true concurrency safety (Serializable/locking). 3. RequesterUser sync needed during role transitions (IT_STAFF <-> REQUESTER) with ownership safeguard to avoid hijacking records belonging to other users."*
 - **Author Response (@Pilaiwan3492):**  
-  > *"Addressed all review feedback: 1. Removed deleteMany() and implemented permanent token versioning (`User.tokenVersion`) ensuring old tokens stay revoked even after new login (verified in API-43). 2. Enhanced Last Active Admin with PostgreSQL advisory locking (`pg_advisory_xact_lock`) and Serializable isolation with retries, verified with concurrent demotion test (`API-45b`). 3. Implemented bidirectional RequesterUser synchronization across role transitions (`API-42b`). All 139 server tests and 97 client tests passing with 0 build errors."*
-
-
+  > *"Addressed all review feedback: 1. Removed deleteMany() and implemented permanent token versioning (`User.tokenVersion`) ensuring old tokens stay revoked even after new login (verified in API-43). 2. Enhanced Last Active Admin with PostgreSQL advisory locking (`pg_advisory_xact_lock`) and Serializable isolation with retries, verified with concurrent demotion test (`API-45b`). 3. Implemented safe bidirectional RequesterUser synchronization across role transitions (`API-42b`), querying by userId first, falling back to email only if unlinked/unassigned to avoid re-linking another user's record, verified in `API-42c`. All 140 server tests and 97 client tests passing with 0 build errors."*

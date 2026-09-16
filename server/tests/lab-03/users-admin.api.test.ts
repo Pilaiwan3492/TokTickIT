@@ -499,6 +499,73 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
     await prisma.user.delete({ where: { id: user.id } });
   });
 
+  // --- API-42c: RequesterUser safeguard: do not re-link RequesterUser if already linked to another user ---
+  it("API-42c: should NOT re-link or steal RequesterUser if record already belongs to another user", async () => {
+    const defaultHash = await hashPassword("Password123!");
+    const emailA = `owner.a.${Date.now()}@toktickit.com`;
+    const emailB = `owner.b.${Date.now()}@toktickit.com`;
+
+    // 1. Create User A (REQUESTER) with linked RequesterUser
+    const userA = await prisma.user.create({
+      data: {
+        email: emailA,
+        name: "User A",
+        role: "REQUESTER",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+    const reqUserA = await prisma.requesterUser.create({
+      data: {
+        name: "User A",
+        email: emailA,
+        userId: userA.id,
+        isActive: true,
+      },
+    });
+
+    // 2. Create User B (IT_STAFF)
+    const userB = await prisma.user.create({
+      data: {
+        email: emailB,
+        name: "User B",
+        role: "IT_STAFF",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+
+    // 3. Promote User B to REQUESTER
+    const promoteB = await request(app)
+      .patch(`/api/v1/admin/users/${userB.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ role: "REQUESTER" });
+
+    expect(promoteB.status).toBe(200);
+
+    // 4. Verify User A's RequesterUser was NOT altered or stolen
+    const freshReqUserA = await prisma.requesterUser.findUnique({
+      where: { id: reqUserA.id },
+    });
+    expect(freshReqUserA?.userId).toBe(userA.id);
+
+    // 5. Verify User B has their own separate RequesterUser
+    const reqUserB = await prisma.requesterUser.findFirst({
+      where: { userId: userB.id },
+    });
+    expect(reqUserB).not.toBeNull();
+    expect(reqUserB?.userId).toBe(userB.id);
+    expect(reqUserB?.email).toBe(emailB);
+
+    // Clean up
+    await prisma.requesterUser.deleteMany({
+      where: { id: { in: [reqUserA.id, reqUserB!.id] } },
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: [userA.id, userB.id] } },
+    });
+  });
+
   // --- API-46: Server-side authorization verification on all Admin endpoints ---
   it("API-46: should reject non-admin users with HTTP 403 INSUFFICIENT_PERMISSIONS", async () => {
     // 1. Requester attempting GET /api/v1/admin/users

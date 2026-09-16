@@ -196,19 +196,22 @@ export const createUserHandler = async (
 
         // Legacy compatibility: Maintain RequesterUser record for REQUESTER role
         if (roleUpper === Role.REQUESTER) {
-          const legacyExisting = await tx.requesterUser.findFirst({
+          const legacyExisting = await tx.requesterUser.findUnique({
             where: { email: normalizedEmail },
           });
 
           if (legacyExisting) {
-            await tx.requesterUser.update({
-              where: { id: legacyExisting.id },
-              data: {
-                name: newUser.name,
-                userId: newUser.id,
-                isActive: newUser.isActive,
-              },
-            });
+            // Only link if unlinked or already linked to newUser.id (do NOT re-link if belongs to another user)
+            if (!legacyExisting.userId || legacyExisting.userId === newUser.id) {
+              await tx.requesterUser.update({
+                where: { id: legacyExisting.id },
+                data: {
+                  name: newUser.name,
+                  userId: newUser.id,
+                  isActive: newUser.isActive,
+                },
+              });
+            }
           } else {
             await tx.requesterUser.create({
               data: {
@@ -458,35 +461,50 @@ export const updateUserHandler = async (
 
               // Handle RequesterUser synchronization across role transitions
               if (user.role === Role.REQUESTER) {
-                // If user is/became REQUESTER, ensure linked RequesterUser exists and is updated
-                const legacyExisting = await tx.requesterUser.findFirst({
-                  where: {
-                    OR: [
-                      { userId: targetId },
-                      { email: user.email },
-                    ],
-                  },
+                // If user is/became REQUESTER, ensure linked RequesterUser exists and is updated safely:
+                // 1. Check by userId = targetId first
+                const existingByUserId = await tx.requesterUser.findFirst({
+                  where: { userId: targetId },
                 });
 
-                if (legacyExisting) {
+                if (existingByUserId) {
                   await tx.requesterUser.update({
-                    where: { id: legacyExisting.id },
+                    where: { id: existingByUserId.id },
                     data: {
                       name: user.name,
                       email: user.email,
-                      userId: user.id,
                       isActive: user.isActive,
                     },
                   });
                 } else {
-                  await tx.requesterUser.create({
-                    data: {
-                      name: user.name,
-                      email: user.email,
-                      userId: user.id,
-                      isActive: user.isActive,
-                    },
+                  // 2. Fallback: Check by email
+                  const existingByEmail = await tx.requesterUser.findUnique({
+                    where: { email: user.email },
                   });
+
+                  if (existingByEmail) {
+                    // 3. If email record belongs to another user, do NOT re-link to prevent data corruption
+                    if (!existingByEmail.userId || existingByEmail.userId === targetId) {
+                      await tx.requesterUser.update({
+                        where: { id: existingByEmail.id },
+                        data: {
+                          name: user.name,
+                          userId: targetId,
+                          isActive: user.isActive,
+                        },
+                      });
+                    }
+                  } else {
+                    // 4. Record not found at all: create new RequesterUser
+                    await tx.requesterUser.create({
+                      data: {
+                        name: user.name,
+                        email: user.email,
+                        userId: user.id,
+                        isActive: user.isActive,
+                      },
+                    });
+                  }
                 }
               } else if (targetUser.role === Role.REQUESTER) {
                 // If transitioned from REQUESTER to non-requester (IT_STAFF / ADMIN):

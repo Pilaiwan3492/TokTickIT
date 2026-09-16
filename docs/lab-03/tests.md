@@ -226,8 +226,8 @@ Every Acceptance Criterion is strictly mapped to its primary automated tests:
 | **AC-21** | Administrator user list with search & role filter | `API-39`, `UI-26`, `E2E-08` | API, UI, E2E |
 | **AC-22** | Administrator creates user with initial password | `API-40`, `UI-27`, `E2E-08` | API, UI, E2E |
 | **AC-23** | Duplicate email registration rejected (HTTP 409) | `API-41`, `UI-27` | API, UI |
-| **AC-24** | Admin edits user & self-deactivation prevented | `API-42`, `API-44`, `UI-28`, `E2E-09` | API, UI, E2E |
-| **AC-25** | Last active administrator protected from removal | `API-45`, `UI-29`, `E2E-09` | API, UI, E2E |
+| **AC-24** | Admin edits user & self-deactivation prevented | `API-42`, `API-42b`, `API-42c`, `API-44`, `UI-28`, `E2E-09` | API, UI, E2E |
+| **AC-25** | Last active administrator protected from removal | `API-45`, `API-45b`, `UI-29`, `E2E-09` | API, UI, E2E |
 
 ---
 
