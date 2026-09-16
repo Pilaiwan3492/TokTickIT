@@ -80,9 +80,19 @@ export const requireAuth = async (
   try {
     const prisma = getPrisma();
 
-    // Check server-side revocation registry
-    const revoked = await prisma.revokedToken.findUnique({
-      where: { jti: payload.jti },
+    // Check server-side revocation registry (supports both single token jti and user-wide revocation)
+    const tokenIssuedAt = new Date(payload.iat * 1000);
+    const revoked = await prisma.revokedToken.findFirst({
+      where: {
+        OR: [
+          { jti: payload.jti },
+          {
+            userId: payload.sub,
+            jti: { startsWith: "revoke-" },
+            createdAt: { gt: tokenIssuedAt },
+          },
+        ],
+      },
     });
 
     if (revoked) {

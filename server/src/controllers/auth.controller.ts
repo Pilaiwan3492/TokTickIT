@@ -70,6 +70,14 @@ export const loginHandler = async (req: Request, res: Response) => {
       });
     }
 
+    // Clear any past user-wide revocation markers for this user upon new valid login
+    await prisma.revokedToken.deleteMany({
+      where: {
+        userId: user.id,
+        jti: { startsWith: "revoke-" },
+      },
+    });
+
     const token = signToken({
       id: user.id,
       email: user.email,

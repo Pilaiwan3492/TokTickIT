@@ -177,3 +177,54 @@
 - **Author Response (@Pilaiwan3492):**  
   > *"Addressed Changes Requested: refactored where clause to use AND array chaining for Search + Priority + Status + Ownership without overwriting, added email search, replaced browser alerts with error toast notifications, and added API-20b and API-24b combination filter tests."*
 
+---
+
+### PR #68: Issue 27 — Administrator User Management & Safety Guards
+- **Feature Branch:** `feature/27-admin-user-management`
+- **Issue Reference:** GitHub Issue #56 (Sprint 3 / Lab 3)
+- **Scope & Changes:**
+  1. **Strict Server-Side Authorization Guard (BR-24):**
+     - All `/api/v1/admin/*` endpoints (`admin.routes.ts`) enforce `requireAuth` followed by `requireRole(["ADMIN"])`.
+     - Requesters and IT Staff receive HTTP 403 `INSUFFICIENT_PERMISSIONS`. Unauthenticated requests receive HTTP 401 `SESSION_INVALID`.
+  2. **Canonical Roles & Safe User Projection (BR-04, BR-05):**
+     - Exactly three canonical roles: `REQUESTER`, `IT_STAFF`, `ADMIN`.
+     - User responses project only safe fields: `id`, `name`, `email`, `role`, `isActive`, `mustChangePassword`, `createdAt`. Zero exposure of `passwordHash`, session secrets, or internal security fields.
+  3. **Safety Guard: Self-Deactivation Prohibited (BR-21):**
+     - Administrators cannot deactivate their own account (`isActive: false` $\rightarrow$ HTTP 400 `CANNOT_DEACTIVATE_SELF`).
+     - Client UI disables the active account toggle for the current admin with clear explanatory guidance.
+  4. **Safety Guard: Last Active Administrator Protection (BR-22):**
+     - The system enforces maintaining at least one active Administrator at all times.
+     - Deactivation or role demotion of the last active Administrator returns HTTP 400 `LAST_ACTIVE_ADMIN_PROTECTED`.
+     - Protected both before and inside the atomic Prisma database transaction to guarantee concurrency safety.
+     - Client UI provides real-time warning indicators when viewing the last active Administrator.
+  5. **Case-Insensitive Email Uniqueness (BR-20):**
+     - Emails are normalized via `.trim().toLowerCase()`.
+     - Duplicate email creations or updates return HTTP 409 `DUPLICATE_EMAIL`.
+  6. **Prohibited User Deletion (BR-19):**
+     - Direct `DELETE /api/v1/admin/users/:id` returns HTTP 405 `METHOD_NOT_ALLOWED`. Deactivation is the exclusive removal mechanism.
+  7. **Canonical Session Invalidation on Deactivation & Password Reset (BR-27, BR-28):**
+     - Resetting initial password or deactivating an account registers a user-wide revocation record in the `RevokedToken` registry.
+     - `requireAuth` validates tokens against both specific `jti` and user-wide revocations (`createdAt > tokenIssuedAt`), immediately rejecting old tokens with HTTP 401 `SESSION_REVOKED`.
+     - Upon subsequent successful login with the new credentials, obsolete revocation markers are cleanly purged.
+  8. **Legacy RequesterUser Compatibility:**
+     - When creating or updating a user with role `REQUESTER`, the corresponding legacy `RequesterUser` record is created or updated within the same transaction to ensure backwards compatibility with legacy fixtures.
+  9. **Client UI — Administrator User Management (`UserManagement.tsx`):**
+     - Zen Green styling (`#006B3C`, `#EAF6EF`, `#DCFCE7`).
+     - Responsive design: desktop table ($\ge 1024\text{px}$) and mobile cards ($< 1024\text{px}$) with touch-friendly controls ($\ge 44\text{px}$ touch targets).
+     - Search with 300ms debounce and single-role filter dropdown.
+     - Create User Modal with real-time password complexity checklist ($\ge 8$ chars, uppercase, lowercase, number, symbol). Newly created users are flagged with `mustChangePassword = true`.
+     - Edit User Modal with self-deactivation disabled and last-admin protections.
+     - Reset Initial Password Modal with complexity requirements and clear notice of session invalidation.
+  10. **Test Coverage & Verification:**
+      - Server tests: `server/tests/lab-03/users-admin.api.test.ts` (10/10 passing: `API-39`..`API-48`).
+      - Client tests: `client/tests/lab-03/UserManagement.test.tsx` (6/6 passing: `UI-26`..`UI-30` + role access control).
+      - Full suites:
+        - Server: **13 test files, 137/137 tests passing.**
+        - Client: **15 test files, 97/97 tests passing.**
+      - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
+- **Reviewer Comment (@Apichaya251400):**  
+  > *[Pending Review]*
+- **Author Response (@Pilaiwan3492):**  
+  > *"Implemented comprehensive Administrator User Management with strict server-side authorization guards, self-deactivation prevention, last-active-admin protection with concurrency safety, session invalidation via RevokedToken, and full client UI in Zen Green theme."*
+
+
