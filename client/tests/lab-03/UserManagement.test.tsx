@@ -147,8 +147,8 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
     expect(screen.getByTestId(`mobile-btn-reset-user-${mockStaffUser.id}`)).toBeInTheDocument();
   });
 
-  // --- UI-27: Search & Role Filter with Debounce and Empty State ---
-  it("UI-27: should trigger search with debounce, filter by role, and display empty state when no matches", async () => {
+  // --- UI-26b: Search & Role Filter with Debounce and Empty State ---
+  it("UI-26b: should trigger search with debounce, filter by role, and display empty state when no matches", async () => {
     let capturedUrl = "";
     globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
       const urlStr = url.toString();
@@ -211,8 +211,8 @@ describe("Administrator User Management UI Tests (Lab 3 — Issue 27: UI-26..UI-
     });
   });
 
-  // --- UI-28: Create User Modal with Password Complexity ---
-  it("UI-28: should open Create User modal, enforce password complexity rules, and submit new user", async () => {
+  // --- UI-27: Create User Modal with Password Complexity ---
+  it("UI-27: should open Create User modal, enforce password complexity rules, and submit new user", async () => {
     let createdPayload: any = null;
     globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, opts: any) => {
       const urlStr = url.toString();

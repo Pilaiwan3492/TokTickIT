@@ -446,12 +446,15 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
           .send({ role: "IT_STAFF" }),
       ]);
 
-      // Exactly ONE request must fail with 400 LAST_ACTIVE_ADMIN_PROTECTED
-      const statuses = [resA.status, resB.status];
-      expect(statuses).toContain(400);
+      // Exactly ONE request must succeed (200) and exactly ONE must fail (400 LAST_ACTIVE_ADMIN_PROTECTED)
+      const statuses = [resA.status, resB.status].sort((a, b) => a - b);
+      expect(statuses).toEqual([200, 400]);
 
       const failedRes = resA.status === 400 ? resA : resB;
+      const succeededRes = resA.status === 200 ? resA : resB;
+
       expect(failedRes.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
+      expect(succeededRes.body.data.role).toBe("IT_STAFF");
 
       // Verify at least one active Admin still exists in the database
       const remainingCount = await prisma.user.count({
