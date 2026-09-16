@@ -179,9 +179,9 @@
 
 ---
 
-### PR #68: Issue 27 — Administrator User Management & Safety Guards
+### PR #68: Issue 28 — Administrator User Management & Safety Guards
 - **Feature Branch:** `feature/27-admin-user-management`
-- **Issue Reference:** GitHub Issue #56 (Sprint 3 / Lab 3)
+- **Issue Reference:** GitHub Issue #58 (Sprint 3 / Lab 3)
 - **Scope & Changes:**
   1. **Strict Server-Side Authorization Guard (BR-24):**
      - All `/api/v1/admin/*` endpoints (`admin.routes.ts`) enforce `requireAuth` followed by `requireRole(["ADMIN"])`.
