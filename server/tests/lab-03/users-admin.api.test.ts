@@ -291,6 +291,23 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
 
     expect(successfulLogin.status).toBe(200);
     expect(successfulLogin.body.data.user.mustChangePassword).toBe(true);
+
+    // 6. Reviewer requirement: Old session token MUST still be rejected with 401 SESSION_REVOKED after new login!
+    const accessWithOldTokenAfterNewLogin = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${userSessionToken}`);
+
+    expect(accessWithOldTokenAfterNewLogin.status).toBe(401);
+    expect(accessWithOldTokenAfterNewLogin.body.error.code).toBe("SESSION_REVOKED");
+
+    // 7. And new session token works cleanly
+    const newToken = successfulLogin.body.data.token;
+    const accessWithNewToken = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${newToken}`);
+
+    expect(accessWithNewToken.status).toBe(200);
+    expect(accessWithNewToken.body.data.email).toBe(userEmail);
   });
 
   // --- API-44: Administrator attempts to deactivate their own account ---
@@ -342,6 +359,144 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
         });
       }
     }
+  });
+
+  // --- API-45b: Concurrency safety during concurrent demotions of active Administrators ---
+  it("API-45b: should prevent race conditions during concurrent demotions of active Administrators", async () => {
+    // 1. Create two isolated test admins
+    const defaultHash = await hashPassword("Password123!");
+    const adminA = await prisma.user.create({
+      data: {
+        email: `concurrent.admin.a.${Date.now()}@toktickit.com`,
+        name: "Concurrent Admin A",
+        role: "ADMIN",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+
+    const adminB = await prisma.user.create({
+      data: {
+        email: `concurrent.admin.b.${Date.now()}@toktickit.com`,
+        name: "Concurrent Admin B",
+        role: "ADMIN",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+
+    // Deactivate all other admins so ONLY adminA and adminB are active
+    const otherAdmins = await prisma.user.findMany({
+      where: { role: "ADMIN", isActive: true, id: { notIn: [adminA.id, adminB.id] } },
+      select: { id: true },
+    });
+
+    if (otherAdmins.length > 0) {
+      await prisma.user.updateMany({
+        where: { id: { in: otherAdmins.map((u) => u.id) } },
+        data: { isActive: false },
+      });
+    }
+
+    try {
+      // Log in as Admin A to get authenticated admin token
+      const loginA = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: adminA.email, password: "Password123!" });
+      const tokenA = loginA.body.data.token;
+
+      // Both requests attempt to demote one admin concurrently using tokenA:
+      // Request 1: Demote Admin B to IT_STAFF
+      // Request 2: Demote Admin A to IT_STAFF
+      const [resA, resB] = await Promise.all([
+        request(app)
+          .patch(`/api/v1/admin/users/${adminB.id}`)
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({ role: "IT_STAFF" }),
+        request(app)
+          .patch(`/api/v1/admin/users/${adminA.id}`)
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({ role: "IT_STAFF" }),
+      ]);
+
+      // Exactly ONE request must fail with 400 LAST_ACTIVE_ADMIN_PROTECTED
+      const statuses = [resA.status, resB.status];
+      expect(statuses).toContain(400);
+
+      const failedRes = resA.status === 400 ? resA : resB;
+      expect(failedRes.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
+
+      // Verify at least one active Admin still exists in the database
+      const remainingCount = await prisma.user.count({
+        where: { id: { in: [adminA.id, adminB.id] }, role: "ADMIN", isActive: true },
+      });
+      expect(remainingCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      // Restore other admins
+      if (otherAdmins.length > 0) {
+        await prisma.user.updateMany({
+          where: { id: { in: otherAdmins.map((u) => u.id) } },
+          data: { isActive: true },
+        });
+      }
+      // Clean up test admins
+      await prisma.user.deleteMany({
+        where: { id: { in: [adminA.id, adminB.id] } },
+      });
+    }
+  });
+
+  // --- API-42b: RequesterUser synchronization across role transitions ---
+  it("API-42b: should synchronize RequesterUser properly across role transitions (IT_STAFF <-> REQUESTER)", async () => {
+    const defaultHash = await hashPassword("Password123!");
+    const transitionEmail = `transition.${Date.now()}@toktickit.com`;
+
+    // 1. Create IT_STAFF user
+    const user = await prisma.user.create({
+      data: {
+        email: transitionEmail,
+        name: "Transition User",
+        role: "IT_STAFF",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+
+    // Initially, no linked RequesterUser
+    let reqUser = await prisma.requesterUser.findFirst({ where: { userId: user.id } });
+    expect(reqUser).toBeNull();
+
+    // 2. Change role from IT_STAFF to REQUESTER
+    const promoteRes = await request(app)
+      .patch(`/api/v1/admin/users/${user.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ role: "REQUESTER" });
+
+    expect(promoteRes.status).toBe(200);
+    expect(promoteRes.body.data.role).toBe("REQUESTER");
+
+    // RequesterUser must now exist and be linked
+    reqUser = await prisma.requesterUser.findFirst({ where: { userId: user.id } });
+    expect(reqUser).not.toBeNull();
+    expect(reqUser?.email).toBe(transitionEmail);
+    expect(reqUser?.isActive).toBe(true);
+
+    // 3. Change role from REQUESTER to IT_STAFF
+    const demoteRes = await request(app)
+      .patch(`/api/v1/admin/users/${user.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ role: "IT_STAFF" });
+
+    expect(demoteRes.status).toBe(200);
+    expect(demoteRes.body.data.role).toBe("IT_STAFF");
+
+    // RequesterUser must still exist for historical ticket integrity
+    reqUser = await prisma.requesterUser.findFirst({ where: { userId: user.id } });
+    expect(reqUser).not.toBeNull();
+
+    // Clean up
+    await prisma.requesterUser.deleteMany({ where: { userId: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
   });
 
   // --- API-46: Server-side authorization verification on all Admin endpoints ---

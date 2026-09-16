@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authGuard.js";
 import { getPrisma } from "../prisma.js";
-import { Role } from "@prisma/client";
+import { Role, Prisma } from "@prisma/client";
 import { hashPassword, validatePasswordPolicy } from "../utils/password.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -400,61 +400,150 @@ export const updateUserHandler = async (
     }
 
     try {
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        // Perform atomic check in transaction for last admin concurrency protection
-        if (isCurrentlyActiveAdmin && (isBeingDeactivated || isBeingDemoted)) {
-          const countInTx = await tx.user.count({
-            where: { role: Role.ADMIN, isActive: true },
-          });
-          if (countInTx <= 1) {
-            throw new Error("LAST_ACTIVE_ADMIN_PROTECTED");
-          }
-        }
+      // Retry wrapper for serialization failures (PostgreSQL 40001 / Prisma P2034)
+      const maxRetries = 3;
+      let attempt = 0;
+      let updatedUser: any;
 
-        const user = await tx.user.update({
-          where: { id: targetId },
-          data: updateData,
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            isActive: true,
-            mustChangePassword: true,
-            createdAt: true,
-          },
-        });
+      while (true) {
+        try {
+          updatedUser = await prisma.$transaction(
+            async (tx) => {
+              // 1. Acquire transaction-scoped advisory lock in PostgreSQL for admin mutations
+              if (isCurrentlyActiveAdmin && (isBeingDeactivated || isBeingDemoted)) {
+                try {
+                  await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(838383);");
+                } catch {
+                  // Ignore if DB provider does not support pg_advisory_xact_lock
+                }
 
-        // Invalidate active sessions if deactivated (BR-27)
-        if (newIsActive === false) {
-          await tx.revokedToken.create({
-            data: {
-              jti: `revoke-deactivate-${targetId}-${Date.now()}`,
-              userId: targetId,
-              expiresAt: new Date(Date.now() + 8 * 3600 * 1000),
+                const countInTx = await tx.user.count({
+                  where: { role: Role.ADMIN, isActive: true },
+                });
+                if (countInTx <= 1) {
+                  throw new Error("LAST_ACTIVE_ADMIN_PROTECTED");
+                }
+              }
+
+              // If deactivating, increment tokenVersion to permanently invalidate sessions
+              const finalUpdateData: any = { ...updateData };
+              if (newIsActive === false) {
+                finalUpdateData.tokenVersion = { increment: 1 };
+              }
+
+              const user = await tx.user.update({
+                where: { id: targetId },
+                data: finalUpdateData,
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  isActive: true,
+                  mustChangePassword: true,
+                  createdAt: true,
+                },
+              });
+
+              // Invalidate active sessions if deactivated (BR-27)
+              if (newIsActive === false) {
+                await tx.revokedToken.create({
+                  data: {
+                    jti: `revoke-deactivate-${targetId}-${Date.now()}`,
+                    userId: targetId,
+                    expiresAt: new Date(Date.now() + 8 * 3600 * 1000),
+                  },
+                });
+              }
+
+              // Handle RequesterUser synchronization across role transitions
+              if (user.role === Role.REQUESTER) {
+                // If user is/became REQUESTER, ensure linked RequesterUser exists and is updated
+                const legacyExisting = await tx.requesterUser.findFirst({
+                  where: {
+                    OR: [
+                      { userId: targetId },
+                      { email: user.email },
+                    ],
+                  },
+                });
+
+                if (legacyExisting) {
+                  await tx.requesterUser.update({
+                    where: { id: legacyExisting.id },
+                    data: {
+                      name: user.name,
+                      email: user.email,
+                      userId: user.id,
+                      isActive: user.isActive,
+                    },
+                  });
+                } else {
+                  await tx.requesterUser.create({
+                    data: {
+                      name: user.name,
+                      email: user.email,
+                      userId: user.id,
+                      isActive: user.isActive,
+                    },
+                  });
+                }
+              } else if (targetUser.role === Role.REQUESTER) {
+                // If transitioned from REQUESTER to non-requester (IT_STAFF / ADMIN):
+                // Maintain legacy RequesterUser record to preserve FK integrity for historical tickets,
+                // but synchronize active state, name, and email.
+                const legacyExisting = await tx.requesterUser.findFirst({
+                  where: { userId: targetId },
+                });
+                if (legacyExisting) {
+                  await tx.requesterUser.update({
+                    where: { id: legacyExisting.id },
+                    data: {
+                      name: user.name,
+                      email: user.email,
+                      isActive: user.isActive,
+                    },
+                  });
+                }
+              } else {
+                // Otherwise if linked RequesterUser exists, keep its fields synchronized
+                const reqProfile = await tx.requesterUser.findFirst({
+                  where: { userId: targetId },
+                });
+                if (reqProfile) {
+                  await tx.requesterUser.update({
+                    where: { id: reqProfile.id },
+                    data: {
+                      name: user.name,
+                      email: user.email,
+                      isActive: user.isActive,
+                    },
+                  });
+                }
+              }
+
+              return user;
             },
-          });
-        }
+            {
+              isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            }
+          );
 
-        // Update legacy RequesterUser if linked
-        if (updateData.name || updateData.email || updateData.isActive !== undefined) {
-          const reqProfile = await tx.requesterUser.findFirst({
-            where: { userId: targetId },
-          });
-          if (reqProfile) {
-            await tx.requesterUser.update({
-              where: { id: reqProfile.id },
-              data: {
-                name: updateData.name || reqProfile.name,
-                email: updateData.email || reqProfile.email,
-                isActive: updateData.isActive !== undefined ? updateData.isActive : reqProfile.isActive,
-              },
-            });
+          break; // Transaction committed successfully
+        } catch (retryErr: any) {
+          attempt++;
+          const isSerializationError =
+            retryErr?.code === "P2034" ||
+            String(retryErr?.message).includes("could not serialize access") ||
+            String(retryErr?.message).includes("40001") ||
+            String(retryErr?.message).includes("deadlock detected");
+          if (isSerializationError && attempt < maxRetries) {
+            await new Promise((resolve) => setTimeout(resolve, attempt * 50));
+            continue;
           }
+          throw retryErr;
         }
-
-        return user;
-      });
+      }
 
       return res.status(200).json({
         data: updatedUser,
@@ -548,12 +637,13 @@ export const resetUserPasswordHandler = async (
     const newHash = await hashPassword(newInitialPassword);
 
     await prisma.$transaction(async (tx) => {
-      // 1. Update user password and set mustChangePassword = true
+      // 1. Update user password, set mustChangePassword = true, and increment tokenVersion
       await tx.user.update({
         where: { id: targetId },
         data: {
           passwordHash: newHash,
           mustChangePassword: true, // FR-22, BR-23
+          tokenVersion: { increment: 1 },
         },
       });
 
