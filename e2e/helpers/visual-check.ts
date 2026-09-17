@@ -1,0 +1,30 @@
+import { Page, expect } from "@playwright/test";
+import path from "path";
+
+/**
+ * Asserts that the document has zero horizontal scrollbar / page overflow.
+ * Section 2.5 (RESP-04): scrollWidth <= innerWidth.
+ */
+export async function assertNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(() => {
+    const docWidth = document.documentElement.scrollWidth;
+    const winWidth = window.innerWidth;
+    return {
+      docWidth,
+      winWidth,
+      hasOverflow: docWidth > winWidth + 1, // allow 1px subpixel rounding tolerance
+    };
+  });
+  expect(overflow.hasOverflow).toBe(false);
+}
+
+/**
+ * Captures a screenshot to the canonical Lab 3 screenshot directory.
+ */
+export async function captureScreenshot(page: Page, relativePath: string) {
+  const fullPath = path.resolve(process.cwd(), "artifacts/lab-03/screenshots", relativePath);
+  await page.waitForLoadState("networkidle");
+  // Brief delay to ensure CSS transitions/animations settle
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: fullPath, fullPage: false });
+}

@@ -20,7 +20,9 @@
 | [#64](https://github.com/Pilaiwan3492/TokTickIT/pull/64) | `feature/23-auth-foundation` | Issue 23: Authentication Foundation, Session Invalidation & API Protection | Approved | Merged |
 | [#65](https://github.com/Pilaiwan3492/TokTickIT/pull/65) | `feature/24-client-auth-appshell` | Issue 24: Client Authentication, Mandatory Password Change & App Shell | Approved | Merged |
 | [#66](https://github.com/Pilaiwan3492/TokTickIT/pull/66) | `feature/25-requester-regression-comments` | Issue 25: Requester Regression, Public Comments & Problem Resolution Indicator | Approved | Merged |
-| [#67](https://github.com/Pilaiwan3492/TokTickIT/pull/67) | `feature/26-it-staff-queue-processing` | Issue 26: IT Staff Queue & Operational Ticket Processing | In Review | Open |
+| [#67](https://github.com/Pilaiwan3492/TokTickIT/pull/67) | `feature/26-it-staff-queue-processing` | Issue 26: IT Staff Queue & Operational Ticket Processing | Approved | Merged |
+| [#68](https://github.com/Pilaiwan3492/TokTickIT/pull/68) | `feature/27-admin-user-management` | Issue 27: Administrator User Management & Safety Guards | Approved | Merged |
+| [#69](https://github.com/Pilaiwan3492/TokTickIT/pull/69) | `feature/28-e2e-test-suite` | Issue 28: End-to-End Test Suite & Responsive Visual Evidence | In Review | Open |
 
 ---
 
@@ -235,3 +237,50 @@
   > *"Before approving: 1. Add API test for deactivation/reactivation (true -> false -> true in API-42). 2. Add test for deactivating last active Admin ({ isActive: false } -> 400 LAST_ACTIVE_ADMIN_PROTECTED in API-45). 3. Align UI-29 with tests.md (last active admin disabled test). 4. Calculate activeAdminCount from full user list rather than filtered users list. 5. Rename Create User test to UI-27 in UserManagement.test.tsx. 6. Strengthen API-45b to assert exactly one request returns 200 and one returns 400."*
 - **Author Response (@Pilaiwan3492):**  
   > *"All improvements completed: 1. Enhanced API-42 with full deactivation and reactivation cycle (true -> false -> true). 2. Re-ordered Last Active Admin Guard before Self-Deactivation Guard and added deactivation test ({ isActive: false } -> 400 LAST_ACTIVE_ADMIN_PROTECTED) in API-45. 3. Added distinct UI-28 and UI-29 tests in UserManagement.test.tsx matching tests.md. 4. Updated activeAdminCount to query all active administrators independently of filters. 5. Renamed Create User test to UI-27 and Search test to UI-26b for 100% test ID traceability. 6. Strengthened API-45b to assert `statuses.sort() == [200, 400]`, verifying both the succeeding 200 demotion and the failing 400 protection. All 140 server tests and 98 client tests passing with 0 build errors."*
+
+---
+
+### PR #69: Issue 28 — End-to-End Test Suite & Responsive Visual Evidence
+- **Feature Branch:** `feature/28-e2e-test-suite`
+- **Issue Reference:** GitHub Issue #59 (Sprint 3 / Lab 3)
+- **Scope & Changes:**
+  1. **Playwright Configuration & Multi-Device Profiles:**
+     - Configured `@playwright/test` across three mandatory device viewports:
+       - **Desktop:** Chromium ($1280 \times 800$)
+       - **Tablet:** Chromium ($820 \times 1180$)
+       - **Mobile:** Chromium ($375 \times 667$)
+     - Configured root test runner scripts (`npm run test:e2e`, `test:e2e:desktop`, `test:e2e:tablet`, `test:e2e:mobile`).
+  2. **Comprehensive E2E Test Suites (`e2e/lab-03/`):**
+     - `authentication.spec.ts` (4 scenarios, 12 tests across 3 devices):
+       - `E2E-01`: Valid login journeys across Requester, IT Staff, and Administrator.
+       - `E2E-02`: Mandatory first-login password change flow for seeded user (`Alice Johnson`), including real-time complexity checklist and URL tampering prevention.
+       - `E2E-03`: Inactive account login rejection with safe generic error banner (`"Your account is currently inactive"`).
+       - `E2E-04`: Sign out invalidates session and prevents browser back-button navigation to protected views.
+     - `staff-ticket-flow.spec.ts` (3 scenarios, 9 tests across 3 devices):
+       - `E2E-05`: IT Staff Queue search, ownership filter (`Unassigned`), ticket claiming, and independent IT Priority modification.
+       - `E2E-06`: Strict status transition lifecycle (`NEW` $\rightarrow$ `OPEN` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `RESOLVED`).
+       - `E2E-07`: Requester and IT Staff conversation boundary: public comments visible to both; private internal notes (amber theme) strictly visible only to IT Staff with zero data leakage to Requester.
+     - `user-administration.spec.ts` (3 scenarios, 9 tests across 3 devices):
+       - `E2E-08`: Administrator provisions new IT Staff user; new user logs in, is forced to change password, and enters `/queue`.
+       - `E2E-09`: Administrator safety guards: self-deactivation prevented (`switch-edit-active` disabled with `CANNOT_DEACTIVATE_SELF` notice), and last active admin protection (`LAST_ACTIVE_ADMIN_PROTECTED`).
+       - `E2E-10`: Requester creates ticket via UI; asserts automatic assignment to `NEW` status, inherited IT Priority `HIGH`, and unassigned owner in Staff Ticket Queue.
+  3. **Visual Evidence Collection (`artifacts/lab-03/screenshots/`):**
+     - Captured 18 high-resolution screenshots across 4 subdirectories:
+       - `authentication/`: `01-login-desktop.png`, `01-login-tablet.png`, `01-login-mobile.png`, `02-mandatory-password-change-desktop.png`, `02-mandatory-password-change-mobile.png`, `03-inactive-account-error.png`.
+       - `staff-queue/`: `04-queue-desktop.png`, `04-queue-tablet.png`, `04-queue-mobile.png`, `05-queue-filter-unassigned.png`.
+       - `staff-ticket-detail/`: `06-ticket-detail-desktop.png`, `06-ticket-detail-mobile.png`, `07-internal-notes-amber-theme.png`, `08-status-transition-dropdown.png`.
+       - `user-management/`: `09-user-management-desktop.png`, `09-user-management-mobile.png`, `10-create-user-modal.png`, `11-self-deactivation-guard-disabled.png`.
+  4. **Responsive Visual Checklist & Invariant Verification:**
+     - **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop, Tablet, and Mobile.
+     - **Touch Targets $\ge 44\text{px}$ (`RESP-03`)**: Mobile/tablet interactive controls adhere to minimum 44px hit-areas.
+     - **Design System Tokens (`VIS-01`, `VIS-02`)**: Zen Green `#006B3C` branding, Amber `#D97706` internal notes contrast.
+  5. **Regression & Full Test Suite Verification:**
+     - Server tests: **13 test files, 140/140 passed.**
+     - Client unit tests: **15 test files, 98/98 passed.**
+     - Playwright E2E tests: **3 test files, 30/30 passed (100% across Desktop, Tablet, Mobile).**
+     - Production builds: Server (`tsc`) and Client (`tsc && vite build`) compile with **0 errors**.
+- **Reviewer Comment (@Apichaya251400):**  
+  > *[Pending Review]*
+- **Author Response (@Pilaiwan3492):**  
+  > *"All 10 E2E test scenarios are fully implemented and passing across all three device viewports (Desktop, Tablet, Mobile) with zero horizontal overflow. All 18 screenshot artifacts are generated and organized under artifacts/lab-03/screenshots/. Full regression suite is clean."*
+
