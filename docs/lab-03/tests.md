@@ -336,3 +336,10 @@ All screenshots are captured during Playwright E2E execution and stored under `a
 - [x] **Internal Note Boundary (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates internal notes from public comments.
 - [x] **Admin Protection Feedback (`BR-21`, `BR-22`)**: Self-deactivation and last active admin safety notices render with clear, visible warnings.
 
+#### Issue 28 Visual Inspection Checklist
+
+- [x] Layout alignment checked.
+- [x] Status, Priority, and Role badge styling checked.
+- [x] Keyboard focus states checked.
+- [x] No text clipping or overlapping elements.
+- [x] No horizontal page overflow.
