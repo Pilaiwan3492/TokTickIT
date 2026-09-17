@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CPE334 Lab 3 Submission — TokTickIT (Pilaiwan Churdchu)</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      background-color: #f8fafc;
+      line-height: 1.55;
+      font-size: 13px;
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 36px 42px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    h1.doc-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #006B3C;
+      margin-bottom: 8px;
+      border-bottom: 2px solid #006B3C;
+      padding-bottom: 8px;
+    }
+    .meta-box {
+      background-color: #EAF6EF;
+      border: 1px solid #bfe3d0;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 13px;
+    }
+    .meta-box p {
+      margin: 4px 0;
+    }
+    h2.section-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #006B3C;
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #E2E8F0;
+      page-break-after: avoid;
+    }
+    h3.sub-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #CBD5E1;
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #006B3C;
+      color: #ffffff;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background-color: #F8FAFC;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+    .badge-pass {
+      background-color: #DEF7EC;
+      color: #03543F;
+    }
+    .screenshot-card {
+      margin: 14px 0 20px 0;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #FFFFFF;
+      page-break-inside: avoid;
+    }
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      max-height: 520px;
+      object-fit: contain;
+      background-color: #F1F5F9;
+    }
+    .screenshot-card .caption {
+      padding: 8px 12px;
+      background: #F8FAFC;
+      border-top: 1px solid #E2E8F0;
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 500;
+    }
+    pre {
+      background-color: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    p code {
+      background-color: #F1F5F9;
+      color: #006B3C;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 11.5px;
+    }
+    ul, ol {
+      padding-left: 20px;
+      margin: 6px 0 12px 0;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    .amber-box {
+      background-color: #FFFBEB;
+      border-left: 4px solid #D97706;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 0 4px 4px 0;
+      font-size: 12.5px;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    @media print {
+      body {
+        background-color: #ffffff;
+        padding: 0;
+      }
+      .container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .screenshot-card {
+        page-break-inside: avoid;
+      }
+      h2.section-title {
+        page-break-before: always;
+      }
+      h2.section-title:first-of-type {
+        page-break-before: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1 class="doc-title">CPE334 Lab 3 Submission — TokTickIT</h1>
+
+  <div class="meta-box">
+    <p><strong>Student Name:</strong> Pilaiwan Churdchu (ID: 67070503492)</p>
+    <p><strong>GitHub Username:</strong> <a href="https://github.com/Pilaiwan3492">@Pilaiwan3492</a></p>
+    <p><strong>Peer Reviewer:</strong> Aphichaya Klinhual (ID: 67070503447, GitHub: <a href="https://github.com/Apichaya251400">@Apichaya251400</a>)</p>
+    <p><strong>Author Repository:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT">https://github.com/Pilaiwan3492/TokTickIT</a></p>
+    <p><strong>Target Release Branch:</strong> <code>lab3-staging</code> &rarr; <code>main</code></p>
+  </div>
+
+  <!-- ANSWER PART 1 -->
+  <h2 class="section-title">Answer Part 1: Git Use with Engineering Workflow</h2>
+  <p>Engineering development for Lab 3 strictly adhered to staged Git integration: feature branches were developed in isolation, peer reviewed by @Apichaya251400, integrated into <code>lab3-staging</code>, and finally released to <code>main</code>.</p>
+
+  <h3 class="sub-title">1.1 Git Commit History Graph</h3>
+  <p>Commit history demonstrating feature branches merged into <code>lab3-staging</code> and <code>main</code>:</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/part-1/01-git-commit-history.png" alt="Git Commit History" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'120\'><rect width=\'100%\' height=\'100%\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\' text-anchor=\'middle\'>[Git Commit History Graph Evidence]</text></svg>'">
+    <div class="caption">Figure 1.1: Git graph showing clean staged merge workflow: feature/* &rarr; lab3-staging &rarr; main.</div>
+  </div>
+
+  <h3 class="sub-title">1.2 GitHub Project Kanban Board</h3>
+  <p>GitHub Project board displaying all Sprint 3 issues (Issues #20 to #29) in the <strong>Done</strong> column:</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/part-1/02-github-project-board.png" alt="GitHub Project Board" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'120\'><rect width=\'100%\' height=\'100%\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\' text-anchor=\'middle\'>[GitHub Project Kanban Board Evidence]</text></svg>'">
+    <div class="caption">Figure 1.2: Final GitHub Kanban board with all Lab 3 issues completed in Done.</div>
+  </div>
+
+  <h3 class="sub-title">1.3 Peer Review Record Evidence</h3>
+  <p>Rendered <code>docs/lab-03/reviewer.md</code> documenting PR links, reviewer comments, responses, and approvals:</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/part-1/03-rendered-reviewer-record.png" alt="Rendered reviewer.md" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'120\'><rect width=\'100%\' height=\'100%\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\' text-anchor=\'middle\'>[Rendered reviewer.md Evidence]</text></svg>'">
+    <div class="caption">Figure 1.3: Documented peer review dialogue across author and partner PRs.</div>
+  </div>
+
+  <h3 class="sub-title">1.4 README and .gitignore Evidence</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/part-1/04-readme-and-gitignore.png" alt="README and .gitignore" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'120\'><rect width=\'100%\' height=\'100%\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\' text-anchor=\'middle\'>[README and .gitignore Evidence]</text></svg>'">
+    <div class="caption">Figure 1.4: Clear project documentation and robust .gitignore rules.</div>
+  </div>
+
+  <h3 class="sub-title">1.5 Repository Directory Structure</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/part-1/05-repository-directory-structure.png" alt="Repository Directory Structure" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'120\'><rect width=\'100%\' height=\'100%\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\' text-anchor=\'middle\'>[Repository Directory Structure Evidence]</text></svg>'">
+    <div class="caption">Figure 1.5: Clean modular project layout matching handout Section 12.</div>
+  </div>
+
+  <!-- ANSWER PART 2 -->
+  <h2 class="section-title">Answer Part 2: Spec DD</h2>
+  <p><strong>Specification Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-03/specification.md">docs/lab-03/specification.md</a></p>
+  <p>Sprint 3 engineering specification covers <strong>20 Functional Requirements (`FR-01` to `FR-20`)</strong>, <strong>28 Business Rules (`BR-01` to `BR-28`)</strong>, and <strong>25 Acceptance Criteria (`AC-01` to `AC-25`)</strong>.</p>
+
+  <h3 class="sub-title">Core Architecture & Authorization Highlights</h3>
+  <ul>
+    <li><strong>Role Authorization Matrix:</strong> Discrete boundaries for <code>REQUESTER</code>, <code>IT_STAFF</code>, and <code>ADMIN</code>.</li>
+    <li><strong>Token Revocation:</strong> <code>RevokedToken</code> table prevents post-logout replay attacks.</li>
+    <li><strong>Password Gating:</strong> <code>mustChangePassword = true</code> restricts unauthenticated entry until complexity rules are met.</li>
+    <li><strong>Information Barrier:</strong> Private Internal Notes (Amber) are strictly hidden and forbidden to Requesters.</li>
+  </ul>
+
+  <h3 class="sub-title">Pre-Implementation Commit Evidence</h3>
+  <pre><code>$ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-03/specification.md
+Commit: e6bfcb2 | Date: 2026-09-12 18:30:14 +0700 | Message: docs: Sprint 3 Engineering Specification, UI-Spec & API Contracts</code></pre>
+  <p><em>Evidence Confirmation:</em> The specification was authored and approved in PR #61 on <strong>2026-09-12</strong>, prior to implementation PRs #63–#69.</p>
+
+  <!-- ANSWER PART 3 -->
+  <h2 class="section-title">Answer Part 3: Test DD and Traceability</h2>
+  <p><strong>Test Strategy Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-03/tests.md">docs/lab-03/tests.md</a></p>
+
+  <h3 class="sub-title">Dual Traceability Summary (Excerpt)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Level</th>
+        <th>AC / BR Ref</th>
+        <th>Description</th>
+        <th>Automated Test File</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>API-01</strong></td><td>API</td><td>AC-01, BR-01</td><td>Valid login returns JWT token and safe user profile</td><td><code>server/tests/lab-03/auth.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-04</strong></td><td>API</td><td>AC-05, BR-27</td><td>Inactive account rejected with safe generic banner</td><td><code>server/tests/lab-03/auth.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-07</strong></td><td>API</td><td>AC-02, BR-02</td><td>Password change required blocks access to all APIs</td><td><code>server/tests/lab-03/auth.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-10</strong></td><td>API</td><td>AC-07, BR-28</td><td>Logout revokes token via RevokedToken table</td><td><code>server/tests/lab-03/auth.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-19</strong></td><td>API</td><td>AC-13, FR-10</td><td>IT Staff queue retrieval with ownership scoping</td><td><code>server/tests/lab-03/staff-queue.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-26</strong></td><td>API</td><td>AC-15, BR-13</td><td>IT Staff claims unassigned ticket</td><td><code>server/tests/lab-03/staff-ticket-detail.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-29</strong></td><td>API</td><td>AC-18, BR-16</td><td>Permitted status transition lifecycle matrix</td><td><code>server/tests/lab-03/staff-ticket-detail.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-35</strong></td><td>API</td><td>AC-04, BR-25</td><td>Requester forbidden from accessing internal notes</td><td><code>server/tests/lab-03/comments-notes.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-44</strong></td><td>API</td><td>AC-24, BR-21</td><td>Admin self-deactivation blocked (400)</td><td><code>server/tests/lab-03/users-admin.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-45</strong></td><td>API</td><td>AC-25, BR-22</td><td>Last active admin protection guard</td><td><code>server/tests/lab-03/users-admin.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-01</strong></td><td>E2E</td><td>AC-01, AC-08</td><td>Login journeys across Requester, IT Staff, Admin</td><td><code>e2e/lab-03/authentication.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-06</strong></td><td>E2E</td><td>AC-18, BR-16</td><td>Status transition lifecycle & page reload</td><td><code>e2e/lab-03/staff-ticket-flow.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-07</strong></td><td>E2E</td><td>AC-04, AC-11</td><td>Public Comments vs Internal Notes zero leakage</td><td><code>e2e/lab-03/staff-ticket-flow.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>RESP-03</strong></td><td>Resp</td><td>RESP-03</td><td>Minimum 44x44px touch targets on tablet & mobile</td><td><code>e2e/helpers/visual-check.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub-title">Clean Execution Summary (268 / 268 Passed)</h3>
+  <ul>
+    <li><strong>Server API Tests:</strong> 13 test files, <strong>140 passed</strong>, 0 failed</li>
+    <li><strong>Client Unit & Component Tests:</strong> 15 test files, <strong>98 passed</strong>, 0 failed</li>
+    <li><strong>Playwright Multi-Device E2E:</strong> 3 test files, <strong>30 passed</strong> (10 Desktop, 10 Tablet, 10 Mobile)</li>
+  </ul>
+
+  <!-- ANSWER PART 4 -->
+  <h2 class="section-title">Answer Part 4: AI Use with Reflection</h2>
+  <p><strong>AI Documentation Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-03/ai-use.md">docs/lab-03/ai-use.md</a></p>
+  <p><strong>Primary Model:</strong> Google Gemini (Gemini 2.0 Flash / Pro via Antigravity Agent).</p>
+
+  <h3 class="sub-title">Key Prompts Summary (Selected 9 Prompts)</h3>
+  <ol>
+    <li><strong>Contract Decomposition:</strong> Structured Sprint 3 into 11 formal sections for <code>specification.md</code>.</li>
+    <li><strong>Planned Test Strategy:</strong> Authored dual-traceability matrix mapping ACs to 48 API, 35 UI, and 10 E2E tests.</li>
+    <li><strong>Database Evolution:</strong> Evolved Prisma schema from <code>RequesterUser</code> to <code>User</code> and built <code>RevokedToken</code> model.</li>
+    <li><strong>Auth Foundation:</strong> Built Express auth middleware, JWT generation, and token revocation checks.</li>
+    <li><strong>Client Auth & Shell:</strong> Developed Login, mandatory Password Change, and role-filtered navigation header.</li>
+    <li><strong>Requester Regression:</strong> Preserved Lab 2 ticketing under Bearer session and added Public Comments.</li>
+    <li><strong>IT Staff Queue:</strong> Built shared ticket queue with search, filters, claim action, and IT Priority.</li>
+    <li><strong>Admin User Management:</strong> Implemented user management with self-deactivation and last-admin safety guards.</li>
+    <li><strong>Multi-Viewport E2E Testing:</strong> Implemented Playwright suites capturing 26 screenshots across 3 viewports.</li>
+  </ol>
+
+  <h3 class="sub-title">My Reflection on AI Use</h3>
+  <p>Using an AI coding agent throughout Lab 3 delivered remarkable engineering acceleration while keeping architectural integrity intact. Because we invested significant effort in upfront contract specification (Spec DD), the AI agent operated within strict boundaries, preventing regression of completed Lab 1 and Lab 2 capabilities.</p>
+  <p>However, <strong>human engineering judgment remained indispensable for security boundaries and edge cases</strong>. In Issue 27, while the agent implemented demotion guards, human review identified that deactivating the last active administrator was an equally dangerous vulnerability, prompting the addition of database transaction locks and race condition test <code>API-45b</code>. Similarly, human oversight was vital in ensuring touch targets met &ge; 44px without breaking native toggle switch semantics. AI serves as a powerful multiplier, but human vigilance ensures software remains production-grade and secure.</p>
+
+  <!-- ANSWER PART 5 -->
+  <h2 class="section-title">Answer Part 5: Working Login and Password Change UI</h2>
+
+  <h3 class="sub-title">1. Multi-Role Login Journeys Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/01-login-desktop.png" alt="Login Desktop">
+    <div class="caption">Figure 5.1: Desktop Login Viewport (1280 &times; 800) with Zen Green branding and high-contrast inputs.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/01-login-tablet.png" alt="Login Tablet">
+    <div class="caption">Figure 5.2: Tablet Login Viewport (820 &times; 1180) with centered card and fluid layout.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/01-login-mobile.png" alt="Login Mobile">
+    <div class="caption">Figure 5.3: Mobile Login Viewport (375 &times; 667) with touch targets &ge; 44px and zero overflow.</div>
+  </div>
+
+  <h3 class="sub-title">2. Inactive Account Feedback</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/03-inactive-account-error.png" alt="Inactive Account Desktop">
+    <div class="caption">Figure 5.4: Safe error banner: "Your account is currently inactive. Please contact an administrator."</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/03-inactive-account-error-tablet.png" alt="Inactive Account Tablet">
+    <div class="caption">Figure 5.5: Inactive account error banner on Tablet viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Mandatory First-Login Password Change</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/02-mandatory-password-change-desktop.png" alt="Password Change Desktop">
+    <div class="caption">Figure 5.6: Mandatory password change screen with real-time complexity rule indicators.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/02-mandatory-password-change-tablet.png" alt="Password Change Tablet">
+    <div class="caption">Figure 5.7: Mandatory password change screen on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/authentication/02-mandatory-password-change-mobile.png" alt="Password Change Mobile">
+    <div class="caption">Figure 5.8: Mandatory password change screen on Mobile viewport.</div>
+  </div>
+
+  <!-- ANSWER PART 6 -->
+  <h2 class="section-title">Answer Part 6: Working IT Staff Ticket Queue UI</h2>
+
+  <h3 class="sub-title">1. Shared Ticket Queue Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-queue/04-queue-desktop.png" alt="Queue Desktop">
+    <div class="caption">Figure 6.1: Full IT Staff Ticket Queue table on Desktop (1280 &times; 800) with multi-column sorting and badges.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-queue/04-queue-tablet.png" alt="Queue Tablet">
+    <div class="caption">Figure 6.2: Responsive Queue layout on Tablet (820 &times; 1180) with accessible filters.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-queue/04-queue-mobile.png" alt="Queue Mobile">
+    <div class="caption">Figure 6.3: Mobile Queue view (375 &times; 667) transformed into stacked cards with &ge; 44px touch targets.</div>
+  </div>
+
+  <h3 class="sub-title">2. Ownership Filter: Scoped to "Unassigned"</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-queue/05-queue-filter-unassigned.png" alt="Queue Filter Unassigned">
+    <div class="caption">Figure 6.4: Ticket Queue filtered by "Unassigned" ownership pill.</div>
+  </div>
+
+  <!-- ANSWER PART 7 -->
+  <h2 class="section-title">Answer Part 7: Working IT Staff Ticket Detail UI</h2>
+
+  <h3 class="sub-title">1. Operational Controls Card Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/06-ticket-detail-desktop.png" alt="Detail Desktop">
+    <div class="caption">Figure 7.1: Operational Controls Card on Desktop: Owner dropdown with Claim Ticket shortcut, independent IT Priority, and Status selector.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/06-ticket-detail-tablet.png" alt="Detail Tablet">
+    <div class="caption">Figure 7.2: Operational Controls Card on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/06-ticket-detail-mobile.png" alt="Detail Mobile">
+    <div class="caption">Figure 7.3: Operational Controls Card on Mobile viewport.</div>
+  </div>
+
+  <h3 class="sub-title">2. Strict Status Transition Dropdown Matrix</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/08-status-transition-dropdown.png" alt="Status Dropdown Desktop">
+    <div class="caption">Figure 7.4: Dropdown enforces transition matrix (initial NEW status permits only Open or Cancelled).</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/08-status-transition-dropdown-tablet.png" alt="Status Dropdown Tablet">
+    <div class="caption">Figure 7.5: Status transition dropdown on Tablet viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Private Internal Notes Tab (Amber Theme)</h3>
+  <div class="amber-box">
+    <strong>Visual Distinction Rule (BR-07 / VIS-02):</strong> Internal Notes use high-contrast Amber styling (<code>#854D0E</code> border, <code>#FFFBEB</code> background) and are strictly hidden from Requester view.
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/07-internal-notes-amber-theme.png" alt="Internal Notes Desktop">
+    <div class="caption">Figure 7.6: Private Internal Notes tab with prominent Amber visual separation on Desktop.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/staff-ticket-detail/07-internal-notes-amber-theme-tablet.png" alt="Internal Notes Tablet">
+    <div class="caption">Figure 7.7: Private Internal Notes tab on Tablet viewport.</div>
+  </div>
+
+  <!-- ANSWER PART 8 -->
+  <h2 class="section-title">Answer Part 8: Working Administrator User Management UI</h2>
+
+  <h3 class="sub-title">1. User Management Screen Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/09-user-management-desktop.png" alt="User Management Desktop">
+    <div class="caption">Figure 8.1: Administrator User Management table on Desktop (1280 &times; 800).</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/09-user-management-tablet.png" alt="User Management Tablet">
+    <div class="caption">Figure 8.2: User Management on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/09-user-management-mobile.png" alt="User Management Mobile">
+    <div class="caption">Figure 8.3: Mobile stacked user cards with &ge; 44px touch targets.</div>
+  </div>
+
+  <h3 class="sub-title">2. Create User Modal with Password Checklist</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/10-create-user-modal.png" alt="Create User Modal Desktop">
+    <div class="caption">Figure 8.4: Create User modal with role dropdown and real-time password complexity checklist.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/10-create-user-modal-tablet.png" alt="Create User Modal Tablet">
+    <div class="caption">Figure 8.5: Create User modal on Tablet viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Administrator Safety Rules: Self-Deactivation & Last Active Admin Protection</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/11-self-deactivation-guard-disabled.png" alt="Self-Deactivation Disabled Desktop">
+    <div class="caption">Figure 8.6: Active toggle switch disabled with CANNOT_DEACTIVATE_SELF and LAST_ACTIVE_ADMIN_PROTECTED warnings.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-03/screenshots/user-management/11-self-deactivation-guard-disabled-tablet.png" alt="Self-Deactivation Disabled Tablet">
+    <div class="caption">Figure 8.7: Self-deactivation guard on Tablet viewport.</div>
+  </div>
+
+  <!-- ANSWER PART 9 -->
+  <h2 class="section-title">Answer Part 9: Zen Green UI and Responsive Evidence</h2>
+  <p><strong>UI Specification Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-03/ui-spec.md">docs/lab-03/ui-spec.md</a></p>
+
+  <h3 class="sub-title">Design Tokens & Invariant Compliance</h3>
+  <ul>
+    <li><strong>Zen Green Token Fidelity:</strong> Primary <code>#006B3C</code>, Hover <code>#0B7A46</code>, Surface Tint <code>#EAF6EF</code>, Background <code>#F5F7F6</code>.</li>
+    <li><strong>Amber Contrast:</strong> Border <code>#D97706</code>, Surface <code>#FEF3C7</code>, Text <code>#854D0E</code> for internal notes.</li>
+    <li><strong>Editable vs. Read-Only:</strong> White backgrounds (<code>#FFFFFF</code>) for editable fields; soft gray-green (<code>#F0F4F2</code>) for read-only displays.</li>
+  </ul>
+
+  <h3 class="sub-title">Completed Responsive Visual Checklist</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Requirement</th>
+        <th>Inspection Standard</th>
+        <th>Verification Method</th>
+        <th>Compliance Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Zero Horizontal Overflow (RESP-04)</strong></td><td><code>scrollWidth &le; innerWidth</code> across all devices</td><td>Automated <code>assertNoHorizontalOverflow()</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Minimum Touch Targets (RESP-03)</strong></td><td>Buttons/inputs &ge; 44 &times; 44px on tablet/mobile</td><td>Automated <code>assertMinimumTouchTargets()</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Brand Color Tokens (VIS-01)</strong></td><td>Strict adherence to #006B3C Zen Green</td><td>Automated CSS token assertions</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Badge Semantic Contrast (VIS-02)</strong></td><td>WCAG AA contrast for Role, Status, and Priority</td><td>Automated style tests</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Focus Rings (VIS-03)</strong></td><td>Clear outline indicators on keyboard navigation</td><td>Automated accessibility tests</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Zero Text Clipping (VIS-04)</strong></td><td>Natural word wrapping without truncation</td><td>E2E responsive checks</td><td><span class="badge badge-pass">Pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub-title">Complete 26 Screenshot Inventory</h3>
+  <p>All 26 screenshot evidence artifacts captured across Desktop ($1280 \times 800$), Tablet ($820 \times 1180$), and Mobile ($375 \times 667$) are committed and verified under <code>artifacts/lab-03/screenshots/</code>.</p>
+
+  <hr style="margin-top: 36px; border: 0; border-top: 1px solid #E2E8F0;">
+  <p style="text-align: center; color: #94A3B8; font-size: 11px;">TokTickIT &bull; CPE334 Software Engineering &bull; Lab 3 Sprint Submission Package</p>
+
+</div>
+</body>
+</html>
