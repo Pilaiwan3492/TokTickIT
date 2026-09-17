@@ -19,6 +19,42 @@ export async function assertNoHorizontalOverflow(page: Page) {
 }
 
 /**
+ * Asserts that interactive controls meet the minimum 44x44px touch target.
+ * Section 2.5 (RESP-03).
+ *
+ * This check is intended for Tablet and Mobile viewports.
+ */
+export async function assertMinimumTouchTargets(page: Page) {
+  const undersizedTargets = await page
+    .locator("button, input:not([type='checkbox']):not([type='radio']), select, textarea")
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+
+          // Ignore elements that are not currently rendered/visible.
+          if (rect.width === 0 || rect.height === 0) {
+            return false;
+          }
+
+          return rect.width < 44 || rect.height < 44;
+        })
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+
+          return {
+            tag: element.tagName,
+            text: (element.textContent || "").trim().slice(0, 80),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          };
+        })
+    );
+
+  expect(undersizedTargets).toEqual([]);
+}
+
+/**
  * Captures a screenshot to the canonical Lab 3 screenshot directory.
  */
 export async function captureScreenshot(page: Page, relativePath: string) {

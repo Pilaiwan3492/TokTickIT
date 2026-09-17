@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { resetDatabaseState } from "../helpers/db-reset";
-import { captureScreenshot, assertNoHorizontalOverflow } from "../helpers/visual-check";
+import {
+  captureScreenshot,
+  assertNoHorizontalOverflow,
+  assertMinimumTouchTargets,
+} from "../helpers/visual-check";
 
 test.describe("User Administration & Ticket Provisioning Suite", () => {
   test.beforeEach(async () => {
@@ -25,8 +29,14 @@ test.describe("User Administration & Ticket Provisioning Suite", () => {
     // Responsive evidence: User Management view
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "user-management/09-user-management-desktop.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "user-management/09-user-management-tablet.png");
     } else if (testInfo.project.name === "Mobile") {
       await captureScreenshot(page, "user-management/09-user-management-mobile.png");
+    }
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
     }
 
     // 2. Search & Role Filter validation
@@ -61,6 +71,12 @@ test.describe("User Administration & Ticket Provisioning Suite", () => {
     // Responsive evidence: Create User Modal
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "user-management/10-create-user-modal.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "user-management/10-create-user-modal-tablet.png");
+    }
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
     }
 
     // 4. Provision new IT Staff user
@@ -164,6 +180,12 @@ test.describe("User Administration & Ticket Provisioning Suite", () => {
     // Responsive evidence: Self-deactivation guard disabled
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "user-management/11-self-deactivation-guard-disabled.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "user-management/11-self-deactivation-guard-disabled-tablet.png");
+    }
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
     }
 
     // 4. Verify Last Active Admin Protection Guard

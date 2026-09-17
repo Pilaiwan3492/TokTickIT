@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { resetDatabaseState } from "../helpers/db-reset";
-import { captureScreenshot, assertNoHorizontalOverflow } from "../helpers/visual-check";
+import {
+  captureScreenshot,
+  assertNoHorizontalOverflow,
+  assertMinimumTouchTargets,
+} from "../helpers/visual-check";
 
 test.describe("Authentication & Session Management Suite", () => {
   test.beforeEach(async () => {
@@ -12,8 +16,11 @@ test.describe("Authentication & Session Management Suite", () => {
   }, testInfo) => {
     // 1. Visit Login screen and capture responsive visual evidence
     await page.goto("/login");
-    await page.waitForSelector("#login-email");
     await assertNoHorizontalOverflow(page);
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
 
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "authentication/01-login-desktop.png");
@@ -93,13 +100,19 @@ test.describe("Authentication & Session Management Suite", () => {
     await expect(page.locator("text=Include uppercase and lowercase letters")).toBeVisible();
     await expect(page.locator("text=Include a number and a special character")).toBeVisible();
 
+    await assertNoHorizontalOverflow(page);
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "authentication/02-mandatory-password-change-desktop.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "authentication/02-mandatory-password-change-tablet.png");
     } else if (testInfo.project.name === "Mobile") {
       await captureScreenshot(page, "authentication/02-mandatory-password-change-mobile.png");
     }
-
-    await assertNoHorizontalOverflow(page);
 
     // Submit password change
     await page.click('button[type="submit"]:has-text("Continue")');
@@ -125,6 +138,8 @@ test.describe("Authentication & Session Management Suite", () => {
 
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "authentication/03-inactive-account-error.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "authentication/03-inactive-account-error-tablet.png");
     }
   });
 

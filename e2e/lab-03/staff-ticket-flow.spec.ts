@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { resetDatabaseState } from "../helpers/db-reset";
-import { captureScreenshot, assertNoHorizontalOverflow } from "../helpers/visual-check";
+import {
+  captureScreenshot,
+  assertNoHorizontalOverflow,
+  assertMinimumTouchTargets,
+} from "../helpers/visual-check";
 
 test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
   test.beforeEach(async () => {
@@ -21,6 +25,10 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
     const tkt1Link = page.locator('a:has-text("TKT-2026-000001"):visible');
     await expect(tkt1Link).toBeVisible();
     await assertNoHorizontalOverflow(page);
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
 
     // Capture responsive visual evidence of Queue
     if (testInfo.project.name === "Desktop") {
@@ -73,8 +81,14 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
 
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "staff-ticket-detail/06-ticket-detail-desktop.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "staff-ticket-detail/06-ticket-detail-tablet.png");
     } else if (testInfo.project.name === "Mobile") {
       await captureScreenshot(page, "staff-ticket-detail/06-ticket-detail-mobile.png");
+    }
+
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
     }
 
     // 5. Claim Ticket (Assign Owner to current staff: Michael Brown)
@@ -122,6 +136,10 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
     await page.locator('a:has-text("TKT-2026-000001"):visible').click();
     await expect(page.getByText("TKT-2026-000001").first()).toBeVisible();
 
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+
     const statusSelect = page.locator("#status-select");
     await expect(statusSelect).toBeVisible();
 
@@ -137,6 +155,8 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
 
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "staff-ticket-detail/08-status-transition-dropdown.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "staff-ticket-detail/08-status-transition-dropdown-tablet.png");
     }
 
     // Step 1: Transition NEW -> OPEN
@@ -207,6 +227,8 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
 
     if (testInfo.project.name === "Desktop") {
       await captureScreenshot(page, "staff-ticket-detail/07-internal-notes-amber-theme.png");
+    } else if (testInfo.project.name === "Tablet") {
+      await captureScreenshot(page, "staff-ticket-detail/07-internal-notes-amber-theme-tablet.png");
     }
 
     // Post an Internal Note

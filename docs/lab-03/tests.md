@@ -179,7 +179,7 @@ The test plan is established **before implementation** (Test-Driven Development 
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column table, toolbar, and side-by-side operational panels | Full desktop layouts render without truncation or misalignment | `playwright.config.ts` (Desktop) | `Passing` |
 | **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column form grids, condensed table layout, sticky header | Tablet layout preserves readability and filter accessibility | `playwright.config.ts` (Tablet) | `Passing` |
-| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | Tables transform to stacked cards; minimum touch targets $\ge 44\text{px}$ | Cards render cleanly; buttons and inputs meet mobile hit-area targets | `playwright.config.ts` (Mobile) | `Passing` |
+| **RESP-03** | Responsive | Mobile & Tablet ($375 - 480px / $768 - 1024px) | Tables transform to stacked cards; minimum touch targets $\ge 44\text{px}$ | Cards render cleanly; buttons, inputs, and selects meet minimum 44 × 44px hit-area targets | `e2e/helpers/visual-check.ts` | `Passing` |
 | **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true | `e2e/helpers/visual-check.ts` | `Passing` |
 
 ---
@@ -313,20 +313,28 @@ All screenshots are captured during Playwright E2E execution and stored under `a
 | **Authentication** | `01-login-tablet.png` | Tablet ($820 \times 1180$) | Login screen on tablet viewport | Full responsive width, centered card |
 | **Authentication** | `01-login-mobile.png` | Mobile ($375 \times 667$) | Login screen on mobile viewport | Touch-friendly inputs, zero overflow |
 | **Authentication** | `02-mandatory-password-change-desktop.png` | Desktop ($1280 \times 800$) | Forced password change view | Real-time complexity checklist indicators |
+| **Authentication** | `02-mandatory-password-change-tablet.png` | Tablet ($820 \times 1180$) | Forced password change on tablet | Responsive form layout, accessible fields |
 | **Authentication** | `02-mandatory-password-change-mobile.png` | Mobile ($375 \times 667$) | Forced password change on mobile | Vertical scrolling, accessible form fields |
 | **Authentication** | `03-inactive-account-error.png` | Desktop ($1280 \times 800$) | Inactive account login attempt | Safe error banner: "Your account is currently inactive" |
+| **Authentication** | `03-inactive-account-error-tablet.png` | Tablet ($820 \times 1180$) | Inactive account login attempt on tablet | Safe error banner, no clipping |
 | **Staff Queue** | `04-queue-desktop.png` | Desktop ($1280 \times 800$) | Full IT Staff ticket queue table | Multi-column table with status/priority badges |
 | **Staff Queue** | `04-queue-tablet.png` | Tablet ($820 \times 1180$) | Ticket queue on tablet viewport | Responsive cards, accessible filter buttons |
 | **Staff Queue** | `04-queue-mobile.png` | Mobile ($375 \times 667$) | Ticket queue mobile card layout | Stacked card list, touch targets $\ge 44\text{px}$ |
 | **Staff Queue** | `05-queue-filter-unassigned.png` | Desktop ($1280 \times 800$) | Queue scoped to "Unassigned" | Unassigned ownership filter active |
 | **Ticket Detail** | `06-ticket-detail-desktop.png` | Desktop ($1280 \times 800$) | Staff ticket detail operational card | Prominent controls: owner, IT priority, status |
+| **Ticket Detail** | `06-ticket-detail-tablet.png` | Tablet ($820 \times 1180$) | Staff ticket detail on tablet | Responsive stacked controls, no overflow |
 | **Ticket Detail** | `06-ticket-detail-mobile.png` | Mobile ($375 \times 667$) | Staff ticket detail on mobile | Responsive stacked controls, zero overflow |
 | **Ticket Detail** | `07-internal-notes-amber-theme.png` | Desktop ($1280 \times 800$) | Private internal notes tab | Amber border/badge visual distinction from comments |
+| **Ticket Detail** | `07-internal-notes-amber-theme-tablet.png` | Tablet ($820 \times 1180$) | Private internal notes on tablet | Amber distinction remains visible |
 | **Ticket Detail** | `08-status-transition-dropdown.png` | Desktop ($1280 \times 800$) | Status transition select | Only valid lifecycle transitions listed |
+| **Ticket Detail** | `08-status-transition-dropdown-tablet.png` | Tablet ($820 \times 1180$) | Status transition select on tablet | Valid lifecycle options remain accessible |
 | **User Management** | `09-user-management-desktop.png` | Desktop ($1280 \times 800$) | Admin user management table | Users list, role badges, action buttons |
+| **User Management** | `09-user-management-tablet.png` | Tablet ($820 \times 1180$) | User management on tablet | Responsive user cards/table layout |
 | **User Management** | `09-user-management-mobile.png` | Mobile ($375 \times 667$) | User management mobile cards | Touch-friendly edit/reset buttons $\ge 44\text{px}$ |
 | **User Management** | `10-create-user-modal.png` | Desktop ($1280 \times 800$) | Provision new user modal | Role dropdown, password checklist |
+| **User Management** | `10-create-user-modal-tablet.png` | Tablet ($820 \times 1180$) | Create User modal on tablet | Modal remains usable without clipping |
 | **User Management** | `11-self-deactivation-guard-disabled.png` | Desktop ($1280 \times 800$) | Admin edit modal for self | Disabled Active switch, safety notice |
+| **User Management** | `11-self-deactivation-guard-disabled-tablet.png` | Tablet ($820 \times 1180$) | Self-deactivation guard on tablet | Disabled switch and safety notice visible |
 
 ### 5.2 Responsive Visual Inspection Checklist
 

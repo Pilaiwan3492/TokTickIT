@@ -1,0 +1,14 @@
+/* Responsive touch target styling for Mobile & Tablet (RESP-03) */
+@media (max-width: 1024px) {
+  button:not(.btn-close),
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px !important;
+  }
+
+  .btn-close {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
