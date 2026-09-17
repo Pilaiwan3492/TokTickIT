@@ -63,18 +63,18 @@ export const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     setIsDropdownOpen(false);
-    navigate("/login", { replace: true });
+    navigate("/login");
     await logout();
   };
 
   return (
     <header
       style={{ backgroundColor: "#006B3C" }}
-      className="text-white py-2 px-4 shadow-sm"
+      className="text-white py-2 px-2 px-sm-4 shadow-sm"
     >
-      <div className="container-fluid d-flex align-items-center justify-content-between">
+      <div className="container-fluid d-flex align-items-center justify-content-between flex-wrap gap-2">
         {/* Left Side: Brand Logo & Navigation */}
-        <div className="d-flex align-items-center gap-4">
+        <div className="d-flex align-items-center gap-2 gap-sm-4 flex-wrap">
           <Link
             to={isAuthenticated ? homeLink : "/login"}
             className="d-flex align-items-center gap-2 fw-bold fs-5 text-white text-decoration-none"
@@ -99,7 +99,7 @@ export const Header: React.FC = () => {
 
           {/* Role-Filtered Navigation */}
           {isAuthenticated && (
-            <nav className="d-flex align-items-center gap-3">
+            <nav className="d-flex align-items-center gap-2 gap-sm-3 flex-wrap">
               {/* Requester Navigation */}
               {role === "REQUESTER" && (
                 <>
@@ -221,7 +221,7 @@ export const Header: React.FC = () => {
 
         {/* Right Side: Authenticated User Profile & Dropdown */}
         {isAuthenticated && user && (
-          <div className="position-relative" ref={dropdownRef}>
+          <div className="position-relative ms-auto" ref={dropdownRef} style={{ zIndex: 10 }}>
             <button
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}

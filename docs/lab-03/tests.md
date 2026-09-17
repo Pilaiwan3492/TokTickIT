@@ -149,16 +149,16 @@ The test plan is established **before implementation** (Test-Driven Development 
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **E2E-01** | E2E | AC-01, AC-08, BR-01 | Valid login journey across Requester, IT Staff, and Admin | Each role lands on permitted home view with correct navigation | `e2e/lab-03/authentication.spec.ts` | `Planned` |
-| **E2E-02** | E2E | AC-02, BR-02, BR-06 | Seeded user with initial password performs mandatory change | App forces password change; user enters app only after valid change | `e2e/lab-03/authentication.spec.ts` | `Planned` |
-| **E2E-03** | E2E | AC-05, BR-27 | Inactive user attempts login | Login rejected with `"Your account is currently inactive"` banner | `e2e/lab-03/authentication.spec.ts` | `Planned` |
-| **E2E-04** | E2E | AC-07, BR-28 | User logs out; back-button navigation blocked | Server revokes token; protected views redirect to `/login` | `e2e/lab-03/authentication.spec.ts` | `Planned` |
-| **E2E-05** | E2E | AC-13, AC-15, AC-17 | IT Staff searches queue, claims ticket, updates IT Priority | Ownership updates to IT Staff; IT priority badge updates | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Planned` |
-| **E2E-06** | E2E | AC-18, BR-16, BR-17 | IT Staff transitions ticket through status lifecycle | `NEW` $\rightarrow$ `OPEN` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `RESOLVED` verified | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Planned` |
-| **E2E-07** | E2E | AC-11, AC-20, BR-07 | Requester & IT Staff Public Comment conversation + Private Note | Public comment visible to both; private note visible only to IT Staff | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Planned` |
-| **E2E-08** | E2E | AC-21, AC-22, BR-04 | Admin creates new IT Staff user; new user logs in and changes pass | Full lifecycle verified from account provisioning to successful entry | `e2e/lab-03/user-administration.spec.ts` | `Planned` |
-| **E2E-09** | E2E | AC-24, AC-25, BR-21 | Admin safety rules: self-deactivation and last admin protection | Deactivation blocked on UI and API; safety feedback displayed | `e2e/lab-03/user-administration.spec.ts` | `Planned` |
-| **E2E-10** | E2E | AC-09, BR-13, BR-14, BR-15 | Requester creates ticket via UI; asserts initial defaults | Ticket created with status `NEW`, matching IT Priority, unassigned | `e2e/lab-03/requester-ticket.spec.ts` | `Planned` |
+| **E2E-01** | E2E | AC-01, AC-08, BR-01 | Valid login journey across Requester, IT Staff, and Admin | Each role lands on permitted home view with correct navigation | `e2e/lab-03/authentication.spec.ts` | `Passing` |
+| **E2E-02** | E2E | AC-02, BR-02, BR-06 | Seeded user with initial password performs mandatory change | App forces password change; user enters app only after valid change | `e2e/lab-03/authentication.spec.ts` | `Passing` |
+| **E2E-03** | E2E | AC-05, BR-27 | Inactive user attempts login | Login rejected with `"Your account is currently inactive"` banner | `e2e/lab-03/authentication.spec.ts` | `Passing` |
+| **E2E-04** | E2E | AC-07, BR-28 | User logs out; back-button navigation blocked | Server revokes token; protected views redirect to `/login` | `e2e/lab-03/authentication.spec.ts` | `Passing` |
+| **E2E-05** | E2E | AC-13, AC-15, AC-17 | IT Staff searches queue, claims ticket, updates IT Priority | Ownership updates to IT Staff; IT priority badge updates | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Passing` |
+| **E2E-06** | E2E | AC-18, BR-16, BR-17 | IT Staff transitions ticket through status lifecycle | `NEW` $\rightarrow$ `OPEN` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `RESOLVED` verified | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Passing` |
+| **E2E-07** | E2E | AC-11, AC-20, BR-07 | Requester & IT Staff Public Comment conversation + Private Note | Public comment visible to both; private note visible only to IT Staff | `e2e/lab-03/staff-ticket-flow.spec.ts` | `Passing` |
+| **E2E-08** | E2E | AC-21, AC-22, BR-04 | Admin creates new IT Staff user; new user logs in and changes pass | Full lifecycle verified from account provisioning to successful entry | `e2e/lab-03/user-administration.spec.ts` | `Passing` |
+| **E2E-09** | E2E | AC-24, AC-25, BR-21 | Admin safety rules: self-deactivation and last admin protection | Deactivation blocked on UI and API; safety feedback displayed | `e2e/lab-03/user-administration.spec.ts` | `Passing` |
+| **E2E-10** | E2E | AC-09, BR-13, BR-14, BR-15 | Requester creates ticket via UI; asserts initial defaults | Ticket created with status `NEW`, matching IT Priority, unassigned | `e2e/lab-03/user-administration.spec.ts` | `Passing` |
 
 ---
 
@@ -166,10 +166,10 @@ The test plan is established **before implementation** (Test-Driven Development 
 
 | Test ID | Level | Requirement Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **VIS-01** | Style | Section 7, Section 2 | Zen Green token fidelity across buttons, header, and inputs | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#F0F4F2` | `client/tests/lab-03/ui-style.test.tsx` | `Planned` |
-| **VIS-02** | Style | Section 7, Section 2 | Badge color consistency for Status, Priority, and Roles | Badges conform to color token specifications and meet WCAG contrast | `client/tests/lab-03/ui-style.test.tsx` | `Planned` |
-| **VIS-03** | Style | Section 7, Section 6 | Keyboard focus rings and interactive outline indicators | Active focus indicators clearly visible on all inputs, tabs, and buttons | `client/tests/lab-03/accessibility.test.tsx` | `Planned` |
-| **VIS-04** | Style | Section 7, Section 6 | Zero text clipping and element overlap on dense data | Long summaries, user emails, and ticket numbers wrap/truncate cleanly | `e2e/lab-03/visual-inspection.spec.ts` | `Planned` |
+| **VIS-01** | Style | Section 7, Section 2 | Zen Green token fidelity across buttons, header, and inputs | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#F0F4F2` | `client/tests/lab-03/ui-style.test.tsx` | `Passing` |
+| **VIS-02** | Style | Section 7, Section 2 | Badge color consistency for Status, Priority, and Roles | Badges conform to color token specifications and meet WCAG contrast | `client/tests/lab-03/ui-style.test.tsx` | `Passing` |
+| **VIS-03** | Style | Section 7, Section 6 | Keyboard focus rings and interactive outline indicators | Active focus indicators clearly visible on all inputs, tabs, and buttons | `client/tests/lab-03/accessibility.test.tsx` | `Passing` |
+| **VIS-04** | Style | Section 7, Section 6 | Zero text clipping and element overlap on dense data | Long summaries, user emails, and ticket numbers wrap/truncate cleanly | `e2e/helpers/visual-check.ts` | `Passing` |
 
 ---
 
@@ -177,10 +177,10 @@ The test plan is established **before implementation** (Test-Driven Development 
 
 | Test ID | Level | Viewport Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column table, toolbar, and side-by-side operational panels | Full desktop layouts render without truncation or misalignment | `e2e/lab-03/responsive.spec.ts` | `Planned` |
-| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column form grids, condensed table layout, sticky header | Tablet layout preserves readability and filter accessibility | `e2e/lab-03/responsive.spec.ts` | `Planned` |
-| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | Tables transform to stacked cards; minimum touch targets $\ge 44\text{px}$ | Cards render cleanly; buttons and inputs meet mobile hit-area targets | `e2e/lab-03/responsive.spec.ts` | `Planned` |
-| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true | `e2e/lab-03/responsive.spec.ts` | `Planned` |
+| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column table, toolbar, and side-by-side operational panels | Full desktop layouts render without truncation or misalignment | `playwright.config.ts` (Desktop) | `Passing` |
+| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column form grids, condensed table layout, sticky header | Tablet layout preserves readability and filter accessibility | `playwright.config.ts` (Tablet) | `Passing` |
+| **RESP-03** | Responsive | Mobile & Tablet ($375 - 480px / $768 - 1024px) | Tables transform to stacked cards; minimum touch targets $\ge 44\text{px}$ | Cards render cleanly; buttons, inputs, and selects meet minimum 44 × 44px hit-area targets | `e2e/helpers/visual-check.ts` | `Passing` |
+| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true | `e2e/helpers/visual-check.ts` | `Passing` |
 
 ---
 
@@ -298,3 +298,56 @@ npm --prefix client test
 # Run all E2E test suites
 npx playwright test
 ```
+
+---
+
+## 5. Responsive Visual Inspection Checklist & Screenshot Evidence
+
+All screenshots are captured during Playwright E2E execution and stored under `artifacts/lab-03/screenshots/`.
+
+### 5.1 Screenshot Inventory
+
+| Category | Filename | Viewport / Dimensions | Description | Verification Criteria |
+| :--- | :--- | :--- | :--- | :--- |
+| **Authentication** | `01-login-desktop.png` | Desktop ($1280 \times 800$) | Login screen with credentials form | Zen Green branding, centered card, clear inputs |
+| **Authentication** | `01-login-tablet.png` | Tablet ($820 \times 1180$) | Login screen on tablet viewport | Full responsive width, centered card |
+| **Authentication** | `01-login-mobile.png` | Mobile ($375 \times 667$) | Login screen on mobile viewport | Touch-friendly inputs, zero overflow |
+| **Authentication** | `02-mandatory-password-change-desktop.png` | Desktop ($1280 \times 800$) | Forced password change view | Real-time complexity checklist indicators |
+| **Authentication** | `02-mandatory-password-change-tablet.png` | Tablet ($820 \times 1180$) | Forced password change on tablet | Responsive form layout, accessible fields |
+| **Authentication** | `02-mandatory-password-change-mobile.png` | Mobile ($375 \times 667$) | Forced password change on mobile | Vertical scrolling, accessible form fields |
+| **Authentication** | `03-inactive-account-error.png` | Desktop ($1280 \times 800$) | Inactive account login attempt | Safe error banner: "Your account is currently inactive" |
+| **Authentication** | `03-inactive-account-error-tablet.png` | Tablet ($820 \times 1180$) | Inactive account login attempt on tablet | Safe error banner, no clipping |
+| **Staff Queue** | `04-queue-desktop.png` | Desktop ($1280 \times 800$) | Full IT Staff ticket queue table | Multi-column table with status/priority badges |
+| **Staff Queue** | `04-queue-tablet.png` | Tablet ($820 \times 1180$) | Ticket queue on tablet viewport | Responsive cards, accessible filter buttons |
+| **Staff Queue** | `04-queue-mobile.png` | Mobile ($375 \times 667$) | Ticket queue mobile card layout | Stacked card list, touch targets $\ge 44\text{px}$ |
+| **Staff Queue** | `05-queue-filter-unassigned.png` | Desktop ($1280 \times 800$) | Queue scoped to "Unassigned" | Unassigned ownership filter active |
+| **Ticket Detail** | `06-ticket-detail-desktop.png` | Desktop ($1280 \times 800$) | Staff ticket detail operational card | Prominent controls: owner, IT priority, status |
+| **Ticket Detail** | `06-ticket-detail-tablet.png` | Tablet ($820 \times 1180$) | Staff ticket detail on tablet | Responsive stacked controls, no overflow |
+| **Ticket Detail** | `06-ticket-detail-mobile.png` | Mobile ($375 \times 667$) | Staff ticket detail on mobile | Responsive stacked controls, zero overflow |
+| **Ticket Detail** | `07-internal-notes-amber-theme.png` | Desktop ($1280 \times 800$) | Private internal notes tab | Amber border/badge visual distinction from comments |
+| **Ticket Detail** | `07-internal-notes-amber-theme-tablet.png` | Tablet ($820 \times 1180$) | Private internal notes on tablet | Amber distinction remains visible |
+| **Ticket Detail** | `08-status-transition-dropdown.png` | Desktop ($1280 \times 800$) | Status transition select | Only valid lifecycle transitions listed |
+| **Ticket Detail** | `08-status-transition-dropdown-tablet.png` | Tablet ($820 \times 1180$) | Status transition select on tablet | Valid lifecycle options remain accessible |
+| **User Management** | `09-user-management-desktop.png` | Desktop ($1280 \times 800$) | Admin user management table | Users list, role badges, action buttons |
+| **User Management** | `09-user-management-tablet.png` | Tablet ($820 \times 1180$) | User management on tablet | Responsive user cards/table layout |
+| **User Management** | `09-user-management-mobile.png` | Mobile ($375 \times 667$) | User management mobile cards | Touch-friendly edit/reset buttons $\ge 44\text{px}$ |
+| **User Management** | `10-create-user-modal.png` | Desktop ($1280 \times 800$) | Provision new user modal | Role dropdown, password checklist |
+| **User Management** | `10-create-user-modal-tablet.png` | Tablet ($820 \times 1180$) | Create User modal on tablet | Modal remains usable without clipping |
+| **User Management** | `11-self-deactivation-guard-disabled.png` | Desktop ($1280 \times 800$) | Admin edit modal for self | Disabled Active switch, safety notice |
+| **User Management** | `11-self-deactivation-guard-disabled-tablet.png` | Tablet ($820 \times 1180$) | Self-deactivation guard on tablet | Disabled switch and safety notice visible |
+
+### 5.2 Responsive Visual Inspection Checklist
+
+- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($820\text{px}$), and Mobile ($375\text{px}$).
+- [x] **Touch Targets $\ge 44\text{px}$ (`RESP-03`)**: Buttons and inputs on mobile and tablet views meet or exceed $44 \times 44\text{px}$ touch targets.
+- [x] **Brand Token Fidelity (`VIS-01`)**: Header, buttons, and primary accents conform to `#006B3C` (Zen Green).
+- [x] **Internal Note Boundary (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates internal notes from public comments.
+- [x] **Admin Protection Feedback (`BR-21`, `BR-22`)**: Self-deactivation and last active admin safety notices render with clear, visible warnings.
+
+#### Issue 28 Visual Inspection Checklist
+
+- [x] Layout alignment checked.
+- [x] Status, Priority, and Role badge styling checked.
+- [x] Keyboard focus states checked.
+- [x] No text clipping or overlapping elements.
+- [x] No horizontal page overflow.

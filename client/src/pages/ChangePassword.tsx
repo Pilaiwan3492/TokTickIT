@@ -69,16 +69,14 @@ export default function ChangePassword() {
 
   return (
     <div
-      className="d-flex align-items-center justify-content-center px-3"
+      className="d-flex justify-content-center px-3 py-4 py-sm-5"
       style={{
         backgroundColor: "#F5F7F6",
         minHeight: "100vh",
-        paddingTop: "40px",
-        paddingBottom: "40px",
       }}
     >
       <div
-        className="card shadow-sm border-0 p-4 w-100"
+        className="card shadow-sm border-0 p-4 w-100 my-auto"
         style={{ maxWidth: 480, borderRadius: 12, backgroundColor: "#FFFFFF" }}
       >
         {/* Header */}
