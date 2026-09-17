@@ -31,7 +31,26 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
       await captureScreenshot(page, "staff-queue/04-queue-mobile.png");
     }
 
-    // 2. Filter by Ownership: Click 'Unassigned'
+    // 2. Filter by Status and Priority dropdowns
+    const statusFilter = page.locator('select[aria-label="Filter by status"]');
+    const priorityFilter = page.locator('select[aria-label="Filter by priority"]');
+
+    // Filter by Status: NEW
+    await statusFilter.selectOption("NEW");
+    await page.waitForTimeout(400);
+    await expect(page.locator('a:has-text("TKT-2026-000001"):visible')).toBeVisible();
+
+    // Filter by Priority: MEDIUM
+    await priorityFilter.selectOption("MEDIUM");
+    await page.waitForTimeout(400);
+    await expect(page.locator('a:has-text("TKT-2026-000001"):visible')).toBeVisible();
+
+    // Reset Status and Priority filters
+    await statusFilter.selectOption("");
+    await priorityFilter.selectOption("");
+    await page.waitForTimeout(400);
+
+    // 3. Filter by Ownership: Click 'Unassigned'
     await page.click('button:has-text("Unassigned")');
     await page.waitForTimeout(500); // allow filter to apply
     await expect(page.locator('a:has-text("TKT-2026-000001"):visible')).toBeVisible();
@@ -131,6 +150,10 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
     // Step 3: Transition IN_PROGRESS -> RESOLVED
     await statusSelect.selectOption("RESOLVED");
     await expect(statusSelect).toHaveValue("RESOLVED");
+
+    // Step 4: Reload page to verify status persistence in database
+    await page.reload();
+    await expect(page.locator("#status-select")).toHaveValue("RESOLVED");
   });
 
   test("E2E-07: Public Comments & Private Internal Notes role boundary and zero leakage", async ({

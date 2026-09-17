@@ -169,7 +169,7 @@ The test plan is established **before implementation** (Test-Driven Development 
 | **VIS-01** | Style | Section 7, Section 2 | Zen Green token fidelity across buttons, header, and inputs | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#F0F4F2` | `client/tests/lab-03/ui-style.test.tsx` | `Passing` |
 | **VIS-02** | Style | Section 7, Section 2 | Badge color consistency for Status, Priority, and Roles | Badges conform to color token specifications and meet WCAG contrast | `client/tests/lab-03/ui-style.test.tsx` | `Passing` |
 | **VIS-03** | Style | Section 7, Section 6 | Keyboard focus rings and interactive outline indicators | Active focus indicators clearly visible on all inputs, tabs, and buttons | `client/tests/lab-03/accessibility.test.tsx` | `Passing` |
-| **VIS-04** | Style | Section 7, Section 6 | Zero text clipping and element overlap on dense data | Long summaries, user emails, and ticket numbers wrap/truncate cleanly | `e2e/lab-03/visual-check.ts` | `Passing` |
+| **VIS-04** | Style | Section 7, Section 6 | Zero text clipping and element overlap on dense data | Long summaries, user emails, and ticket numbers wrap/truncate cleanly | `e2e/helpers/visual-check.ts` | `Passing` |
 
 ---
 

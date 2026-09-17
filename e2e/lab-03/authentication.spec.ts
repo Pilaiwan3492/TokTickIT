@@ -148,7 +148,11 @@ test.describe("Authentication & Session Management Suite", () => {
     const token = await page.evaluate(() => localStorage.getItem("toktickit_auth_token"));
     expect(token).toBeNull();
 
-    // Verify back-button or direct URL navigation to protected view is blocked
+    // Verify browser back-button navigation to protected view is blocked
+    await page.goBack();
+    await expect(page).toHaveURL(/\/login/);
+
+    // Also verify direct URL navigation to protected view is blocked
     await page.goto("/tickets");
     await expect(page).toHaveURL(/\/login/);
   });
