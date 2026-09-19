@@ -4,6 +4,9 @@ import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import ticketRoutes from "./routes/ticket.routes.js";
 import attachmentRoutes from "./routes/attachment.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import staffRoutes from "./routes/staff.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 void getPrisma;
 
@@ -157,5 +160,13 @@ app.use("/api/v1/tickets", ticketRoutes);
 
 // Lab 2 — Attachment APIs (Download & Soft Removal)
 app.use("/api/v1/attachments", attachmentRoutes);
+
+// Lab 3 — Authentication APIs
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/auth", authRoutes);
+
+// Lab 3 — IT Staff & Admin APIs
+app.use("/api/v1/staff", staffRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 export default app;

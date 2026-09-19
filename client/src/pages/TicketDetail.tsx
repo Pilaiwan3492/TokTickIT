@@ -1,54 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useRequester } from "../context/RequesterContext";
-
-interface Attachment {
-  id: string;
-  fileName?: string;
-  filename?: string;
-  originalName?: string;
-  fileSize?: number;
-  size?: number;
-  mimeType?: string;
-  contentType?: string;
-  createdAt?: string;
-  uploadedAt?: string;
-  removedAt?: string | null;
-  removalReason?: string | null;
-  isRemoved?: boolean;
-}
-
-interface Ticket {
-  id: string;
-  ticketNo: string;
-  summary: string;
-  description: string;
-  requestedPriority: string;
-  itPriority?: string | null;
-  currentStatus: string;
-  createdAt: string;
-  updatedAt: string;
-  requesterId?: number;
-  requester?: {
-    id: number;
-    name: string;
-    email?: string;
-  };
-  category?: {
-    id: number;
-    name: string;
-  };
-  relatedSystem?: {
-    id: number;
-    name: string;
-  };
-  attachments?: Attachment[];
-}
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/apiClient";
+import { Ticket, TicketComment, Attachment } from "../types/ticket";
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -66,28 +25,29 @@ export default function TicketDetail() {
   const [removeSuccess, setRemoveSuccess] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const fetchTicket = useCallback(async () => {
-    if (!selectedRequester?.id) {
-      navigate("/select-requester");
-      return;
-    }
+  // Problem Appears Resolved states
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolveSuccess, setResolveSuccess] = useState<string | null>(null);
 
+  // Public Comments states
+  const [commentText, setCommentText] = useState("");
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentSuccess, setCommentSuccess] = useState<string | null>(null);
+
+  const fetchTicket = useCallback(async () => {
     if (!id) {
       setError("Ticket not found.");
       setLoading(false);
       return;
     }
 
-    const requesterId = selectedRequester.id;
-
     try {
       setLoading(true);
       setError(null);
 
-      // Lab 2 API: GET /api/v1/tickets/:id?requesterId={requesterId}
-      const res = await fetch(
-        `/api/v1/tickets/${id}?requesterId=${requesterId}`
-      );
+      const res = await apiFetch(`/api/v1/tickets/${id}`);
 
       // Cross-requester access.
       if (res.status === 403) {
@@ -118,7 +78,7 @@ export default function TicketDetail() {
     } finally {
       setLoading(false);
     }
-  }, [id, selectedRequester, navigate]);
+  }, [id]);
 
   useEffect(() => {
     fetchTicket();
@@ -133,7 +93,7 @@ export default function TicketDetail() {
 
   const handleAddAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !id || !selectedRequester?.id) return;
+    if (!file || !id || !user) return;
     e.target.value = ""; // reset file input
 
     setUploadError(null);
@@ -156,8 +116,8 @@ export default function TicketDetail() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(
-        `/api/v1/tickets/${id}/attachments?requesterId=${selectedRequester.id}`,
+      const res = await apiFetch(
+        `/api/v1/tickets/${id}/attachments`,
         {
           method: "POST",
           body: formData,
@@ -180,12 +140,12 @@ export default function TicketDetail() {
   };
 
   const handleDownload = async (attachment: Attachment) => {
-    if (!selectedRequester?.id) return;
+    if (!user) return;
     setDownloadError(null);
 
-    const downloadUrl = `/api/v1/attachments/${attachment.id}/download?requesterId=${selectedRequester.id}`;
+    const downloadUrl = `/api/v1/attachments/${attachment.id}/download`;
     try {
-      const res = await fetch(downloadUrl);
+      const res = await apiFetch(downloadUrl);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         if (res.status === 404 && errData.error?.code === "ATTACHMENT_NOT_AVAILABLE") {
@@ -225,7 +185,7 @@ export default function TicketDetail() {
 
   const handleConfirmRemove = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!attachmentToRemove || !selectedRequester?.id) return;
+    if (!attachmentToRemove || !user) return;
 
     const trimmed = removalReason.trim();
     if (trimmed.length === 0) {
@@ -239,11 +199,10 @@ export default function TicketDetail() {
 
     setIsRemoving(true);
     try {
-      const res = await fetch(
-        `/api/v1/attachments/${attachmentToRemove.id}?requesterId=${selectedRequester.id}`,
+      const res = await apiFetch(
+        `/api/v1/attachments/${attachmentToRemove.id}`,
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ removalReason: trimmed }),
         }
       );
@@ -303,6 +262,58 @@ export default function TicketDetail() {
         return (
           <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 fw-medium">
             New
+          </span>
+        );
+
+      case "OPEN":
+        return (
+          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Open
+          </span>
+        );
+
+      case "IN_PROGRESS":
+        return (
+          <span
+            className="badge text-white rounded-pill px-2 py-1 fw-medium"
+            style={{ backgroundColor: "#52C41A" }}
+          >
+            In Progress
+          </span>
+        );
+
+      case "WAITING_FOR_REQUESTER":
+        return (
+          <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Waiting for Requester
+          </span>
+        );
+
+      case "RESOLVED":
+        return (
+          <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Resolved
+          </span>
+        );
+
+      case "CLOSED":
+        return (
+          <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Closed
+          </span>
+        );
+
+      case "CANCELLED":
+        return (
+          <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Cancelled
+          </span>
+        );
+
+      case "REOPENED":
+        return (
+          <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-2 py-1 fw-medium">
+            Reopened
           </span>
         );
 
@@ -367,6 +378,108 @@ export default function TicketDetail() {
 
   const getAttachmentDate = (attachment: Attachment) => {
     return attachment.uploadedAt || attachment.createdAt;
+  };
+
+  const handleResolveIndicator = async () => {
+    if (!id || isResolving) return;
+    setIsResolving(true);
+    setResolveError(null);
+    setResolveSuccess(null);
+
+    try {
+      const res = await apiFetch(`/api/v1/tickets/${id}/resolve-indicator`, {
+        method: "POST",
+        body: JSON.stringify({ isRequesterResolved: true }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResolveError(data?.error?.message || "Failed to indicate problem resolution.");
+        return;
+      }
+
+      setTicket((prev) => (prev ? { ...prev, isRequesterResolved: true } : null));
+      setResolveSuccess("Problem resolution indicated successfully.");
+    } catch (err) {
+      setResolveError("An error occurred while updating resolution status.");
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = commentText.trim();
+    if (!trimmed) {
+      setCommentError("Comment cannot be empty.");
+      return;
+    }
+    if (trimmed.length > 2000) {
+      setCommentError("Comment cannot exceed 2,000 characters.");
+      return;
+    }
+
+    setIsPostingComment(true);
+    setCommentError(null);
+    setCommentSuccess(null);
+
+    try {
+      const res = await apiFetch(`/api/v1/tickets/${id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ content: trimmed }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCommentError(data?.error?.message || "Failed to post comment.");
+        return;
+      }
+
+      const newComment: TicketComment = data.data;
+      setTicket((prev) => {
+        if (!prev) return null;
+        const existing = prev.comments || [];
+        return {
+          ...prev,
+          comments: [...existing, newComment],
+        };
+      });
+      setCommentText("");
+      setCommentSuccess("Comment posted successfully.");
+    } catch (err) {
+      setCommentError("An error occurred while posting your comment.");
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const renderRoleBadge = (role: string) => {
+    switch (role) {
+      case "REQUESTER":
+        return (
+          <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0 small fw-medium">
+            Requester
+          </span>
+        );
+      case "IT_STAFF":
+        return (
+          <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-0 small fw-medium">
+            IT Staff
+          </span>
+        );
+      case "ADMIN":
+        return (
+          <span className="badge rounded-pill bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-2 py-0 small fw-medium">
+            Admin
+          </span>
+        );
+      default:
+        return (
+          <span className="badge rounded-pill bg-light text-secondary px-2 py-0 small fw-medium">
+            {role}
+          </span>
+        );
+    }
   };
 
   if (loading) {
@@ -459,10 +572,61 @@ export default function TicketDetail() {
             </h1>
           </div>
 
-          <div>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
             {renderStatusBadge(ticket.currentStatus)}
+            {ticket.isRequesterResolved ? (
+              <span
+                className="badge rounded-pill px-3 py-2 fw-medium d-inline-flex align-items-center gap-1"
+                style={{
+                  backgroundColor: "#EAF6EF",
+                  color: "#006B3C",
+                  border: "1px solid #A3D9B8",
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: 14, height: 14 }}>
+                  <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                </svg>
+                Problem Appears Resolved (Confirmed by Requester)
+              </span>
+            ) : user?.role === "REQUESTER" ? (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success rounded-2 px-3 fw-medium d-inline-flex align-items-center gap-1"
+                onClick={handleResolveIndicator}
+                disabled={isResolving}
+                style={{
+                  borderColor: "#006B3C",
+                  color: "#006B3C",
+                }}
+              >
+                {isResolving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Problem Appears Resolved
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
+
+        {resolveSuccess && (
+          <div className="alert alert-success border-0 shadow-sm rounded-3 py-2 px-3 small mb-3">
+            {resolveSuccess}
+          </div>
+        )}
+        {resolveError && (
+          <div className="alert alert-danger border-0 shadow-sm rounded-3 py-2 px-3 small mb-3">
+            {resolveError}
+          </div>
+        )}
 
         {/* Ticket Information */}
         <section className="mb-4">
@@ -486,10 +650,9 @@ export default function TicketDetail() {
                 </span>
 
                 <span className="fw-semibold text-dark">
-                  {ticket.requester?.name ||
-                    (ticket.requesterId === selectedRequester?.id
-                      ? selectedRequester?.name
-                      : "-")}
+                  {ticket.user?.name ||
+                    ticket.requester?.name ||
+                    (ticket.userId === user?.id ? user?.name : "-")}
                 </span>
               </div>
 
@@ -774,6 +937,151 @@ export default function TicketDetail() {
               })}
             </div>
           )}
+        </section>
+
+        {/* Public Comments Section */}
+        <section className="mb-4 pt-4 border-top" style={{ borderColor: "#E2E8F0" }}>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex align-items-center gap-2">
+              <h2 className="h6 fw-bold text-dark mb-0">
+                Public Comments
+              </h2>
+              <span className="text-secondary small">
+                ({ticket.comments?.length || 0})
+              </span>
+            </div>
+          </div>
+
+          {commentError && (
+            <div className="alert alert-danger py-2 px-3 small mb-3" role="alert">
+              {commentError}
+            </div>
+          )}
+
+          {commentSuccess && (
+            <div className="alert alert-success py-2 px-3 small mb-3" role="alert">
+              {commentSuccess}
+            </div>
+          )}
+
+          {/* Comments list */}
+          {!ticket.comments || ticket.comments.length === 0 ? (
+            <div
+              className="p-4 rounded-3 text-center text-secondary mb-3"
+              style={{
+                backgroundColor: "#F0F4F2",
+                border: "1px solid #D5DDD8",
+              }}
+            >
+              No comments yet. Start the conversation below.
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-3 mb-3">
+              {ticket.comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="p-3 rounded-3"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    border: "1px solid #D5DDD8",
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                    <div className="d-flex align-items-center gap-2">
+                      <div
+                        className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white small"
+                        style={{
+                          width: 32,
+                          height: 32,
+                          backgroundColor:
+                            comment.author.role === "REQUESTER"
+                              ? "#006B3C"
+                              : comment.author.role === "IT_STAFF"
+                              ? "#0B7A46"
+                              : "#475569",
+                          fontSize: 12,
+                        }}
+                      >
+                        {comment.author.name
+                          ? comment.author.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()
+                          : "U"}
+                      </div>
+                      <span className="fw-semibold text-dark small">
+                        {comment.author.name}
+                      </span>
+                      {renderRoleBadge(comment.author.role)}
+                    </div>
+                    <span className="text-secondary small">
+                      {new Date(comment.createdAt).toLocaleString("en-US", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+                  <div
+                    className="text-dark small text-break ps-1"
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {comment.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Public Comment Form */}
+          <form onSubmit={handlePostComment} className="mt-3">
+            <div className="mb-2">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <label
+                  htmlFor="commentTextarea"
+                  className="form-label text-secondary small fw-medium mb-0"
+                >
+                  Write a comment...
+                </label>
+                <span
+                  className="small"
+                  style={{
+                    color: commentText.trim().length > 2000 ? "#DC2626" : "#64748B",
+                  }}
+                >
+                  {commentText.length} / 2000
+                </span>
+              </div>
+              <textarea
+                id="commentTextarea"
+                className="form-control rounded-2 border-light-subtle small"
+                rows={3}
+                placeholder="Write a comment..."
+                value={commentText}
+                onChange={(e) => {
+                  setCommentText(e.target.value);
+                  if (commentError) setCommentError(null);
+                }}
+                disabled={isPostingComment}
+                maxLength={2000}
+              />
+            </div>
+            <div className="d-flex justify-content-end">
+              <button
+                type="submit"
+                className="btn btn-sm text-white rounded-2 px-3 fw-medium shadow-sm"
+                style={{ backgroundColor: "#006B3C" }}
+                disabled={
+                  isPostingComment ||
+                  commentText.trim().length === 0 ||
+                  commentText.length > 2000
+                }
+              >
+                {isPostingComment ? "Posting..." : "Post Comment"}
+              </button>
+            </div>
+          </form>
         </section>
 
         {/* Remove Attachment Confirmation Dialog Modal */}
