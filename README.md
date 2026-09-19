@@ -5,7 +5,7 @@
 **Peer Reviewer:** Aphichaya Klinhual — 67070503447 — GitHub: [@Apichaya251400](https://github.com/Apichaya251400)  
 **Target Release:** `lab3-staging` → `main`
 
-TokTickIT is a full-stack IT service desk web application for handling Account & Access, Hardware, Software, and Network support requests. Built with a full-stack TypeScript architecture using React, Express, Prisma ORM, and PostgreSQL / SQLite.
+TokTickIT is a full-stack IT service desk web application for handling Account & Access, Hardware, Software, and Network support requests. Built with a full-stack TypeScript architecture using React, Express, Prisma ORM, and PostgreSQL.
 
 ---
 
@@ -101,7 +101,7 @@ TokTickIT/
 ## 🛠️ Prerequisites
 
 * **Node.js**: v20 or later
-* **PostgreSQL / SQLite**: Running instance configured via `server/.env`
+* **PostgreSQL**: Running instance configured via `server/.env`
 
 ---
 

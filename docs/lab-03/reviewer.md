@@ -51,7 +51,7 @@
 
 ### PR #63: Issue 22 — Database Schema Evolution, Migration & Idempotent Seed Data
 - **Feature Branch:** `feature/22-database-schema-seed`
-- **Review Summary:** Evolved Prisma schema with new enums (`Role`, `Priority.URGENT`, 8 `TicketStatus`), new models (`User`, `Comment`, `InternalNote`, `RevokedToken`), and SQLite triggers for database-enforced status validation and case-insensitive email uniqueness. Idempotent seed script preserved existing Lab 2 tickets while upgrading requester records to full User credentials.
+- **Review Summary:** Evolved Prisma schema with new enums (`Role`, `Priority.URGENT`, 8 `TicketStatus`), new models (`User`, `Comment`, `InternalNote`, `RevokedToken`), and database triggers for database-enforced status validation and case-insensitive email uniqueness. Idempotent seed script preserved existing Lab 2 tickets while upgrading requester records to full User credentials.
 - **Reviewer Verdict:** `APPROVED` (2026-09-13T18:22:18Z)
 - **Reviewer Comment (@Apichaya251400):**  
   > LGTM! Database schema evolution, pure SQL migration, and seed data in PR #63 look super solid! Verified zero data loss, exact enum/model alignment, and idempotent seeding. All 96 tests pass! Approved and ready to merge to lab3-staging!
