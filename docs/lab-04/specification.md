@@ -9,7 +9,7 @@ The TokTickIT service desk currently facilitates ticket intake, ownership claimi
 To address this:
 1. **Actions Taken**: Each ticket must support multiple chronologically recorded Actions Taken lines. Each entry captures action date/time, action description, result, automatically attributed actor (`performedBy`), follow-up requirement flag, mandatory follow-up notes (when required), and attachment notes. Crucially, while a designated primary Ticket Owner coordinates the ticket as a whole, any qualified IT Staff member or Administrator may perform and log specific actions on that ticket. Requesters must be able to view all Actions Taken on tickets they own to maintain transparency, while write access is strictly guarded.
 2. **Ticket Lifecycle & Resolution Gate**: The system must enforce the full status lifecycle across all 8 statuses (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`). While Requesters may indicate that an issue appears resolved (advisory indicator), only IT Staff or Administrators may formally evaluate the completed work and transition the ticket to `RESOLVED` or `CLOSED`. Stale and concurrent updates must be safely rejected.
-3. **Role-Appropriate Dashboards**: Requesters, IT Staff, and Administrators require concise operational starting points. Requesters need visibility into their active tickets, items awaiting their input, and recently resolved items. IT Staff need rapid insight into unassigned tickets, tickets assigned to themselves, high/urgent priority items, and queue velocity. Administrators need operational visibility alongside user account summaries. All metrics must be computed authoritatively by the backend and offer direct drill-down links to filtered lists.
+3. **Role-Appropriate Dashboards**: Requesters, IT Staff, and Administrators require concise operational starting points. Requesters need visibility into their active tickets, items awaiting their input, and recently resolved items. IT Staff need rapid insight into unassigned tickets, tickets assigned to themselves, high/urgent priority items, and recent queue activity. Administrators need operational visibility alongside user account summaries. All metrics must be computed authoritatively by the backend and offer direct drill-down links to filtered lists.
 4. **Final Regression & Hardening**: The complete system must be polished, responsive across desktop, tablet, and mobile viewports, accessible, free of broken links or console errors, and fully verified through traceable automated tests.
 
 ---
@@ -111,16 +111,22 @@ To address this:
 | `CANCELLED` | None (Terminal) | None |
 
 - **BR-10**: The Requester's "Problem Appears Resolved" indication (`isResolvedByUser = true`) is strictly advisory. It does not alter the formal `status` of the ticket to `RESOLVED`.
-- **BR-11**: Only IT Staff or Administrators may formally transition a ticket to `RESOLVED` after reviewing recorded Actions Taken.
+- **BR-11 (Resolution Gate Rule)**: A ticket cannot transition to `RESOLVED` unless the backend resolution gate conditions are strictly satisfied:
+  1. **Authorized Role**: The authenticated actor must have role `IT_STAFF` or `ADMIN`. Requesters are strictly forbidden.
+  2. **Permitted Current Status**: The ticket must currently be in an eligible status (`OPEN`, `IN_PROGRESS`, or `WAITING_FOR_REQUESTER`).
+  3. **Decoupled Advisory Indicator**: A Requester's `isResolvedByUser` indication is an advisory cue that does NOT satisfy or bypass this gate on its own.
+  4. **Concurrency Guard**: Incoming `expectedUpdatedAt` must match the current database record without stale conflict.
+  If any condition fails, the backend rejects the transition with HTTP 400 (`INVALID_STATUS_TRANSITION`), HTTP 403 (`FORBIDDEN`), or HTTP 409 (`STALE_UPDATE_CONFLICT`).
 - **BR-12**: Once a ticket reaches `CLOSED` or `CANCELLED`, it is terminal and immutable; no further status transitions or Actions Taken entries are permitted.
 
 ### 5.3 Role Dashboard Calculation Rules
 - **BR-13 (Requester Dashboard)**:
-  - **Open Tickets Count**: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`. Drill-down: `/my-tickets?status=open_all`.
+  - **My Open Tickets Count**: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`. Drill-down: `/my-tickets?status=open_all`.
   - **Waiting for Requester Count**: Sum of tickets owned by requester where `status = 'WAITING_FOR_REQUESTER'`. Drill-down: `/my-tickets?status=WAITING_FOR_REQUESTER`.
   - **Resolved Tickets Count**: Sum of tickets owned by requester where `status = 'RESOLVED'`. Drill-down: `/my-tickets?status=RESOLVED`.
   - **Closed Tickets Count**: Sum of tickets owned by requester where `status = 'CLOSED'`. Drill-down: `/my-tickets?status=CLOSED`.
   - **My Recent Tickets**: Up to 5 most recently updated tickets owned by requester, sorted by `updatedAt DESC`.
+  - **Recently Resolved Tickets**: Most recently resolved tickets owned by requester, sorted by `updatedAt DESC`.
 - **BR-14 (IT Staff Dashboard)**:
   - **Primary Operational Metric Cards (6 Cards)**:
     - **New Tickets Count** (`newCount`): Count of active tickets where `status = 'NEW'`. Drill-down: `/staff/tickets?status=NEW`.
@@ -139,7 +145,7 @@ To address this:
 - **BR-16**: All dashboard metrics must be computed authoritatively by the backend PostgreSQL database using SQL aggregations. Clients must not fetch full ticket collections to compute counts client-side.
 
 ### 5.4 Concurrency, Security & Failure Rules
-- **BR-17**: Any update to Ticket Status or Actions Taken must supply the current resource `updatedAt` timestamp. If the database record contains a newer timestamp, the update must fail with HTTP 409 `STALE_UPDATE_CONFLICT`.
+- **BR-17**: Any update to Ticket Status, Actions Taken creation/modification, or Advisory Resolution indication MUST supply the current resource `updatedAt` / `expectedTicketUpdatedAt` timestamp as a mandatory field. If the database record contains a newer timestamp, the update must fail with HTTP 409 `STALE_UPDATE_CONFLICT`.
 - **BR-18**: In the event of a validation or concurrency error, client input forms must preserve all entered user values to allow immediate recovery without data re-entry.
 - **BR-19**: Double-clicking submission buttons or rapid repeated network requests must be debounced/disabled to prevent duplicate action creation.
 
@@ -263,8 +269,8 @@ Refer to [`docs/lab-04/ui-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs
   - "Quick Actions" panel (`Create Ticket`, `Search Tickets`, `My Queue`).
 - **Requester Dashboard (`/dashboard`)**:
   - Welcome banner.
-  - 4 metric cards (`My Open Tickets`, `In Progress`, `Resolved`, `Closed`) linking to filtered `MyTickets`.
-  - "My Recent Tickets" list and "Quick Actions" (`+ Create Ticket`, `View My Tickets`).
+  - 4 metric cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`) linking to filtered `MyTickets`.
+  - "My Recent Tickets" list, "Recently Resolved Tickets" list, and "Quick Actions" (`+ Create Ticket`, `View My Tickets`).
 - **Actions Taken on Ticket Detail**:
   - Dedicated "Actions Taken" section positioned below ticket details.
   - Shows date/time, description, result, performed by badge, follow-up badge, and attachment notes.

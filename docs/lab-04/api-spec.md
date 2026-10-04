@@ -130,7 +130,7 @@ Record a new operational action under a ticket.
 | `followUpRequired` | Boolean | Optional | Defaults to `false` |
 | `followUpNote` | String | Conditional| **Mandatory** non-empty string when `followUpRequired = true` |
 | `attachmentNotes` | String | Optional | Description of relevant attachments or files |
-| `expectedTicketUpdatedAt` | ISO DateTime | Optional | For concurrency check against ticket modifications |
+| `expectedTicketUpdatedAt` | ISO DateTime | **Required** | Resource timestamp for optimistic locking against concurrent ticket modifications (BR-17) |
 
 #### Success Response (`201 Created`)
 ```json
@@ -162,6 +162,7 @@ Record a new operational action under a ticket.
 - `400 Bad Request` (`FOLLOWUP_NOTE_REQUIRED`): `followUpRequired` is `true`, but `followUpNote` is empty or missing.
 - `400 Bad Request` (`INACTIVE_ACTOR_REJECTED`): The authenticated user performing the operation is marked `isActive: false`.
 - `400 Bad Request` (`TICKET_LOCKED`): Ticket status is `CLOSED` or `CANCELLED`.
+- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): User role is `REQUESTER`.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket was modified by another user concurrently.
@@ -176,7 +177,16 @@ Modify details of an existing Action Taken record.
 - **Authorized Roles**: `IT_STAFF`, `ADMIN` (Requesters return `403 FORBIDDEN`).
 - **Audit Invariant**: `performedBy` remains bound to the original author and cannot be altered.
 
-#### Request Body
+#### Request Body Fields:
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `actionDescription` | String | Optional | Updated description of work |
+| `result` | String | Optional | Updated outcome description |
+| `followUpRequired` | Boolean | Optional | Updated follow-up flag |
+| `followUpNote` | String? | Conditional | Mandatory non-empty string when `followUpRequired = true` |
+| `attachmentNotes` | String? | Optional | Updated attachment references |
+| `expectedUpdatedAt` | ISO DateTime | **Required** | Resource timestamp for optimistic locking against stale updates (BR-17) |
+
 ```json
 {
   "actionDescription": "Updated description with vendor ticket #88412",
@@ -216,6 +226,11 @@ Modify details of an existing Action Taken record.
 
 #### Error Responses
 - `400 Bad Request` (`FOLLOWUP_NOTE_REQUIRED`): Updated `followUpRequired` to `true` without providing a note.
+- `400 Bad Request` (`INACTIVE_ACTOR_REJECTED`): The authenticated user performing the update is marked `isActive: false`.
+- `400 Bad Request` (`TICKET_LOCKED`): Ticket status is `CLOSED` or `CANCELLED`.
+- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `403 Forbidden` (`FORBIDDEN`): User role is `REQUESTER` (Requesters cannot update Actions Taken).
+- `404 Not Found` (`TICKET_NOT_FOUND`): Specified ticket does not exist.
 - `404 Not Found` (`ACTION_NOT_FOUND`): Specified Action Taken ID does not exist under this ticket.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Action Taken record was modified since `expectedUpdatedAt`.
 
@@ -230,7 +245,12 @@ Transition a ticket to an allowed next state according to the Status Transition 
 - **Path**: `/api/v1/tickets/:id/status`
 - **Authorized Roles**: `IT_STAFF`, `ADMIN` (Requesters return `403 FORBIDDEN`).
 
-#### Request Body
+#### Request Body Fields:
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `status` | String | **Required** | Target status from permitted transition matrix |
+| `expectedUpdatedAt` | ISO DateTime | **Required** | Resource timestamp for optimistic locking against stale ticket updates (BR-17) |
+
 ```json
 {
   "status": "RESOLVED",
@@ -266,7 +286,9 @@ Transition a ticket to an allowed next state according to the Status Transition 
 #### Error Responses
 - `400 Bad Request` (`INVALID_STATUS_TRANSITION`): Attempting an illegal jump (e.g. `NEW` $\rightarrow$ `RESOLVED`).
 - `400 Bad Request` (`TICKET_LOCKED`): Attempting to modify a `CLOSED` or `CANCELLED` ticket.
+- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): Non-staff user attempting status transition.
+- `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket `updatedAt` is newer than `expectedUpdatedAt`.
 
 ---
@@ -278,6 +300,17 @@ Allows the owning Requester to signal that the issue appears resolved.
 - **Path**: `/api/v1/tickets/:id/resolve-indicator`
 - **Authorized Roles**: `REQUESTER` (Must own the ticket).
 - **Behavior**: Sets `isResolvedByUser: true`. **Crucially, formal status is NOT changed to `RESOLVED`**.
+
+#### Request Body Fields:
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `expectedUpdatedAt` | ISO DateTime | **Required** | Resource timestamp for optimistic locking against stale ticket updates (BR-17) |
+
+```json
+{
+  "expectedUpdatedAt": "2026-05-13T16:00:00.000Z"
+}
+```
 
 #### Success Response (`200 OK`)
 ```json
@@ -294,12 +327,19 @@ Allows the owning Requester to signal that the issue appears resolved.
 }
 ```
 
+#### Error Responses
+- `400 Bad Request` (`VALIDATION_ERROR`): Missing `expectedUpdatedAt`.
+- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `403 Forbidden` (`FORBIDDEN`): Authenticated user does not own this ticket.
+- `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
+- `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket `updatedAt` is newer than `expectedUpdatedAt`.
+
 ---
 
 ## 4. Role Dashboard Endpoints
 
 ### 4.1 Requester Dashboard
-Retrieve summary metrics and recent tickets scoped strictly to the authenticated Requester.
+Retrieve summary metrics, recent tickets, and recently resolved tickets scoped strictly to the authenticated Requester.
 
 - **Method**: `GET`
 - **Path**: `/api/v1/dashboard/requester`
@@ -313,10 +353,9 @@ Retrieve summary metrics and recent tickets scoped strictly to the authenticated
     "requesterName": "Jennifer Anderson",
     "metrics": {
       "openTickets": 3,
-      "inProgress": 2,
+      "waitingForRequester": 1,
       "resolved": 5,
-      "closed": 12,
-      "waitingForRequester": 1
+      "closed": 12
     },
     "recentTickets": [
       {
@@ -328,6 +367,16 @@ Retrieve summary metrics and recent tickets scoped strictly to the authenticated
         "updatedAt": "2026-05-12T09:14:00.000Z"
       },
       {
+        "id": "tkt-001213",
+        "ticketNumber": "TKT-2026-001213",
+        "title": "Need new secondary monitor",
+        "status": "WAITING_FOR_REQUESTER",
+        "priority": "MEDIUM",
+        "updatedAt": "2026-05-11T16:20:00.000Z"
+      }
+    ],
+    "recentlyResolvedTickets": [
+      {
         "id": "tkt-001222",
         "ticketNumber": "TKT-2026-001222",
         "title": "Request software access for Figma",
@@ -338,7 +387,7 @@ Retrieve summary metrics and recent tickets scoped strictly to the authenticated
     ],
     "drillDownPaths": {
       "openTickets": "/my-tickets?status=open_all",
-      "inProgress": "/my-tickets?status=IN_PROGRESS",
+      "waitingForRequester": "/my-tickets?status=WAITING_FOR_REQUESTER",
       "resolved": "/my-tickets?status=RESOLVED",
       "closed": "/my-tickets?status=CLOSED"
     }

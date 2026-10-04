@@ -117,37 +117,43 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 
 #### Desktop Wireframe Layout
 ```text
-+-----------------------------------------------------------------------------------------+
-| [Logo] TokTickIT           [Dashboard]  [My Tickets]  [Create Ticket]   [Jennifer (Req) v]|
-+-----------------------------------------------------------------------------------------+
-| Welcome, Jennifer!                                                                      |
-| Here's the latest on your requests.                                                     |
-|                                                                                         |
-| +------------------+ +------------------+ +------------------+ +------------------+     |
-| | My Open Tickets  | | In Progress      | | Resolved         | | Closed           |     |
-| | 3                | | 2                | | 5                | | 12               |     |
-| | [ View all > ]   | | [ View all > ]   | | [ View all > ]   | | [ View all > ]   |     |
-| +------------------+ +------------------+ +------------------+ +------------------+     |
-|                                                                                         |
-| +-----------------------------------------------------+  +----------------------------+ |
-| | My Recent Tickets                       [ View all ]|  | Quick Actions              | |
-| |-----------------------------------------------------|  |                            | |
-| | TKT-2026-001234  Laptop battery drains [In Progress]|  |  [ + Create Ticket       ] | |
-| | TKT-2026-001222  Request software acc  [Resolved   ]|  |    Submit a new request    | |
-| | TKT-2026-001213  Need new monitor      [In Progress]|  |                            | |
-| | TKT-2026-001205  Email not arriving    [Resolved   ]|  |  [ = View My Tickets     ] | |
-| | TKT-2026-001198  Password reset req    [Closed     ]|  |    Track existing requests | |
-| +-----------------------------------------------------+  +----------------------------+ |
-+-----------------------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------+
+| [Logo] TokTickIT           [Dashboard]  [My Tickets]  [Create Ticket]                    [Jennifer (Req) v] |
++-------------------------------------------------------------------------------------------------------------+
+| Welcome, Jennifer!                                                                                          |
+| Here's the latest on your requests.                                                                         |
+|                                                                                                             |
+| +-------------------+ +-------------------+ +-------------------+ +-------------------+                     |
+| | My Open Tickets   | | Waiting for Me    | | Resolved          | | Closed            |                     |
+| | 3                 | | 1                 | | 5                 | | 12                |                     |
+| | [ View all > ]    | | [ View all > ]    | | [ View all > ]    | | [ View all > ]    |                     |
+| +-------------------+ +-------------------+ +-------------------+ +-------------------+                     |
+|                                                                                                             |
+| +-----------------------------------------------------+  +------------------------------------------------+ |
+| | My Recent Tickets                       [ View all ]|  | Quick Actions                                  | |
+| |-----------------------------------------------------|  |                                                | |
+| | TKT-2026-001234  Laptop battery drains [In Progress]|  |  [ + Create Ticket                           ] | |
+| | TKT-2026-001213  Need new monitor      [In Progress]|  |    Submit a new service desk request          | |
+| | TKT-2026-001205  Email not arriving    [Waiting Req]|  |                                                | |
+| |-----------------------------------------------------|  |  [ = View My Tickets                         ] | |
+| | Recently Resolved Tickets               [ View all ]|  |    Track and review existing requests          | |
+| |-----------------------------------------------------|  +------------------------------------------------+ |
+| | TKT-2026-001222  Request Figma access  [Resolved   ]|                                                     |
+| | TKT-2026-001198  Password reset req    [Resolved   ]|                                                     |
+| +-----------------------------------------------------+                                                     |
++-------------------------------------------------------------------------------------------------------------+
 ```
 
 #### Key UI Components & Interactions:
-1. **Metric Cards**:
-   - `My Open Tickets` $\rightarrow$ links to `/my-tickets?status=open_all`
-   - `In Progress` $\rightarrow$ links to `/my-tickets?status=IN_PROGRESS`
-   - `Resolved` $\rightarrow$ links to `/my-tickets?status=RESOLVED`
-   - `Closed` $\rightarrow$ links to `/my-tickets?status=CLOSED`
-2. **Empty State**:
+1. **Metric Cards (4 Cards)**:
+   - `My Open Tickets`: Sum of tickets in `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` $\rightarrow$ links to `/my-tickets?status=open_all`.
+   - `Waiting for Me`: Count of tickets where status is `WAITING_FOR_REQUESTER` requiring Requester feedback $\rightarrow$ links to `/my-tickets?status=WAITING_FOR_REQUESTER`.
+   - `Resolved`: Count of tickets formally marked `RESOLVED` by IT Staff $\rightarrow$ links to `/my-tickets?status=RESOLVED`.
+   - `Closed`: Count of terminal `CLOSED` tickets $\rightarrow$ links to `/my-tickets?status=CLOSED`.
+2. **Recent Tickets & Recently Resolved Panels**:
+   - `My Recent Tickets`: Displays up to 5 most recently active tickets owned by the requester with status badges and timestamps.
+   - `Recently Resolved Tickets`: Displays tickets recently resolved by IT Staff, allowing the requester to quickly review work done.
+3. **Empty State**:
    - If a requester has 0 tickets, displays an illustration with heading "No tickets submitted yet" and a prominent primary green button `[ + Create your first ticket ]`.
 
 ---
