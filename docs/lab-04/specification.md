@@ -59,7 +59,7 @@ To address this:
 - **FR-02**: The system shall automatically bind the `performedBy` attribute of an Actions Taken entry to the authenticated user from the verified Bearer token session.
 - **FR-03**: The system shall allow authenticated IT Staff and Administrators to update existing Actions Taken entries under accessible tickets.
 - **FR-04**: The system shall enforce that when `followUpRequired` is marked `true`, a non-empty `followUpNote` must be provided; otherwise, the request shall be rejected with HTTP 400 `FOLLOWUP_NOTE_REQUIRED`.
-- **FR-05**: The system shall reject assigning or recording Actions Taken for inactive user accounts with HTTP 400 `INACTIVE_ASSIGNEE_REJECTED`.
+- **FR-05**: The system shall reject Action Taken creation or modification attempts if the authenticated user account is inactive, returning HTTP 400 `INACTIVE_ACTOR_REJECTED`.
 - **FR-06**: The system shall allow authenticated Requesters to view all Actions Taken entries recorded on tickets they own, but shall strictly prohibit Requesters from creating, modifying, or deleting Actions Taken (HTTP 403 `FORBIDDEN`).
 - **FR-07**: The system shall prohibit any user from recording an Actions Taken entry under a cancelled or closed ticket, rejecting requests with HTTP 400 `TICKET_LOCKED`.
 
@@ -72,7 +72,7 @@ To address this:
 
 ### 4.3 Role Dashboards Requirements
 - **FR-13**: The system shall provide a Requester Dashboard endpoint (`GET /api/v1/dashboard/requester`) returning authoritative metrics and recent tickets scoped strictly to the authenticated Requester.
-- **FR-14**: The system shall provide an IT Staff Dashboard endpoint (`GET /api/v1/dashboard/staff`) returning operational metrics (unassigned tickets, tickets assigned to current user, counts by status/priority) and recent queue activity.
+- **FR-14**: The system shall provide an IT Staff Dashboard endpoint (`GET /api/v1/dashboard/staff`) returning operational metrics (New, Open, In Progress, Waiting for Requester, My Assigned, Unassigned, Urgent, High) and recent queue activity.
 - **FR-15**: The system shall provide Administrators accessing the dashboard with operational metrics plus system user account metrics (`activeUsers`, `activeStaff`, `activeAdmins`).
 - **FR-16**: All dashboard metrics cards shall provide accessible drill-down destinations linking to filtered lists in the Ticket Queue or My Tickets views.
 
@@ -90,7 +90,7 @@ To address this:
 - **BR-01**: An Action Taken belongs to exactly one Ticket (Parent-Child relationship).
 - **BR-02**: The Ticket Owner coordinates the Ticket as a whole, but Actions Taken may be performed and recorded by different IT Staff members or Administrators.
 - **BR-03**: The `performedBy` field of an Action Taken is authoritative and immutable once created, reflecting the authenticated user who recorded the action.
-- **BR-04**: An Action Taken cannot be created or updated if the associated user account is inactive (`isActive = false`).
+- **BR-04**: The authenticated IT Staff or Administrator performing an Action Taken operation (creation or update) must have an active account (`isActive = true`). If the calling user is inactive, the operation is rejected with HTTP 400 `INACTIVE_ACTOR_REJECTED`. The original `performedById` attribution on an existing Action Taken remains immutable even if that original contributor later becomes inactive.
 - **BR-05**: If `followUpRequired` is `true`, `followUpNote` must contain non-whitespace text. If `followUpRequired` is `false`, `followUpNote` is optional or null.
 - **BR-06**: Actions Taken entries are chronologically ordered by `actionDate` ascending.
 - **BR-07**: Requesters possess read-only visibility for Actions Taken on their owned tickets. Requesters are strictly forbidden from creating, modifying, or deleting Actions Taken entries.
@@ -116,18 +116,22 @@ To address this:
 
 ### 5.3 Role Dashboard Calculation Rules
 - **BR-13 (Requester Dashboard)**:
-  - **Open Tickets Count**: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`.
-  - **Waiting for Requester Count**: Sum of tickets owned by requester where `status = 'WAITING_FOR_REQUESTER'`.
-  - **Resolved Tickets Count**: Sum of tickets owned by requester where `status = 'RESOLVED'`.
-  - **Closed Tickets Count**: Sum of tickets owned by requester where `status = 'CLOSED'`.
+  - **Open Tickets Count**: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`. Drill-down: `/my-tickets?status=open_all`.
+  - **Waiting for Requester Count**: Sum of tickets owned by requester where `status = 'WAITING_FOR_REQUESTER'`. Drill-down: `/my-tickets?status=WAITING_FOR_REQUESTER`.
+  - **Resolved Tickets Count**: Sum of tickets owned by requester where `status = 'RESOLVED'`. Drill-down: `/my-tickets?status=RESOLVED`.
+  - **Closed Tickets Count**: Sum of tickets owned by requester where `status = 'CLOSED'`. Drill-down: `/my-tickets?status=CLOSED`.
   - **My Recent Tickets**: Up to 5 most recently updated tickets owned by requester, sorted by `updatedAt DESC`.
 - **BR-14 (IT Staff Dashboard)**:
-  - **New Tickets Count**: Count of active tickets where `status = 'NEW'`.
-  - **Open Tickets Count**: Count of active tickets where `status = 'OPEN'`.
-  - **In Progress Count**: Count of active tickets where `status = 'IN_PROGRESS'`.
-  - **Waiting for Requester Count**: Count of active tickets where `status = 'WAITING_FOR_REQUESTER'`.
-  - **My Assigned Count**: Count of active tickets where `ownerId = currentUserId` and `status NOT IN ('CLOSED', 'CANCELLED')`.
-  - **Unassigned Count**: Count of active tickets where `ownerId IS NULL` and `status NOT IN ('CLOSED', 'CANCELLED')`.
+  - **Primary Operational Metric Cards (6 Cards)**:
+    - **New Tickets Count** (`newCount`): Count of active tickets where `status = 'NEW'`. Drill-down: `/staff/tickets?status=NEW`.
+    - **Open Tickets Count** (`openCount`): Count of active tickets where `status = 'OPEN'`. Drill-down: `/staff/tickets?status=OPEN`.
+    - **In Progress Count** (`inProgressCount`): Count of active tickets where `status = 'IN_PROGRESS'`. Drill-down: `/staff/tickets?status=IN_PROGRESS`.
+    - **Waiting for Requester Count** (`waitingForRequesterCount`): Count of active tickets where `status = 'WAITING_FOR_REQUESTER'`. Drill-down: `/staff/tickets?status=WAITING_FOR_REQUESTER`.
+    - **My Assigned Count** (`myAssignedCount`): Count of active tickets where `ownerId = currentUserId` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?ownership=assigned_to_me`.
+    - **Unassigned Count** (`unassignedCount`): Count of active tickets where `ownerId IS NULL` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?ownership=unassigned`.
+  - **Priority Attention Counters**:
+    - **Urgent Priority Count** (`urgentCount`): Count of active tickets where `itPriority = 'URGENT'` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?priority=URGENT`.
+    - **High Priority Count** (`highCount`): Count of active tickets where `itPriority = 'HIGH'` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?priority=HIGH`.
   - **Recent Tickets**: Up to 5 most recently updated tickets across the entire service desk, sorted by `updatedAt DESC`.
 - **BR-15 (Administrator Dashboard)**:
   - Inherits all operational metrics from BR-14.
@@ -215,7 +219,7 @@ erDiagram
   - No synthetic placeholder actions will be injected; legacy tickets will naturally return an empty array (`actionsTaken: []`).
   - Ticket query serializers and UI components must handle `actionsTaken: []` gracefully without crashing or displaying broken tables.
 - **Rollback & Recovery**:
-  - In the event of a failed migration during deployment, a dedicated rollback script drops the `ActionTaken` table and indexes, returning the schema cleanly to the Lab 3 state with zero data corruption to tickets.
+  - In the event of an unexpected migration interruption or failure, deployment must halt immediately and recovery must restore the pre-migration schema and data state using the project's approved database recovery procedure. Zero existing Lab 1–3 data may be lost.
 
 ### 7.4 Idempotent Seed Data Strategy
 The updated seed script (`server/prisma/seed.ts`) will:
@@ -253,7 +257,8 @@ Refer to [`docs/lab-04/ui-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs
 - **Design Language**: Zen Green Theme (`#006B3C` primary brand, `#F5F7F6` canvas, `#FFFFFF` cards, `#D5DDD8` borders).
 - **IT Staff Dashboard (`/dashboard`)**:
   - Welcome banner with greeting and refresh trigger.
-  - 5 primary metric cards (`New`, `Open`, `In Progress`, `Waiting for Requester`, `My Assigned`) with delta indicators and drill-down links.
+  - 6 primary operational metric cards (`New`, `Open`, `In Progress`, `Waiting for Requester`, `My Assigned`, `Unassigned`) with delta indicators and drill-down links.
+  - Priority Attention banner with direct filters for `Urgent` and `High` priority tickets.
   - "Recent Tickets" table showing 5 most recent tickets with ticket number, title, status badge, and timestamp.
   - "Quick Actions" panel (`Create Ticket`, `Search Tickets`, `My Queue`).
 - **Requester Dashboard (`/dashboard`)**:
@@ -266,15 +271,15 @@ Refer to [`docs/lab-04/ui-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs
   - IT Staff/Admin see "Add Action Taken" button triggering the create modal, and edit buttons on rows.
   - Requesters see a clean, read-only list with zero interactive write controls.
 - **Accessibility & Responsive**:
-  - Mobile breakpoint ($375\text{px}$), Tablet breakpoint ($768\text{px} - 1024\text{px}$), Desktop ($\ge 1280\text{px}$).
-  - All touch targets $\ge 44\text{px}$, visible keyboard focus ring (`#0B7A46`), non-color status icons/text, zero horizontal scroll.
+  - Target reference breakpoints: Mobile ($375\text{px}$), Tablet ($768\text{px} - 1024\text{px}$), Desktop ($\ge 1280\text{px}$), with fluid layouts supporting all intermediate widths.
+  - All touch targets MUST be $\ge 44\text{px}$, visible keyboard focus ring (`#0B7A46`), non-color status icons/text, zero horizontal scroll.
 
 ---
 
 ## 10. Acceptance Criteria
 
 ### 10.1 Actions Taken Acceptance Criteria
-- **AC-01**: Given an authenticated IT Staff or Admin user, when submitting valid Action Taken data under an active ticket, then the record is created with `performedBy` automatically bound to the authenticated user and returned with HTTP 201.
+- **AC-01**: Given an authenticated active IT Staff or Administrator and valid Action Taken data, when the Action Taken is created under an accessible Ticket, then it is saved under the correct Ticket with `performedBy` automatically bound to the authenticated user and returned with HTTP 201.
 - **AC-02**: Given an authenticated IT Staff or Admin user, when creating an Action Taken with `followUpRequired = true` and an empty `followUpNote`, then the request is rejected with HTTP 400 `FOLLOWUP_NOTE_REQUIRED`.
 - **AC-03**: Given an authenticated Requester, when attempting to create (`POST`) or modify (`PATCH`) an Action Taken, then the request is rejected with HTTP 403 `FORBIDDEN`.
 - **AC-04**: Given an authenticated Requester viewing an owned ticket, when the ticket detail loads, then all recorded Actions Taken are displayed in chronological order with write controls hidden.

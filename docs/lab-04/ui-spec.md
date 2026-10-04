@@ -62,47 +62,53 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 
 #### Desktop Wireframe Layout
 ```text
-+-----------------------------------------------------------------------------------------+
-| [Logo] TokTickIT      [Dashboard]  [Ticket Queue]  [User Mgmt*]        [Michael (Staff) v] |
-+-----------------------------------------------------------------------------------------+
-| Welcome back, Michael!                                                 [ Refresh Button ] |
-| Here's what's happening with your queue today.                                            |
-|                                                                                         |
-| +-------------+ +-------------+ +-------------+ +-------------+ +-------------+        |
-| | New         | | Open        | | In Progress | | Waiting Req | | My Assigned |        |
-| | 14          | | 23          | | 18          | | 7           | | 16          |        |
-| | +3 vs yest. | | -2 vs yest. | | -1 vs yest. | | +1 vs yest. | | +4 vs yest. |        |
-| | [View all>] | | [View all>] | | [View all>] | | [View all>] | | [View all>] |        |
-| +-------------+ +-------------+ +-------------+ +-------------+ +-------------+        |
-|                                                                                         |
-| +-----------------------------------------------------+  +----------------------------+ |
-| | My Recent Tickets                       [ View all ]|  | Quick Actions              | |
-| |-----------------------------------------------------|  |                            | |
-| | TKT-2026-00034  Laptop battery drains  [In Progress]|  |  [ + Create Ticket       ] | |
-| | TKT-2026-00030  Printer shows offline  [Open       ]|  |  [ Q Search Tickets      ] | |
-| | TKT-2026-00028  Outlook freezing       [In Progress]|  |  [ > My Queue            ] | |
-| | TKT-2026-00023  Phone not receiving    [Open       ]|  +----------------------------+ |
-| | TKT-2026-00019  VPN disconnects        [Resolved   ]|                                 |
-| +-----------------------------------------------------+                                 |
-+-----------------------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------+
+| [Logo] TokTickIT      [Dashboard]  [Ticket Queue]  [User Mgmt*]                        [Michael (Staff) v]  |
++-------------------------------------------------------------------------------------------------------------+
+| Welcome back, Michael!                                                                   [ Refresh Button ] |
+| Here's what's happening with your queue today.                                                              |
+|                                                                                                             |
+| +-----------+ +-----------+ +-----------+ +-----------+ +---------------+ +---------------+                 |
+| | New       | | Open      | | In Progress| | Waiting Req| | My Assigned  | | Unassigned    |                 |
+| | 14        | | 23        | | 18        | | 7         | | 16            | | 8             |                 |
+| | [View all>| | [View all>| | [View all>| | [View all>| | [View all >]  | | [View all >]  |                 |
+| +-----------+ +-----------+ +-----------+ +-----------+ +---------------+ +---------------+                 |
+|                                                                                                             |
+| Attention Required:  [ 🔴 Urgent: 3 tickets > ]    [ 🟠 High Priority: 12 tickets > ]                       |
+|                                                                                                             |
+| +-----------------------------------------------------+  +------------------------------------------------+ |
+| | Recent Queue Tickets                    [ View all ]|  | Quick Actions                                  | |
+| |-----------------------------------------------------|  |                                                | |
+| | TKT-2026-00034  Laptop battery drains  [In Progress]|  |  [ + Create Ticket                           ] | |
+| | TKT-2026-00030  Printer shows offline  [Open       ]|  |  [ Q Search Tickets                          ] | |
+| | TKT-2026-00028  Outlook freezing       [In Progress]|  |  [ > My Assigned Queue                       ] | |
+| | TKT-2026-00023  Phone not receiving    [Open       ]|  +------------------------------------------------+ |
+| | TKT-2026-00019  VPN disconnects        [Resolved   ]|                                                     |
+| +-----------------------------------------------------+                                                     |
++-------------------------------------------------------------------------------------------------------------+
 ```
 
 #### Key UI Components & Interactions:
-1. **Metric Cards**:
-   - Title label, large authoritative metric numeral, subtle trend/context subtitle, and accessible text link (`View all`) that navigates directly to `StaffTicketQueue` with the filter pre-applied:
+1. **Primary Operational Metric Cards (6 Cards)**:
+   - Each card displays a title label, large authoritative metric numeral, and accessible drill-down text link (`View all`) that navigates directly to `StaffTicketQueue` with pre-applied URL filter parameters:
      - `New` $\rightarrow$ `/staff/tickets?status=NEW`
      - `Open` $\rightarrow$ `/staff/tickets?status=OPEN`
      - `In Progress` $\rightarrow$ `/staff/tickets?status=IN_PROGRESS`
      - `Waiting for Requester` $\rightarrow$ `/staff/tickets?status=WAITING_FOR_REQUESTER`
      - `My Assigned` $\rightarrow$ `/staff/tickets?ownership=assigned_to_me`
-2. **Recent Tickets List**:
+     - `Unassigned` $\rightarrow$ `/staff/tickets?ownership=unassigned`
+2. **Priority Attention Strip**:
+   - Prominently displays clickable badges for urgent and high-priority tickets requiring immediate IT triage:
+     - `Urgent Priority` $\rightarrow$ `/staff/tickets?priority=URGENT`
+     - `High Priority` $\rightarrow$ `/staff/tickets?priority=HIGH`
+3. **Recent Tickets List**:
    - Displays up to 5 most recently active tickets.
    - Clicking a ticket row or ticket number navigates directly to `/staff/tickets/:id`.
-3. **Quick Actions**:
+4. **Quick Actions**:
    - `Create Ticket`: opens ticket creation modal or page.
    - `Search Tickets`: jumps to Ticket Queue with search focus.
    - `My Queue`: navigates to `/staff/tickets?ownership=assigned_to_me`.
-4. **Administrator Extras**:
+5. **Administrator Extras**:
    - For users with `role: ADMIN`, a concise secondary statistics card displays system accounts: `Total Active Users: X | Active Staff: Y | Active Admins: Z` with a direct link to `/admin/users`.
 
 ---
@@ -280,22 +286,25 @@ On the IT Staff Ticket Detail page, the Status Transition block enforces permitt
 
 | Breakpoint | Viewport Width | Dashboard Layout | Actions Taken Table | Navigation Bar |
 | :--- | :--- | :--- | :--- | :--- |
-| **Desktop** | $\ge 1280\text{px}$ | 4 or 5 metric cards in single row; 2-column layout (Table + Quick Actions) | Full responsive data table with all columns visible | Full horizontal navbar with role badge and user dropdown |
+| **Desktop** | $\ge 1280\text{px}$ | 6 metric cards (3x2 or single responsive flex row); 2-column layout (Table + Quick Actions) | Full responsive data table with all columns visible | Full horizontal navbar with role badge and user dropdown |
 | **Tablet** | $768\text{px} - 1024\text{px}$ | 2 or 3 metric cards per row; stacked 1-column layout | Table with horizontal scroll container or collapsed action notes | Hamburger menu or condensed navbar items |
-| **Mobile** | $375\text{px} - 480\text{px}$ | 1 metric card per row (stacked); full-width buttons | Responsive card-based layout (each action rendered as an individual card) | Collapsible drawer menu; zero horizontal page scroll |
+| **Mobile** | $375\text{px} - 480\text{px}$ | 1 or 2 metric cards per row (stacked); full-width buttons | Responsive card-based layout (each action rendered as an individual card) | Collapsible drawer menu; zero horizontal page scroll |
+
+> [!NOTE]
+> **Fluid Intermediate Widths**: The layout must remain fully functional at intermediate widths (e.g. $481\text{px} - 767\text{px}$ and $1025\text{px} - 1279\text{px}$) between the named target viewports. The listed breakpoints are reference validation viewports, not exclusive supported widths.
 
 ---
 
-## 6. Accessibility & Usability Checklist
+## 6. Accessibility & Usability Requirements
 
-- [x] **Touch Targets**: All clickable buttons, modal close triggers, and table links have minimum bounding boxes of $44 \times 44\text{px}$.
-- [x] **Keyboard Navigation**:
-  - Modal dialogue traps focus when open; pressing `Escape` closes the modal.
-  - All form controls are reachable via `Tab` with visible focus rings (`outline: 2px solid #0B7A46`, `offset: 2px`).
-- [x] **Non-Color Status Cues**:
-  - All status badges combine visual color tokens with explicit text labels and semantic icons (e.g. checkmark for Resolved, clock for Waiting).
-- [x] **Screen Reader Support**:
-  - Proper ARIA attributes: `role="dialog"`, `aria-labelledby`, `aria-describedby`, `aria-live="polite"` for dynamic error banners.
-  - Meaningful `alt` text on images and icons.
-- [x] **No Horizontal Overflow**:
-  - Viewports at $375\text{px}$ width maintain `overflow-x: hidden` with zero horizontal page clipping.
+- **Touch Targets**: All clickable buttons, modal close triggers, and table links MUST have minimum interactive bounding boxes of $\ge 44 \times 44\text{px}$.
+- **Keyboard Navigation**:
+  - Modal dialogue MUST trap focus when open; pressing `Escape` MUST close the modal.
+  - All form controls MUST be reachable via `Tab` with visible focus rings (`outline: 2px solid #0B7A46`, `offset: 2px`).
+- **Non-Color Status Cues**:
+  - All status badges MUST combine visual color tokens with explicit text labels and semantic icons (e.g. checkmark for Resolved, clock for Waiting).
+- **Screen Reader Support**:
+  - The application MUST provide proper ARIA attributes: `role="dialog"`, `aria-labelledby`, `aria-describedby`, `aria-live="polite"` for dynamic error banners.
+  - Meaningful `alt` text MUST be provided on all non-decorative icons and graphic assets.
+- **Zero Horizontal Overflow**:
+  - Viewports across all widths down to $375\text{px}$ MUST maintain `overflow-x: hidden` with zero horizontal page clipping or unwanted horizontal scrollbars.

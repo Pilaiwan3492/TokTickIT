@@ -7,11 +7,11 @@ This document defines the canonical REST API specification for TokTickIT Lab 4.
 Lab 4 adds operational Work Execution (**Actions Taken**), complete **Ticket Status Lifecycle & Resolution Workflow**, and **Role-Tailored Dashboards** with authoritative backend metrics calculation.
 
 ### 1.1 Base URL & Routing
-All API endpoints are versioned under:
+All primary API endpoints are mounted under:
 ```
 /api/v1
 ```
-*(Aliased routes under `/api/` are preserved for backward compatibility).*
+In alignment with the established project routing architecture (`server/src/app.ts`), where `/api/v1/tickets`, `/api/v1/attachments`, `/api/v1/auth`, `/api/v1/staff`, and `/api/v1/admin` serve as canonical routes, while legacy `/api/` routing aliases continue to be preserved for backward compatibility. New Lab 4 endpoints strictly follow this established convention.
 
 ### 1.2 Authentication & Headers
 All requests to protected endpoints must include the standard Bearer token header:
@@ -160,7 +160,7 @@ Record a new operational action under a ticket.
 
 #### Error Responses
 - `400 Bad Request` (`FOLLOWUP_NOTE_REQUIRED`): `followUpRequired` is `true`, but `followUpNote` is empty or missing.
-- `400 Bad Request` (`INACTIVE_ASSIGNEE_REJECTED`): The authenticated user is marked `isActive: false`.
+- `400 Bad Request` (`INACTIVE_ACTOR_REJECTED`): The authenticated user performing the operation is marked `isActive: false`.
 - `400 Bad Request` (`TICKET_LOCKED`): Ticket status is `CLOSED` or `CANCELLED`.
 - `403 Forbidden` (`FORBIDDEN`): User role is `REQUESTER`.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
@@ -403,7 +403,9 @@ Retrieve operational queue metrics, status breakdowns, and recent queue activity
       "inProgressCount": "/staff/tickets?status=IN_PROGRESS",
       "waitingForRequesterCount": "/staff/tickets?status=WAITING_FOR_REQUESTER",
       "myAssignedCount": "/staff/tickets?ownership=assigned_to_me",
-      "unassignedCount": "/staff/tickets?ownership=unassigned"
+      "unassignedCount": "/staff/tickets?ownership=unassigned",
+      "urgentCount": "/staff/tickets?priority=URGENT",
+      "highCount": "/staff/tickets?priority=HIGH"
     }
   }
 }
@@ -424,7 +426,7 @@ Retrieve operational queue metrics, status breakdowns, and recent queue activity
 | `TICKET_NOT_FOUND` | 404 | Ticket with given ID does not exist |
 | `ACTION_NOT_FOUND` | 404 | Action Taken with given ID does not exist under ticket |
 | `FOLLOWUP_NOTE_REQUIRED` | 400 | `followUpRequired` is true but `followUpNote` is empty or missing |
-| `INACTIVE_ASSIGNEE_REJECTED` | 400 | Attempted to assign or log work for an inactive user |
+| `INACTIVE_ACTOR_REJECTED` | 400 | Authenticated user attempting Action Taken operation is marked `isActive: false` |
 | `INVALID_STATUS_TRANSITION` | 400 | Requested status transition violates the transition matrix |
 | `TICKET_LOCKED` | 400 | Cannot add actions or transition status on `CLOSED` or `CANCELLED` ticket |
 | `STALE_UPDATE_CONFLICT` | 409 | Resource timestamp mismatch; concurrent update detected |
