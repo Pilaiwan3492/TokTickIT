@@ -21,7 +21,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 - **Performance-Smoke Testing (Server)**:
   - Framework: Vitest with high-resolution timer assertions (`performance.now()`).
   - Scope: Execution latency benchmarks for representative seed datasets on Requester Dashboard, Staff Dashboard, and Actions Taken CRUD endpoints.
-  - Invariants Tested: Verifying that database aggregations complete within deterministic smoke thresholds ($< 300\text{ms}$ for dashboards, $< 200\text{ms}$ for Actions Taken) with zero unindexed table scans or runtime errors.
+  - Invariants Tested: Verifying that database aggregations complete within project-defined engineering smoke thresholds ($< 300\text{ms}$ for dashboards, $< 200\text{ms}$ for Actions Taken) with zero unindexed table scans or runtime errors. *(Note: These thresholds are project-defined engineering smoke targets for regression detection, not course-mandated performance targets).*
 - **UI Component & Interaction Testing (Client)**:
   - Framework: React Testing Library with Vitest and jsdom.
   - Scope: Actions Taken section on Ticket Detail, Create/Edit Action Taken modals, status transition selector and confirmation, Requester advisory resolution button, Requester Dashboard (4 metric cards, recent tickets, recently resolved tickets), IT Staff Dashboard (6 metric cards, priority strip, my recent actions, recent queue tickets), Admin Dashboard user metrics panel, and drill-down navigation links.
@@ -85,7 +85,9 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **API-13** | API | AC-08, BR-08, BR-09, BR-11 | **Complete Permitted Status Transition Matrix** — Verifies all 18 valid transitions:<br>• `NEW` $\rightarrow$ `OPEN`, `CANCELLED`<br>• `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>• `REOPENED` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | HTTP 200 OK; each permitted status transition successfully persists in the database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-13b** | API | AC-08, BR-09, BR-11 | Resolution Gate enforcement when transitioning to `RESOLVED` (Authorized role, eligible current status, decoupled advisory indicator, concurrency guard) | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13b** | API | AC-08, BR-09, BR-11 | **Valid Resolution Gate Transition** — Active IT Staff/Admin transitions eligible ticket (`OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`) to `RESOLVED` with matching `expectedUpdatedAt` | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13c** | API | AC-08, BR-09, BR-11 | **Resolution Gate Rejection (Role/Status)** — Resolution attempt by unauthorized role (Requester) or from ineligible status (`NEW`, `CANCELLED`) | HTTP 403 Forbidden (`INSUFFICIENT_PERMISSIONS`) or HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13d** | API | AC-12, BR-11, BR-17 | **Resolution Gate Rejection (Concurrency)** — Resolution attempt with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-14** | API | AC-09, BR-09, BR-11 | **Invalid Status Transition Matrix** — Verifies rejection of all prohibited transitions:<br>• Direct jumps from `NEW` to `RESOLVED`, `CLOSED`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`<br>• Backward jumps from `OPEN` to `NEW`, `CLOSED`, `REOPENED`<br>• Jumps from `IN_PROGRESS` to `NEW`, `OPEN`, `CLOSED`<br>• Jumps from `WAITING_FOR_REQUESTER` to `NEW`, `OPEN`, `CLOSED`<br>• Disallowed transitions from `RESOLVED` to `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• Any transition from terminal `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-15** | API | AC-10, BR-10, BR-11 | Requester indicates "Problem Appears Resolved" (`POST /resolve-indicator`) | HTTP 200 OK; sets `isResolvedByUser: true`; formal `status` remains unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-16** | API | BR-10 | Requester attempts advisory resolution on another user's ticket | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
@@ -123,10 +125,13 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ### 2.3 Performance-Smoke Tests (`server/tests/lab-04/performance-smoke.test.ts`)
 
+> [!NOTE]
+> Latency thresholds ($< 300\text{ms}$ for dashboards, $< 150\text{ms} / 200\text{ms}$ for Actions Taken) are project-defined engineering smoke thresholds intended for automated regression and bottleneck detection, rather than course-mandated performance targets.
+
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response time under representative seed dataset | API response latency $< 300\text{ms}$ with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
-| **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response time under representative seed dataset | API response latency $< 300\text{ms}$ (project-defined smoke threshold) with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+| **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ (project-defined smoke thresholds) | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
 
 ---
 
@@ -247,11 +252,11 @@ Every Acceptance Criterion from `docs/lab-04/specification.md` is strictly mappe
 | **AC-05** | Actions Taken record displays complete operational attributes | `API-09`, `UI-05`, `E2E-01` | API, UI, E2E |
 | **AC-06** | IT Staff updates existing Action Taken details | `API-05`, `API-05b`, `UI-07`, `E2E-01` | API, UI, E2E |
 | **AC-07** | Actions Taken creation locked on `CLOSED` or `CANCELLED` tickets | `UNIT-02`, `API-06`, `UI-08`, `E2E-05` | Unit, API, UI, E2E |
-| **AC-08** | Permitted status transitions per matrix from `OPEN` status | `UNIT-02`, `API-13`, `API-13b`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
+| **AC-08** | Permitted status transitions per matrix and valid resolution gate | `UNIT-02`, `API-13`, `API-13b`, `API-13c`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
 | **AC-09** | Invalid status transition jump rejected (HTTP 400) | `UNIT-02`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
 | **AC-10** | Requester advisory "Problem Appears Resolved" indication | `API-15`, `UI-11`, `E2E-04` | API, UI, E2E |
 | **AC-11** | Requester direct status transition attempt rejected (HTTP 403) | `API-17`, `UI-12`, `E2E-04` | API, UI, E2E |
-| **AC-12** | Stale status update rejected with HTTP 409 Conflict | `UNIT-04`, `API-18`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
+| **AC-12** | Stale status update rejected with HTTP 409 Conflict | `UNIT-04`, `API-13d`, `API-18`, `API-18b`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
 | **AC-13** | Ticket closure terminal state enforcement | `UNIT-02`, `API-19`, `API-20`, `UI-14`, `E2E-05` | Unit, API, UI, E2E |
 | **AC-14** | Reopening resolved ticket resumes active workflow | `UNIT-02`, `API-21`, `API-22`, `UI-15`, `E2E-05` | Unit, API, UI, E2E |
 | **AC-15** | Requester Dashboard authoritative metrics for owned tickets | `UNIT-03`, `API-23`, `PERF-01`, `UI-16`, `E2E-07` | Unit, API, Perf, UI, E2E |
@@ -284,7 +289,7 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 | **BR-08** | Canonical ticket lifecycle supports 8 discrete statuses | `UNIT-02`, `API-13`, `API-14`, `UI-09`, `MIG-03` | Unit, API, UI, Migration |
 | **BR-09** | Permitted status transitions strictly governed by transition matrix (all 18 transitions) | `UNIT-02`, `API-13`, `API-14`, `API-19`, `API-20`, `API-21`, `API-22`, `UI-09`, `UI-10`, `E2E-04`, `E2E-05` | Unit, API, UI, E2E |
 | **BR-10** | Requester "Problem Appears Resolved" flag is strictly advisory | `API-15`, `API-16`, `UI-11`, `E2E-04` | API, UI, E2E |
-| **BR-11** | Backend Resolution Gate rule: Authorized role, eligible status, decoupled indicator, concurrency guard | `UNIT-02`, `API-13b`, `API-14`, `API-15`, `API-17`, `API-18`, `UI-09`, `UI-11`, `E2E-04` | Unit, API, UI, E2E |
+| **BR-11** | Backend Resolution Gate rule: Authorized role, eligible status, decoupled indicator, concurrency guard | `UNIT-02`, `API-13b`, `API-13c`, `API-13d`, `API-14`, `API-15`, `API-17`, `API-18`, `UI-09`, `UI-11`, `E2E-04` | Unit, API, UI, E2E |
 | **BR-12** | `CLOSED` and `CANCELLED` tickets are terminal and immutable | `UNIT-02`, `API-06`, `API-19`, `API-20`, `UI-08`, `UI-14`, `E2E-05` | Unit, API, UI, E2E |
 | **BR-13** | Requester Dashboard authoritative metric calculations and deterministic limits (max 5) | `UNIT-03`, `API-23`, `API-24`, `API-25`, `PERF-01`, `UI-16`, `UI-17`, `E2E-07` | Unit, API, Perf, UI, E2E |
 | **BR-14** | IT Staff Dashboard authoritative calculations: 6 cards, priority strip, my actions (max 5), staff authorization | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `API-30`, `PERF-01`, `UI-18`, `UI-19`, `UI-23`, `E2E-08` | Unit, API, Perf, UI, E2E |
@@ -310,8 +315,8 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 | **FR-08** | Enforce permitted status transitions across all 8 statuses | `UNIT-02`, `API-13`, `API-13b`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
 | **FR-09** | Reject disallowed transitions with `INVALID_STATUS_TRANSITION` | `UNIT-02`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
 | **FR-10** | Requester advisory resolution indicator (`isResolvedByUser = true`) | `API-15`, `UI-11`, `E2E-04` | API, UI, E2E |
-| **FR-11** | Formal resolution transition executed exclusively by IT Staff / Admin | `API-13b`, `API-17`, `UI-09`, `UI-12`, `E2E-04` | API, UI, E2E |
-| **FR-12** | Optimistic concurrency collision returns `STALE_UPDATE_CONFLICT` | `UNIT-04`, `API-07`, `API-18`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
+| **FR-11** | Formal resolution transition executed exclusively by IT Staff / Admin | `API-13b`, `API-13c`, `API-17`, `UI-09`, `UI-12`, `E2E-04` | API, UI, E2E |
+| **FR-12** | Optimistic concurrency collision returns `STALE_UPDATE_CONFLICT` | `UNIT-04`, `API-07`, `API-13d`, `API-18`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
 | **FR-13** | Requester Dashboard endpoint returning scoped metrics and recent items | `UNIT-03`, `API-23`, `API-24`, `API-25`, `PERF-01`, `UI-16`, `E2E-07` | Unit, API, Perf, UI, E2E |
 | **FR-14** | IT Staff Dashboard endpoint returning operational metrics and my actions | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `PERF-01`, `UI-18`, `UI-19`, `E2E-08` | Unit, API, Perf, UI, E2E |
 | **FR-15** | Admin Dashboard returning operational metrics plus user account summary | `API-31`, `UI-20`, `E2E-09` | API, UI, E2E |
