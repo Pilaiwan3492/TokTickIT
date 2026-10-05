@@ -77,14 +77,19 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 | Attention Required:  [ 🔴 Urgent: 3 tickets > ]    [ 🟠 High Priority: 12 tickets > ]                       |
 |                                                                                                             |
 | +-----------------------------------------------------+  +------------------------------------------------+ |
-| | Recent Queue Tickets                    [ View all ]|  | Quick Actions                                  | |
-| |-----------------------------------------------------|  |                                                | |
-| | TKT-2026-00034  Laptop battery drains  [In Progress]|  |  [ + Create Ticket                           ] | |
-| | TKT-2026-00030  Printer shows offline  [Open       ]|  |  [ Q Search Tickets                          ] | |
-| | TKT-2026-00028  Outlook freezing       [In Progress]|  |  [ > My Assigned Queue                       ] | |
-| | TKT-2026-00023  Phone not receiving    [Open       ]|  +------------------------------------------------+ |
-| | TKT-2026-00019  VPN disconnects        [Resolved   ]|                                                     |
-| +-----------------------------------------------------+                                                     |
+| | Recent Queue Tickets                    [ View all ]|  | My Recent Actions Taken (Performed by You)    | |
+| |-----------------------------------------------------|  |------------------------------------------------| |
+| | TKT-2026-00034  Laptop battery drains  [In Progress]|  | May 13 14:15 | TKT-00034: Replaced battery pack| |
+| | TKT-2026-00030  Printer shows offline  [Open       ]|  | May 12 10:30 | TKT-00030: Reset print spooler  | |
+| | TKT-2026-00028  Outlook freezing       [In Progress]|  | May 11 09:00 | TKT-00028: Repaired PST archive | |
+| | TKT-2026-00023  Phone not receiving    [Open       ]|  | May 10 16:20 | TKT-00023: Re-registered SIP    | |
+| | TKT-2026-00019  VPN disconnects        [Resolved   ]|  | May 09 11:45 | TKT-00019: Reissued client cert | |
+| +-----------------------------------------------------+  +------------------------------------------------+ |
+|                                                          | Quick Actions                                  | |
+|                                                          |  [ + Create Ticket                           ] | |
+|                                                          |  [ Q Search Tickets                          ] | |
+|                                                          |  [ > My Assigned Queue                       ] | |
+|                                                          | +----------------------------------------------+ |
 +-------------------------------------------------------------------------------------------------------------+
 ```
 
@@ -102,13 +107,19 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
      - `Urgent Priority` $\rightarrow$ `/staff/tickets?priority=URGENT`
      - `High Priority` $\rightarrow$ `/staff/tickets?priority=HIGH`
 3. **Recent Tickets List**:
-   - Displays up to 5 most recently active tickets.
+   - Displays up to 5 most recently active tickets across the service desk.
    - Clicking a ticket row or ticket number navigates directly to `/staff/tickets/:id`.
-4. **Quick Actions**:
+4. **My Recent Actions Taken (Current-User Work Log)**:
+   - Fulfills the requirement to demonstrate current-user Actions Taken directly on the IT Staff Dashboard.
+   - Queries and displays up to 5 most recent Actions Taken entries where `performedById = currentUserId`, ordered by `actionDate DESC`.
+   - Each item shows action timestamp, ticket number link, description excerpt, result, and follow-up indicator.
+   - Clicking an action item navigates directly to `/staff/tickets/:ticketId#actions-taken`.
+   - Empty state: When the current user has logged 0 actions, displays: *"You haven't recorded any actions taken yet. Open a ticket from your queue to log work."*
+5. **Quick Actions**:
    - `Create Ticket`: opens ticket creation modal or page.
    - `Search Tickets`: jumps to Ticket Queue with search focus.
    - `My Queue`: navigates to `/staff/tickets?ownership=assigned_to_me`.
-5. **Administrator Extras**:
+6. **Administrator Extras**:
    - For users with `role: ADMIN`, a concise secondary statistics card displays system accounts: `Total Active Users: X | Active Staff: Y | Active Admins: Z` with a direct link to `/admin/users`.
 
 ---
@@ -136,7 +147,7 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 | | TKT-2026-001213  Need new monitor      [In Progress]|  |    Submit a new service desk request          | |
 | | TKT-2026-001205  Email not arriving    [Waiting Req]|  |                                                | |
 | |-----------------------------------------------------|  |  [ = View My Tickets                         ] | |
-| | Recently Resolved Tickets               [ View all ]|  |    Track and review existing requests          | |
+| | Recently Resolved Tickets (Max 5)       [ View all ]|  |    Track and review existing requests          | |
 | |-----------------------------------------------------|  +------------------------------------------------+ |
 | | TKT-2026-001222  Request Figma access  [Resolved   ]|                                                     |
 | | TKT-2026-001198  Password reset req    [Resolved   ]|                                                     |
@@ -151,8 +162,8 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
    - `Resolved`: Count of tickets formally marked `RESOLVED` by IT Staff $\rightarrow$ links to `/my-tickets?status=RESOLVED`.
    - `Closed`: Count of terminal `CLOSED` tickets $\rightarrow$ links to `/my-tickets?status=CLOSED`.
 2. **Recent Tickets & Recently Resolved Panels**:
-   - `My Recent Tickets`: Displays up to 5 most recently active tickets owned by the requester with status badges and timestamps.
-   - `Recently Resolved Tickets`: Displays tickets recently resolved by IT Staff, allowing the requester to quickly review work done.
+   - `My Recent Tickets`: Displays up to 5 most recently updated tickets owned by the requester with status badges and timestamps (`take: 5`).
+   - `Recently Resolved Tickets`: Strictly limited to the top 5 most recently resolved tickets owned by the requester (`status = 'RESOLVED'`, ordered by `updatedAt DESC`, `take: 5`). Clicking any row navigates to `/my-tickets/:id`. The header link `View all` links to `/my-tickets?status=RESOLVED`. Empty state: Displays *"No recently resolved tickets"*.
 3. **Empty State**:
    - If a requester has 0 tickets, displays an illustration with heading "No tickets submitted yet" and a prominent primary green button `[ + Create your first ticket ]`.
 

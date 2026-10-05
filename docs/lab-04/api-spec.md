@@ -419,7 +419,8 @@ Retrieve operational queue metrics, status breakdowns, and recent queue activity
       "myAssignedCount": 16,
       "unassignedCount": 8,
       "urgentCount": 3,
-      "highCount": 12
+      "highCount": 12,
+      "myActionsCount": 27
     },
     "byStatus": {
       "NEW": 14,
@@ -443,6 +444,20 @@ Retrieve operational queue metrics, status breakdowns, and recent queue activity
           "name": "Michael Scott"
         },
         "updatedAt": "2026-05-12T09:14:00.000Z"
+      }
+    ],
+    "myRecentActions": [
+      {
+        "id": "act-cuid-102",
+        "ticketId": "tkt-cuid-00034",
+        "ticketNumber": "TKT-2026-00034",
+        "ticketTitle": "Laptop battery drains quickly",
+        "ticketStatus": "IN_PROGRESS",
+        "actionDate": "2026-05-13T14:15:00.000Z",
+        "actionDescription": "Replaced battery pack and restored CMOS configuration.",
+        "result": "Diagnostic passed. Battery health 100%.",
+        "followUpRequired": true,
+        "followUpNote": "Advised user to calibrate battery with one full charge cycle."
       }
     ],
     "userStats": null,

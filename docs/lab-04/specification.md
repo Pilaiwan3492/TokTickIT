@@ -71,8 +71,8 @@ To address this:
 - **FR-12**: The system shall detect stale or concurrent status updates using timestamp/version checking, returning HTTP 409 `STALE_UPDATE_CONFLICT` when incoming updates conflict with recent modifications.
 
 ### 4.3 Role Dashboards Requirements
-- **FR-13**: The system shall provide a Requester Dashboard endpoint (`GET /api/v1/dashboard/requester`) returning authoritative metrics and recent tickets scoped strictly to the authenticated Requester.
-- **FR-14**: The system shall provide an IT Staff Dashboard endpoint (`GET /api/v1/dashboard/staff`) returning operational metrics (New, Open, In Progress, Waiting for Requester, My Assigned, Unassigned, Urgent, High) and recent queue activity.
+- **FR-13**: The system shall provide a Requester Dashboard endpoint (`GET /api/v1/dashboard/requester`) returning authoritative metrics, recent tickets, and recently resolved tickets scoped strictly to the authenticated Requester.
+- **FR-14**: The system shall provide an IT Staff Dashboard endpoint (`GET /api/v1/dashboard/staff`) returning operational metrics (New, Open, In Progress, Waiting for Requester, My Assigned, Unassigned, Urgent, High), current-user Actions Taken (total count and recent entries), and recent queue activity.
 - **FR-15**: The system shall provide Administrators accessing the dashboard with operational metrics plus system user account metrics (`activeUsers`, `activeStaff`, `activeAdmins`).
 - **FR-16**: All dashboard metrics cards shall provide accessible drill-down destinations linking to filtered lists in the Ticket Queue or My Tickets views.
 
@@ -126,7 +126,7 @@ To address this:
   - **Resolved Tickets Count**: Sum of tickets owned by requester where `status = 'RESOLVED'`. Drill-down: `/my-tickets?status=RESOLVED`.
   - **Closed Tickets Count**: Sum of tickets owned by requester where `status = 'CLOSED'`. Drill-down: `/my-tickets?status=CLOSED`.
   - **My Recent Tickets**: Up to 5 most recently updated tickets owned by requester, sorted by `updatedAt DESC`.
-  - **Recently Resolved Tickets**: Most recently resolved tickets owned by requester, sorted by `updatedAt DESC`.
+  - **Recently Resolved Tickets**: Deterministic list limited to the top 5 most recently resolved tickets owned by requester (`status = 'RESOLVED'`, ordered by `updatedAt DESC`, `take: 5`). Empty behavior: returns `[]` when no resolved tickets exist. Drill-down: `/my-tickets?status=RESOLVED`.
 - **BR-14 (IT Staff Dashboard)**:
   - **Primary Operational Metric Cards (6 Cards)**:
     - **New Tickets Count** (`newCount`): Count of active tickets where `status = 'NEW'`. Drill-down: `/staff/tickets?status=NEW`.
@@ -138,6 +138,9 @@ To address this:
   - **Priority Attention Counters**:
     - **Urgent Priority Count** (`urgentCount`): Count of active tickets where `itPriority = 'URGENT'` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?priority=URGENT`.
     - **High Priority Count** (`highCount`): Count of active tickets where `itPriority = 'HIGH'` and `status NOT IN ('CLOSED', 'CANCELLED')`. Drill-down: `/staff/tickets?priority=HIGH`.
+  - **Current-User Actions Taken**:
+    - `myActionsCount`: Total count of Actions Taken recorded by current user (`performedById = currentUserId`).
+    - `myRecentActions`: Deterministic list of up to 5 most recent Actions Taken performed by the current user (`performedById = currentUserId`, ordered by `actionDate DESC`, `take: 5`). Each entry includes `actionDate`, `actionDescription`, `result`, `followUpRequired`, and ticket details (`id`, `ticketNumber`, `title`, `status`). Drill-down: Navigates to `/staff/tickets/:ticketId#actions-taken`. Empty behavior: returns `[]` when no actions have been recorded.
   - **Recent Tickets**: Up to 5 most recently updated tickets across the entire service desk, sorted by `updatedAt DESC`.
 - **BR-15 (Administrator Dashboard)**:
   - Inherits all operational metrics from BR-14.
@@ -242,7 +245,7 @@ The updated seed script (`server/prisma/seed.ts`) will:
 
 ## 8. REST API Contract Summary
 
-Refer to [`docs/lab-04/api-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/api-spec.md) for full request/response schemas.
+Refer to [api-spec.md](./api-spec.md) for full request/response schemas.
 
 | Method | Endpoint | Authorized Roles | Description | Status Codes |
 | :--- | :--- | :--- | :--- | :--- |
@@ -250,7 +253,7 @@ Refer to [`docs/lab-04/api-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/doc
 | `POST` | `/api/v1/tickets/:id/actions-taken` | `IT_STAFF`, `ADMIN` | Create an action taken | 201, 400, 401, 403, 404, 409 |
 | `PATCH`| `/api/v1/tickets/:id/actions-taken/:actionId` | `IT_STAFF`, `ADMIN` | Update an action taken | 200, 400, 401, 403, 404, 409 |
 | `PATCH`| `/api/v1/tickets/:id/status` | `IT_STAFF`, `ADMIN` | Transition ticket status | 200, 400, 401, 403, 404, 409 |
-| `POST` | `/api/v1/tickets/:id/resolve-indicator` | `REQUESTER` (own) | Advisory resolution signal | 200, 401, 403, 404 |
+| `POST` | `/api/v1/tickets/:id/resolve-indicator` | `REQUESTER` (own) | Advisory resolution signal | 200, 401, 403, 404, 409 |
 | `GET` | `/api/v1/dashboard/requester` | `REQUESTER` | Requester summary metrics | 200, 401, 403 |
 | `GET` | `/api/v1/dashboard/staff` | `IT_STAFF`, `ADMIN` | IT Staff operational metrics | 200, 401, 403 |
 
@@ -258,14 +261,15 @@ Refer to [`docs/lab-04/api-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/doc
 
 ## 9. UI Specification Summary
 
-Refer to [`docs/lab-04/ui-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/ui-spec.md) for detailed layouts, component structures, and visual rules.
+Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, and visual rules.
 
 - **Design Language**: Zen Green Theme (`#006B3C` primary brand, `#F5F7F6` canvas, `#FFFFFF` cards, `#D5DDD8` borders).
 - **IT Staff Dashboard (`/dashboard`)**:
   - Welcome banner with greeting and refresh trigger.
   - 6 primary operational metric cards (`New`, `Open`, `In Progress`, `Waiting for Requester`, `My Assigned`, `Unassigned`) with delta indicators and drill-down links.
   - Priority Attention banner with direct filters for `Urgent` and `High` priority tickets.
-  - "Recent Tickets" table showing 5 most recent tickets with ticket number, title, status badge, and timestamp.
+  - "Recent Queue Tickets" table showing 5 most recent tickets across the service desk.
+  - "My Recent Actions Taken" table showing up to 5 most recent actions recorded by the current user with drill-down links to `/staff/tickets/:ticketId#actions-taken`.
   - "Quick Actions" panel (`Create Ticket`, `Search Tickets`, `My Queue`).
 - **Requester Dashboard (`/dashboard`)**:
   - Welcome banner.
