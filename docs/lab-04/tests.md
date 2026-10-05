@@ -10,10 +10,18 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ### 1.1 Test Levels & Methodology
 
+- **Unit Testing (Server)**:
+  - Framework: Vitest.
+  - Scope: Isolated business logic functions, input validation routines, state machine status transition validators, dashboard query builder helpers, and timestamp comparison utilities.
+  - Invariants Tested: Non-empty string validation for `followUpNote` when `followUpRequired = true`, state machine validation for all 18 permitted transitions across 8 statuses, terminal state guards, and exact millisecond/ISO-8601 stale update detection logic.
 - **API & Integration Testing (Server)**:
   - Framework: Supertest with Vitest on the Node.js/Express backend.
   - Scope: REST API contracts under `/api/v1/tickets/:id/actions-taken`, `/api/v1/tickets/:id/status`, `/api/v1/tickets/:id/resolve-indicator`, `/api/v1/dashboard/requester`, and `/api/v1/dashboard/staff`.
-  - Invariants Tested: HTTP status codes (`200`, `201`, `400`, `401`, `403`, `404`, `409`), Bearer token validation, role authorization guards (`REQUESTER`, `IT_STAFF`, `ADMIN`), automatic actor binding (`performedById`), follow-up note validation, inactive actor rejection, status transition matrix enforcement, resolution gate rules, optimistic concurrency checking (`expectedUpdatedAt`, `expectedTicketUpdatedAt`), and backend SQL aggregation calculations.
+  - Invariants Tested: HTTP status codes (`200`, `201`, `400`, `401`, `403`, `404`, `409`), Bearer token validation, role authorization guards (`REQUESTER`, `IT_STAFF`, `ADMIN`), automatic actor binding (`performedById`), follow-up note validation, inactive actor rejection (on both create and update), full status transition matrix enforcement, resolution gate rules, optimistic concurrency checking (`expectedUpdatedAt`, `expectedTicketUpdatedAt`), and backend SQL aggregation calculations.
+- **Performance-Smoke Testing (Server)**:
+  - Framework: Vitest with high-resolution timer assertions (`performance.now()`).
+  - Scope: Execution latency benchmarks for representative seed datasets on Requester Dashboard, Staff Dashboard, and Actions Taken CRUD endpoints.
+  - Invariants Tested: Verifying that database aggregations complete within deterministic smoke thresholds ($< 300\text{ms}$ for dashboards, $< 200\text{ms}$ for Actions Taken) with zero unindexed table scans or runtime errors.
 - **UI Component & Interaction Testing (Client)**:
   - Framework: React Testing Library with Vitest and jsdom.
   - Scope: Actions Taken section on Ticket Detail, Create/Edit Action Taken modals, status transition selector and confirmation, Requester advisory resolution button, Requester Dashboard (4 metric cards, recent tickets, recently resolved tickets), IT Staff Dashboard (6 metric cards, priority strip, my recent actions, recent queue tickets), Admin Dashboard user metrics panel, and drill-down navigation links.
@@ -36,7 +44,18 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ## 2. Planned Tests Catalog
 
-### 2.1 Server API Tests (`server/tests/lab-04/`)
+### 2.1 Server Unit Tests (`server/tests/lab-04/`)
+
+| Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **UNIT-01** | Unit | BR-05 | Validation function for `followUpRequired` and `followUpNote` combinations | Rejects empty or whitespace notes when `followUpRequired = true`; allows null/omitted when `false` | `server/tests/lab-04/actions-taken.unit.test.ts` | `Planned` |
+| **UNIT-02** | Unit | BR-08, BR-09, BR-11 | State machine status transition matrix helper validating all 18 permitted transitions | Returns `true` for all 18 valid transitions; returns `false` for all disallowed or terminal transitions | `server/tests/lab-04/ticket-workflow.unit.test.ts` | `Planned` |
+| **UNIT-03** | Unit | BR-13, BR-14, BR-16 | Dashboard SQL aggregation query builders for Requester and Staff metrics | Generates correct Prisma `where` / `groupBy` clauses matching status, ownership, and role rules | `server/tests/lab-04/dashboard-metrics.unit.test.ts` | `Planned` |
+| **UNIT-04** | Unit | BR-17 | Concurrency timestamp comparator helper | Accurately detects timestamp mismatch between client ISO string and DB `updatedAt` date | `server/tests/lab-04/concurrency.unit.test.ts` | `Planned` |
+
+---
+
+### 2.2 Server API Tests (`server/tests/lab-04/`)
 
 #### Actions Taken Endpoints (`server/tests/lab-04/actions-taken.api.test.ts`)
 
@@ -55,6 +74,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **API-07** | API | BR-17 | Create Action Taken with stale `expectedTicketUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
 | **API-07b** | API | BR-17 | Update Action Taken with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
 | **API-08** | API | FR-05, BR-04 | Inactive IT Staff member attempts to create Action Taken | HTTP 400 Bad Request with code `INACTIVE_ACTOR_REJECTED` | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
+| **API-08b** | API | FR-05, BR-04 | Inactive IT Staff member attempts to update an existing Action Taken | HTTP 400 Bad Request with code `INACTIVE_ACTOR_REJECTED` | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
 | **API-09** | API | AC-04, AC-05, BR-06, BR-07 | Requester retrieves Actions Taken for owned ticket (`GET /actions-taken`) | HTTP 200 OK; returns actions list in chronological order (`actionDate ASC`) | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
 | **API-10** | API | BR-07 | Requester attempts to retrieve Actions Taken for another requester's ticket | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
 | **API-11** | API | BR-01, Data Decision | Retrieve Actions Taken for legacy ticket with zero actions | HTTP 200 OK; returns empty array `[]` without error | `server/tests/lab-04/actions-taken.api.test.ts` | `Planned` |
@@ -64,9 +84,9 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **API-13** | API | AC-08, BR-08, BR-09, BR-11 | Permitted status transitions: `NEW` $\rightarrow$ `OPEN`, `OPEN` $\rightarrow$ `IN_PROGRESS`, `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER` | HTTP 200 OK; status updated in database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-13b** | API | AC-08, BR-09, BR-11 | IT Staff transitions ticket from `IN_PROGRESS` to `RESOLVED` | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-14** | API | AC-09, BR-09, BR-11 | Invalid status transition jump (e.g. `NEW` $\rightarrow$ `RESOLVED`, `NEW` $\rightarrow$ `CLOSED`) | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13** | API | AC-08, BR-08, BR-09, BR-11 | **Complete Permitted Status Transition Matrix** — Verifies all 18 valid transitions:<br>• `NEW` $\rightarrow$ `OPEN`, `CANCELLED`<br>• `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>• `REOPENED` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | HTTP 200 OK; each permitted status transition successfully persists in the database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13b** | API | AC-08, BR-09, BR-11 | Resolution Gate enforcement when transitioning to `RESOLVED` (Authorized role, eligible current status, decoupled advisory indicator, concurrency guard) | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-14** | API | AC-09, BR-09, BR-11 | **Invalid Status Transition Matrix** — Verifies rejection of all prohibited transitions:<br>• Direct jumps from `NEW` to `RESOLVED`, `CLOSED`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`<br>• Backward jumps from `OPEN` to `NEW`, `CLOSED`, `REOPENED`<br>• Jumps from `IN_PROGRESS` to `NEW`, `OPEN`, `CLOSED`<br>• Jumps from `WAITING_FOR_REQUESTER` to `NEW`, `OPEN`, `CLOSED`<br>• Disallowed transitions from `RESOLVED` to `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• Any transition from terminal `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-15** | API | AC-10, BR-10, BR-11 | Requester indicates "Problem Appears Resolved" (`POST /resolve-indicator`) | HTTP 200 OK; sets `isResolvedByUser: true`; formal `status` remains unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-16** | API | BR-10 | Requester attempts advisory resolution on another user's ticket | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-17** | API | AC-11, BR-09, BR-11 | Requester attempts direct status change (`PATCH /api/v1/tickets/:id/status`) | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
@@ -93,14 +113,24 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **API-27** | API | AC-17, BR-14, BR-16 | Staff Dashboard returns 6 primary operational metrics (`newCount`, `openCount`, `inProgressCount`, `waitingForRequesterCount`, `myAssignedCount`, `unassignedCount`) | HTTP 200 OK; counts match database aggregations | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 | **API-28** | API | AC-17, BR-14 | Staff Dashboard returns priority attention counts (`urgentCount`, `highCount`) | HTTP 200 OK; accurate active counts matching priority filter | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 | **API-29** | API | BR-14 | Staff Dashboard returns current-user Actions Taken (`myActionsCount`, `myRecentActions` max 5) | HTTP 200 OK; returns actions where `performedById = callerId`, limited to 5 | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-30** | API | AC-20, BR-24 | Requester attempts to access Staff Dashboard (`GET /api/v1/dashboard/staff`) | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
+| **API-29b** | API | AC-17, BR-14 | Staff Dashboard with zero matching operational records | HTTP 200 OK; all metric counts return 0, `myRecentActions = []`, `recentQueueTickets = []` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
+| **API-30** | API | AC-20, BR-14, BR-07 | Requester attempts to access Staff Dashboard (`GET /api/v1/dashboard/staff`) | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 | **API-31** | API | AC-18, BR-15 | Administrator retrieves Staff Dashboard | HTTP 200 OK; includes staff metrics plus `userMetrics` (`activeUsers`, `activeStaff`, `activeAdmins`) | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 | **API-32** | API | BR-14, BR-15 | IT Staff retrieves Staff Dashboard | HTTP 200 OK; `userMetrics` is null or omitted from response | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 | **API-33** | API | AC-22 | Unauthenticated caller requests Staff Dashboard | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
 
 ---
 
-### 2.2 Client Component Tests (`client/tests/lab-04/`)
+### 2.3 Performance-Smoke Tests (`server/tests/lab-04/performance-smoke.test.ts`)
+
+| Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response time under representative seed dataset | API response latency $< 300\text{ms}$ with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+| **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+
+---
+
+### 2.4 Client Component Tests (`client/tests/lab-04/`)
 
 #### Actions Taken Component (`client/tests/lab-04/ActionsTakenSection.test.tsx`)
 
@@ -108,6 +138,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **UI-01** | UI | AC-01, FR-01 | Render "Add Action Taken" button on Ticket Detail for IT Staff | Button is visible and enabled for IT Staff and Admin | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 | **UI-01b** | UI | FR-05, BR-04 | Add Action Taken button disabled if actor is inactive | Button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
+| **UI-01c** | UI | FR-05, BR-04 | Edit Action Taken button disabled if actor is inactive | Edit button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 | **UI-02** | UI | AC-02, BR-05 | Create Action Taken form validates mandatory follow-up note when checkbox checked | Submit disabled or error rendered if `followUpRequired = true` and note is empty | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 | **UI-03** | UI | AC-24, BR-18 | Form values preserved upon submission validation or network error | Input fields retain entered description, result, and notes; no data loss | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 | **UI-04** | UI | AC-01, BR-03 | Modal displays authenticated user as Performer (read-only) | Performer field automatically displays current user's name | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
@@ -144,14 +175,14 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **UI-19** | UI | AC-17, BR-14 | Staff Dashboard renders Priority Attention strip and My Recent Actions | Displays `Urgent` and `High` count badges; renders current user's recent actions table | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
 | **UI-20** | UI | AC-18, BR-15 | Admin view renders System User Metrics panel | Displays `Active Users`, `Active Staff`, `Active Admins` cards for Admin role | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
 | **UI-22** | UI | AC-19, BR-14 | Clicking Staff metric card navigates to filtered Ticket Queue | Card click routes to `/staff/tickets?status=...` or `?ownership=...` | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-23** | UI | AC-20, BR-24 | Non-staff user attempting to access `/dashboard` as staff | Redirects or displays 403 Forbidden screen | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
+| **UI-23** | UI | AC-20, BR-14, BR-07 | Non-staff user attempting to access `/dashboard` as staff | Redirects or displays 403 Forbidden screen | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
 | **UI-24** | UI | AC-22 | Unauthenticated user accessing `/dashboard` | Redirects to `/login` with redirect parameter | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
 | **UI-25** | UI | AC-24, BR-18 | Network error banner renders on dashboard fetch failure | Displays retry button without unhandled crash | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
 | **UI-26** | UI | AC-25, BR-19 | Double-click prevention on Action Taken submission and status change | Submit button disables and displays spinner while request is in-flight | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 
 ---
 
-### 2.3 End-to-End Test Scenarios (`e2e/lab-04/`)
+### 2.5 End-to-End Test Scenarios (`e2e/lab-04/`)
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
@@ -168,7 +199,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ---
 
-### 2.4 UI Style & Visual Invariant Tests (`VIS-01` to `VIS-04`)
+### 2.6 UI Style & Visual Invariant Tests (`VIS-01` to `VIS-04`)
 
 | Test ID | Level | Requirement Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
@@ -179,18 +210,18 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ---
 
-### 2.5 Responsive Viewport Tests (`RESP-01` to `RESP-04`)
+### 2.7 Responsive Viewport Tests (`RESP-01` to `RESP-04`)
 
 | Test ID | Level | Viewport Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column grid on Dashboards (3-col / 6-col cards) and side-by-side Ticket Detail | Layout renders cleanly with multi-column alignment and zero wrapping defects | `playwright.config.ts` (Desktop) | `Planned` |
-| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column metric cards grid, condensed action rows, sticky headers | Cards adapt cleanly to 2 columns; table horizontal scroll contained | `playwright.config.ts` (Tablet) | `Planned` |
-| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | 1-column stacked cards, full-width modals, touch targets $\ge 44 \times 44\text{px}$ | Stacked layout renders cleanly; buttons and form controls meet $44\text{px}$ touch target | `e2e/helpers/visual-check.ts` | `Planned` |
-| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true on all views | `e2e/helpers/visual-check.ts` | `Planned` |
+| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column grid on Dashboards (3-col / 6-col cards) and side-by-side Ticket Detail | Layout renders cleanly with multi-column alignment and zero wrapping defects | `e2e/lab-04/responsive.spec.ts` | `Planned` |
+| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column metric cards grid, condensed action rows, sticky headers | Cards adapt cleanly to 2 columns; table horizontal scroll contained | `e2e/lab-04/responsive.spec.ts` | `Planned` |
+| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | 1-column stacked cards, full-width modals, touch targets $\ge 44 \times 44\text{px}$ | Stacked layout renders cleanly; buttons and form controls meet $44\text{px}$ touch target | `e2e/lab-04/responsive.spec.ts` | `Planned` |
+| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true on all views | `e2e/lab-04/responsive.spec.ts` | `Planned` |
 
 ---
 
-### 2.6 Database Migration & Regression Tests (`MIG-01` to `MIG-04`)
+### 2.8 Database Migration & Regression Tests (`MIG-01` to `MIG-04`)
 
 | Test ID | Level | Migration Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
@@ -209,23 +240,23 @@ Every Acceptance Criterion from `docs/lab-04/specification.md` is strictly mappe
 
 | Acceptance Criterion | Description Summary | Primary Automated Tests | Test Level |
 | :--- | :--- | :--- | :--- |
-| **AC-01** | Valid Action Taken creation with auto `performedBy` attribution | `API-01`, `UI-01`, `UI-04`, `E2E-01` | API, UI, E2E |
-| **AC-02** | Mandatory follow-up note validation when `followUpRequired = true` | `API-02`, `API-02b`, `UI-02`, `E2E-02` | API, UI, E2E |
+| **AC-01** | Valid Action Taken creation with auto `performedBy` attribution | `UNIT-01`, `API-01`, `UI-01`, `UI-04`, `E2E-01` | Unit, API, UI, E2E |
+| **AC-02** | Mandatory follow-up note validation when `followUpRequired = true` | `UNIT-01`, `API-02`, `API-02b`, `UI-02`, `E2E-02` | Unit, API, UI, E2E |
 | **AC-03** | Requester forbidden from creating or updating Actions Taken | `API-03`, `API-04`, `UI-06`, `E2E-03` | API, UI, E2E |
 | **AC-04** | Requester read-only view of Actions Taken on owned tickets | `API-09`, `UI-06`, `E2E-03` | API, UI, E2E |
 | **AC-05** | Actions Taken record displays complete operational attributes | `API-09`, `UI-05`, `E2E-01` | API, UI, E2E |
 | **AC-06** | IT Staff updates existing Action Taken details | `API-05`, `API-05b`, `UI-07`, `E2E-01` | API, UI, E2E |
-| **AC-07** | Actions Taken creation locked on `CLOSED` or `CANCELLED` tickets | `API-06`, `UI-08`, `E2E-05` | API, UI, E2E |
-| **AC-08** | Permitted status transitions per matrix from `OPEN` status | `API-13`, `API-13b`, `UI-09`, `E2E-04` | API, UI, E2E |
-| **AC-09** | Invalid status transition jump rejected (HTTP 400) | `API-14`, `UI-10`, `E2E-04` | API, UI, E2E |
+| **AC-07** | Actions Taken creation locked on `CLOSED` or `CANCELLED` tickets | `UNIT-02`, `API-06`, `UI-08`, `E2E-05` | Unit, API, UI, E2E |
+| **AC-08** | Permitted status transitions per matrix from `OPEN` status | `UNIT-02`, `API-13`, `API-13b`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
+| **AC-09** | Invalid status transition jump rejected (HTTP 400) | `UNIT-02`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
 | **AC-10** | Requester advisory "Problem Appears Resolved" indication | `API-15`, `UI-11`, `E2E-04` | API, UI, E2E |
 | **AC-11** | Requester direct status transition attempt rejected (HTTP 403) | `API-17`, `UI-12`, `E2E-04` | API, UI, E2E |
-| **AC-12** | Stale status update rejected with HTTP 409 Conflict | `API-18`, `UI-13`, `E2E-06` | API, UI, E2E |
-| **AC-13** | Ticket closure terminal state enforcement | `API-19`, `API-20`, `UI-14`, `E2E-05` | API, UI, E2E |
-| **AC-14** | Reopening resolved ticket resumes active workflow | `API-21`, `API-22`, `UI-15`, `E2E-05` | API, UI, E2E |
-| **AC-15** | Requester Dashboard authoritative metrics for owned tickets | `API-23`, `UI-16`, `E2E-07` | API, UI, E2E |
+| **AC-12** | Stale status update rejected with HTTP 409 Conflict | `UNIT-04`, `API-18`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
+| **AC-13** | Ticket closure terminal state enforcement | `UNIT-02`, `API-19`, `API-20`, `UI-14`, `E2E-05` | Unit, API, UI, E2E |
+| **AC-14** | Reopening resolved ticket resumes active workflow | `UNIT-02`, `API-21`, `API-22`, `UI-15`, `E2E-05` | Unit, API, UI, E2E |
+| **AC-15** | Requester Dashboard authoritative metrics for owned tickets | `UNIT-03`, `API-23`, `PERF-01`, `UI-16`, `E2E-07` | Unit, API, Perf, UI, E2E |
 | **AC-16** | Requester Dashboard empty state with zero tickets | `API-24`, `UI-17`, `E2E-07` | API, UI, E2E |
-| **AC-17** | IT Staff Dashboard operational metrics & my recent actions | `API-27`, `API-28`, `API-29`, `UI-18`, `UI-19`, `E2E-08` | API, UI, E2E |
+| **AC-17** | IT Staff Dashboard operational metrics & my recent actions | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `PERF-01`, `UI-18`, `UI-19`, `E2E-08` | Unit, API, Perf, UI, E2E |
 | **AC-18** | Administrator Dashboard includes user account metrics | `API-31`, `UI-20`, `E2E-09` | API, UI, E2E |
 | **AC-19** | Metric card drill-down navigation to filtered lists | `UI-21`, `UI-22`, `E2E-07`, `E2E-08` | UI, E2E |
 | **AC-20** | Requester access to IT Staff Dashboard forbidden (HTTP 403) | `API-30`, `UI-23`, `E2E-07` | API, UI, E2E |
@@ -243,23 +274,23 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 
 | BR ID | Business Rule Summary | Automated Verification Tests | Test Level |
 | :--- | :--- | :--- | :--- |
-| **BR-01** | Action Taken belongs to exactly one Ticket (Parent-Child) | `API-01`, `API-11`, `MIG-01`, `MIG-02` | API, Migration |
+| **BR-01** | Action Taken belongs to exactly one Ticket (Parent-Child) | `API-01`, `API-11`, `PERF-02`, `MIG-01`, `MIG-02` | API, Perf, Migration |
 | **BR-02** | Ticket Owner coordinates overall ticket; actions may be logged by different staff | `API-01`, `API-05`, `E2E-01` | API, E2E |
 | **BR-03** | `performedById` is authoritative and immutable once created | `API-01`, `API-05`, `UI-04`, `E2E-01` | API, UI, E2E |
-| **BR-04** | Calling actor must have active account (`isActive = true`); historical contributors preserved | `API-08`, `UI-01b` | API, UI |
-| **BR-05** | Mandatory `followUpNote` when `followUpRequired = true`; optional when false | `API-02`, `API-02b`, `API-02c`, `UI-02`, `E2E-02` | API, UI, E2E |
-| **BR-06** | Actions Taken entries chronologically ordered by `actionDate ASC` | `API-09`, `UI-05`, `E2E-01` | API, UI, E2E |
-| **BR-07** | Requesters possess read-only visibility on owned tickets; write actions forbidden | `API-03`, `API-04`, `API-09`, `API-10`, `UI-06`, `E2E-03` | API, UI, E2E |
-| **BR-08** | Canonical ticket lifecycle supports 8 discrete statuses | `API-13`, `API-14`, `UI-09`, `MIG-03` | API, UI, Migration |
-| **BR-09** | Permitted status transitions strictly governed by transition matrix | `API-13`, `API-14`, `API-19`, `API-20`, `API-21`, `API-22`, `UI-09`, `UI-10`, `E2E-04`, `E2E-05` | API, UI, E2E |
+| **BR-04** | Calling actor must have active account (`isActive = true`) on create and update; historical contributors preserved | `API-08`, `API-08b`, `UI-01b`, `UI-01c` | API, UI |
+| **BR-05** | Mandatory `followUpNote` when `followUpRequired = true`; optional when false | `UNIT-01`, `API-02`, `API-02b`, `API-02c`, `UI-02`, `E2E-02` | Unit, API, UI, E2E |
+| **BR-06** | Actions Taken entries chronologically ordered by `actionDate ASC` | `API-09`, `PERF-02`, `UI-05`, `E2E-01` | API, Perf, UI, E2E |
+| **BR-07** | Requesters possess read-only visibility on owned tickets; write actions and staff dashboard forbidden | `API-03`, `API-04`, `API-09`, `API-10`, `API-30`, `UI-06`, `UI-23`, `E2E-03` | API, UI, E2E |
+| **BR-08** | Canonical ticket lifecycle supports 8 discrete statuses | `UNIT-02`, `API-13`, `API-14`, `UI-09`, `MIG-03` | Unit, API, UI, Migration |
+| **BR-09** | Permitted status transitions strictly governed by transition matrix (all 18 transitions) | `UNIT-02`, `API-13`, `API-14`, `API-19`, `API-20`, `API-21`, `API-22`, `UI-09`, `UI-10`, `E2E-04`, `E2E-05` | Unit, API, UI, E2E |
 | **BR-10** | Requester "Problem Appears Resolved" flag is strictly advisory | `API-15`, `API-16`, `UI-11`, `E2E-04` | API, UI, E2E |
-| **BR-11** | Backend Resolution Gate rule: Authorized role, eligible status, decoupled indicator, concurrency guard | `API-13b`, `API-14`, `API-15`, `API-17`, `API-18`, `UI-09`, `UI-11`, `E2E-04` | API, UI, E2E |
-| **BR-12** | `CLOSED` and `CANCELLED` tickets are terminal and immutable | `API-06`, `API-19`, `API-20`, `UI-08`, `UI-14`, `E2E-05` | API, UI, E2E |
-| **BR-13** | Requester Dashboard authoritative metric calculations and deterministic limits (max 5) | `API-23`, `API-24`, `API-25`, `UI-16`, `UI-17`, `E2E-07` | API, UI, E2E |
-| **BR-14** | IT Staff Dashboard authoritative calculations: 6 cards, priority strip, my actions (max 5) | `API-27`, `API-28`, `API-29`, `UI-18`, `UI-19`, `E2E-08` | API, UI, E2E |
+| **BR-11** | Backend Resolution Gate rule: Authorized role, eligible status, decoupled indicator, concurrency guard | `UNIT-02`, `API-13b`, `API-14`, `API-15`, `API-17`, `API-18`, `UI-09`, `UI-11`, `E2E-04` | Unit, API, UI, E2E |
+| **BR-12** | `CLOSED` and `CANCELLED` tickets are terminal and immutable | `UNIT-02`, `API-06`, `API-19`, `API-20`, `UI-08`, `UI-14`, `E2E-05` | Unit, API, UI, E2E |
+| **BR-13** | Requester Dashboard authoritative metric calculations and deterministic limits (max 5) | `UNIT-03`, `API-23`, `API-24`, `API-25`, `PERF-01`, `UI-16`, `UI-17`, `E2E-07` | Unit, API, Perf, UI, E2E |
+| **BR-14** | IT Staff Dashboard authoritative calculations: 6 cards, priority strip, my actions (max 5), staff authorization | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `API-30`, `PERF-01`, `UI-18`, `UI-19`, `UI-23`, `E2E-08` | Unit, API, Perf, UI, E2E |
 | **BR-15** | Administrator Dashboard inherits operational metrics + user account summary | `API-31`, `API-32`, `UI-20`, `E2E-09` | API, UI, E2E |
-| **BR-16** | Backend-authoritative database SQL aggregations for dashboard metrics | `API-23`, `API-27`, `API-31` | API |
-| **BR-17** | Mandatory optimistic concurrency control (`expectedUpdatedAt` / `expectedTicketUpdatedAt`) | `API-07`, `API-07b`, `API-18`, `API-18b`, `UI-13`, `E2E-06` | API, UI, E2E |
+| **BR-16** | Backend-authoritative database SQL aggregations for dashboard metrics | `UNIT-03`, `API-23`, `API-27`, `API-31`, `PERF-01` | Unit, API, Perf |
+| **BR-17** | Mandatory optimistic concurrency control (`expectedUpdatedAt` / `expectedTicketUpdatedAt`) | `UNIT-04`, `API-07`, `API-07b`, `API-18`, `API-18b`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
 | **BR-18** | Client input forms preserve entered values upon validation or network error | `UI-03`, `UI-25` | UI |
 | **BR-19** | Double-clicking submission buttons or rapid requests debounced/disabled | `UI-26`, `E2E-01` | UI, E2E |
 
@@ -272,17 +303,17 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 | **FR-01** | IT Staff and Admin create Actions Taken under accessible tickets | `API-01`, `UI-01`, `E2E-01` | API, UI, E2E |
 | **FR-02** | Automatic binding of `performedBy` to authenticated user session | `API-01`, `UI-04`, `E2E-01` | API, UI, E2E |
 | **FR-03** | IT Staff and Admin update existing Actions Taken entries | `API-05`, `UI-07`, `E2E-01` | API, UI, E2E |
-| **FR-04** | Mandatory `followUpNote` when `followUpRequired = true` | `API-02`, `API-02b`, `UI-02`, `E2E-02` | API, UI, E2E |
-| **FR-05** | Inactive user account rejected with `INACTIVE_ACTOR_REJECTED` | `API-08`, `UI-01b` | API, UI |
+| **FR-04** | Mandatory `followUpNote` when `followUpRequired = true` | `UNIT-01`, `API-02`, `API-02b`, `UI-02`, `E2E-02` | Unit, API, UI, E2E |
+| **FR-05** | Inactive user account rejected on create and update with `INACTIVE_ACTOR_REJECTED` | `API-08`, `API-08b`, `UI-01b`, `UI-01c` | API, UI |
 | **FR-06** | Requester read-only view on owned tickets; write actions forbidden | `API-03`, `API-04`, `API-09`, `UI-06`, `E2E-03` | API, UI, E2E |
-| **FR-07** | Prohibit recording Actions Taken on `CLOSED` or `CANCELLED` tickets | `API-06`, `UI-08`, `E2E-05` | API, UI, E2E |
-| **FR-08** | Enforce permitted status transitions across all 8 statuses | `API-13`, `API-13b`, `UI-09`, `E2E-04` | API, UI, E2E |
-| **FR-09** | Reject disallowed transitions with `INVALID_STATUS_TRANSITION` | `API-14`, `UI-10`, `E2E-04` | API, UI, E2E |
+| **FR-07** | Prohibit recording Actions Taken on `CLOSED` or `CANCELLED` tickets | `UNIT-02`, `API-06`, `UI-08`, `E2E-05` | Unit, API, UI, E2E |
+| **FR-08** | Enforce permitted status transitions across all 8 statuses | `UNIT-02`, `API-13`, `API-13b`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
+| **FR-09** | Reject disallowed transitions with `INVALID_STATUS_TRANSITION` | `UNIT-02`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
 | **FR-10** | Requester advisory resolution indicator (`isResolvedByUser = true`) | `API-15`, `UI-11`, `E2E-04` | API, UI, E2E |
 | **FR-11** | Formal resolution transition executed exclusively by IT Staff / Admin | `API-13b`, `API-17`, `UI-09`, `UI-12`, `E2E-04` | API, UI, E2E |
-| **FR-12** | Optimistic concurrency collision returns `STALE_UPDATE_CONFLICT` | `API-07`, `API-18`, `UI-13`, `E2E-06` | API, UI, E2E |
-| **FR-13** | Requester Dashboard endpoint returning scoped metrics and recent items | `API-23`, `API-24`, `API-25`, `UI-16`, `E2E-07` | API, UI, E2E |
-| **FR-14** | IT Staff Dashboard endpoint returning operational metrics and my actions | `API-27`, `API-28`, `API-29`, `UI-18`, `UI-19`, `E2E-08` | API, UI, E2E |
+| **FR-12** | Optimistic concurrency collision returns `STALE_UPDATE_CONFLICT` | `UNIT-04`, `API-07`, `API-18`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
+| **FR-13** | Requester Dashboard endpoint returning scoped metrics and recent items | `UNIT-03`, `API-23`, `API-24`, `API-25`, `PERF-01`, `UI-16`, `E2E-07` | Unit, API, Perf, UI, E2E |
+| **FR-14** | IT Staff Dashboard endpoint returning operational metrics and my actions | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `PERF-01`, `UI-18`, `UI-19`, `E2E-08` | Unit, API, Perf, UI, E2E |
 | **FR-15** | Admin Dashboard returning operational metrics plus user account summary | `API-31`, `UI-20`, `E2E-09` | API, UI, E2E |
 | **FR-16** | Dashboard metric cards provide accessible drill-down filter navigation | `UI-21`, `UI-22`, `E2E-07`, `E2E-08` | UI, E2E |
 | **FR-17** | 100% backward compatibility with Labs 1, 2, and 3 | `MIG-01`, `MIG-02`, `MIG-04`, `E2E-10` | Migration, E2E |
@@ -294,7 +325,17 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 
 ## 4. Test Execution Instructions
 
-### 4.1 Server API & Migration Tests
+### 4.1 Server Unit & Performance-Smoke Tests
+```bash
+# Run backend unit tests
+cd server
+npm test -- tests/lab-04/*.unit.test.ts
+
+# Run performance-smoke tests
+npm test -- tests/lab-04/performance-smoke.test.ts
+```
+
+### 4.2 Server API & Migration Tests
 ```bash
 # Run all Lab 4 backend tests
 cd server
@@ -308,7 +349,7 @@ npm test -- tests/lab-04/staff-dashboard.api.test.ts
 npm test -- tests/lab-04/migration-regression.test.ts
 ```
 
-### 4.2 Client Component & Style Tests
+### 4.3 Client Component & Style Tests
 ```bash
 # Run all Lab 4 frontend component tests
 cd client
@@ -323,7 +364,7 @@ npm test -- tests/lab-04/ui-style.test.tsx
 npm test -- tests/lab-04/accessibility.test.tsx
 ```
 
-### 4.3 End-to-End & Responsive Playwright Tests
+### 4.4 End-to-End & Responsive Playwright Tests
 ```bash
 # Run Playwright E2E tests for Lab 4
 npx playwright test e2e/lab-04/
@@ -335,12 +376,12 @@ npx playwright test e2e/lab-04/dashboards.spec.ts --headed
 npx playwright test e2e/lab-04/regression.spec.ts --headed
 
 # Run responsive viewport tests across projects
-npx playwright test e2e/lab-04/ --project=desktop
-npx playwright test e2e/lab-04/ --project=tablet
-npx playwright test e2e/lab-04/ --project=mobile
+npx playwright test e2e/lab-04/responsive.spec.ts --project=desktop
+npx playwright test e2e/lab-04/responsive.spec.ts --project=tablet
+npx playwright test e2e/lab-04/responsive.spec.ts --project=mobile
 ```
 
-### 4.4 Full Regression Suite (Lab 1 + Lab 2 + Lab 3 + Lab 4)
+### 4.5 Full Regression Suite (Lab 1 + Lab 2 + Lab 3 + Lab 4)
 ```bash
 # Run all server tests across all labs
 npm --prefix server test
