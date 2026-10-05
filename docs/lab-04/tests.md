@@ -86,8 +86,9 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **API-13** | API | AC-08, BR-08, BR-09, BR-11 | **Complete Permitted Status Transition Matrix** — Verifies all 18 valid transitions:<br>• `NEW` $\rightarrow$ `OPEN`, `CANCELLED`<br>• `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>• `REOPENED` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | HTTP 200 OK; each permitted status transition successfully persists in the database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-13b** | API | AC-08, BR-09, BR-11 | **Valid Resolution Gate Transition** — Active IT Staff/Admin transitions eligible ticket (`OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`) to `RESOLVED` with matching `expectedUpdatedAt` | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-13c** | API | AC-08, BR-09, BR-11 | **Resolution Gate Rejection (Role/Status)** — Resolution attempt by unauthorized role (Requester) or from ineligible status (`NEW`, `CANCELLED`) | HTTP 403 Forbidden (`INSUFFICIENT_PERMISSIONS`) or HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13c** | API | AC-08, AC-11, BR-09, BR-11 | **Resolution Gate Rejection (Unauthorized Role)** — Requester attempts transition to `RESOLVED` (`PATCH /api/v1/tickets/:id/status`) | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-13d** | API | AC-12, BR-11, BR-17 | **Resolution Gate Rejection (Concurrency)** — Resolution attempt with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-13e** | API | AC-08, AC-09, BR-09, BR-11 | **Resolution Gate Rejection (Ineligible Status)** — Authorized IT Staff/Admin attempts transition to `RESOLVED` from ineligible status (e.g. `NEW`, `CANCELLED`, `CLOSED`) | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-14** | API | AC-09, BR-09, BR-11 | **Invalid Status Transition Matrix** — Verifies rejection of all prohibited transitions:<br>• Direct jumps from `NEW` to `RESOLVED`, `CLOSED`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`<br>• Backward jumps from `OPEN` to `NEW`, `CLOSED`, `REOPENED`<br>• Jumps from `IN_PROGRESS` to `NEW`, `OPEN`, `CLOSED`<br>• Jumps from `WAITING_FOR_REQUESTER` to `NEW`, `OPEN`, `CLOSED`<br>• Disallowed transitions from `RESOLVED` to `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• Any transition from terminal `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-15** | API | AC-10, BR-10, BR-11 | Requester indicates "Problem Appears Resolved" (`POST /resolve-indicator`) | HTTP 200 OK; sets `isResolvedByUser: true`; formal `status` remains unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-16** | API | BR-10 | Requester attempts advisory resolution on another user's ticket | HTTP 403 Forbidden with code `INSUFFICIENT_PERMISSIONS` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
@@ -97,7 +98,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **API-19** | API | AC-13, BR-09, BR-12 | IT Staff transitions ticket from `RESOLVED` to `CLOSED` | HTTP 200 OK; status updated to terminal `CLOSED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-20** | API | AC-13, BR-09, BR-12 | Transition attempt from terminal status `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-21** | API | AC-14, BR-09 | IT Staff transitions ticket from `RESOLVED` to `REOPENED` | HTTP 200 OK; status updated to `REOPENED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-22** | API | AC-14, BR-09 | Transition from `REOPENED` back into workflow (`IN_PROGRESS`, `RESOLVED`, `CANCELLED`) | HTTP 200 OK; status successfully updated | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-22** | API | AC-14, BR-09 | Transition from `REOPENED` back into workflow (`IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`) | HTTP 200 OK; each permitted transition successfully persists | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 
 #### Requester Dashboard (`server/tests/lab-04/requester-dashboard.api.test.ts`)
 
@@ -130,7 +131,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response time under representative seed dataset | API response latency $< 300\text{ms}$ (project-defined smoke threshold) with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response times under representative seed dataset | Requester Dashboard latency $< 300\text{ms}$; Staff Dashboard latency $< 300\text{ms}$ (project-defined smoke thresholds) with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
 | **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ (project-defined smoke thresholds) | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
 
 ---
@@ -253,9 +254,9 @@ Every Acceptance Criterion from `docs/lab-04/specification.md` is strictly mappe
 | **AC-06** | IT Staff updates existing Action Taken details | `API-05`, `API-05b`, `UI-07`, `E2E-01` | API, UI, E2E |
 | **AC-07** | Actions Taken creation locked on `CLOSED` or `CANCELLED` tickets | `UNIT-02`, `API-06`, `UI-08`, `E2E-05` | Unit, API, UI, E2E |
 | **AC-08** | Permitted status transitions per matrix and valid resolution gate | `UNIT-02`, `API-13`, `API-13b`, `API-13c`, `UI-09`, `E2E-04` | Unit, API, UI, E2E |
-| **AC-09** | Invalid status transition jump rejected (HTTP 400) | `UNIT-02`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
+| **AC-09** | Invalid status transition jump rejected (HTTP 400) | `UNIT-02`, `API-13e`, `API-14`, `UI-10`, `E2E-04` | Unit, API, UI, E2E |
 | **AC-10** | Requester advisory "Problem Appears Resolved" indication | `API-15`, `UI-11`, `E2E-04` | API, UI, E2E |
-| **AC-11** | Requester direct status transition attempt rejected (HTTP 403) | `API-17`, `UI-12`, `E2E-04` | API, UI, E2E |
+| **AC-11** | Requester direct status transition attempt rejected (HTTP 403) | `API-13c`, `API-17`, `UI-12`, `E2E-04` | API, UI, E2E |
 | **AC-12** | Stale status update rejected with HTTP 409 Conflict | `UNIT-04`, `API-13d`, `API-18`, `API-18b`, `UI-13`, `E2E-06` | Unit, API, UI, E2E |
 | **AC-13** | Ticket closure terminal state enforcement | `UNIT-02`, `API-19`, `API-20`, `UI-14`, `E2E-05` | Unit, API, UI, E2E |
 | **AC-14** | Reopening resolved ticket resumes active workflow | `UNIT-02`, `API-21`, `API-22`, `UI-15`, `E2E-05` | Unit, API, UI, E2E |
@@ -264,7 +265,7 @@ Every Acceptance Criterion from `docs/lab-04/specification.md` is strictly mappe
 | **AC-17** | IT Staff Dashboard operational metrics & my recent actions | `UNIT-03`, `API-27`, `API-28`, `API-29`, `API-29b`, `PERF-01`, `UI-18`, `UI-19`, `E2E-08` | Unit, API, Perf, UI, E2E |
 | **AC-18** | Administrator Dashboard includes user account metrics | `API-31`, `UI-20`, `E2E-09` | API, UI, E2E |
 | **AC-19** | Metric card drill-down navigation to filtered lists | `UI-21`, `UI-22`, `E2E-07`, `E2E-08` | UI, E2E |
-| **AC-20** | Requester access to IT Staff Dashboard forbidden (HTTP 403) | `API-30`, `UI-23`, `E2E-07` | API, UI, E2E |
+| **AC-20** | Requester access to IT Staff Dashboard forbidden (HTTP 403) | `API-30`, `UI-23` | API, UI |
 | **AC-21** | Zero regression across all Lab 1–3 functionality | `MIG-01`, `MIG-02`, `MIG-04`, `E2E-10` | Migration, E2E |
 | **AC-22** | Unauthenticated requests rejected with HTTP 401 | `API-12`, `API-26`, `API-33`, `UI-24` | API, UI |
 | **AC-23** | Responsive layouts across Mobile ($375\text{px}$) and Tablet ($768\text{px}$) with $\ge 44\text{px}$ targets | `RESP-01`, `RESP-02`, `RESP-03`, `RESP-04` | Responsive |
@@ -324,7 +325,7 @@ Every Business Rule from `docs/lab-04/specification.md` is mapped to its automat
 | **FR-17** | 100% backward compatibility with Labs 1, 2, and 3 | `MIG-01`, `MIG-02`, `MIG-04`, `E2E-10` | Migration, E2E |
 | **FR-18** | Application shell displays role navigation with Dashboard as landing page | `UI-16`, `UI-18`, `E2E-07`, `E2E-08` | UI, E2E |
 | **FR-19** | Client handles loading, empty, forbidden, stale, and network errors safely | `UI-13`, `UI-17`, `UI-23`, `UI-25` | UI |
-| **FR-20** | Interactive controls meet WCAG standards ($\ge 44\text{px}$ targets, focus rings) | `VIS-03`, `RESP-03`, `accessibility.test.tsx` | Style, Responsive |
+| **FR-20** | Interactive controls meet WCAG standards ($\ge 44\text{px}$ targets, focus rings) | `VIS-03`, `RESP-03`, `client/tests/lab-04/accessibility.test.tsx` | Style, Responsive |
 
 ---
 
