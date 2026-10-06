@@ -424,36 +424,38 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
 
       // 2. Simulate operational modification: user edits the summary of Ticket 2
       const modifiedSummary = `${initialSummary} [TEST EDIT PRESERVED]`;
-      await prisma.ticket.update({
-        where: { ticketNo: "TKT-2026-000002" },
-        data: { summary: modifiedSummary },
-      });
+      try {
+        await prisma.ticket.update({
+          where: { ticketNo: "TKT-2026-000002" },
+          data: { summary: modifiedSummary },
+        });
 
-      // 3. Second execution of seedDatabase()
-      const summary2 = await seedDatabase();
-      expect(summary2.ticketsCount).toBe(summary1.ticketsCount);
-      expect(summary2.actionsCount).toBe(summary1.actionsCount);
+        // 3. Second execution of seedDatabase()
+        const summary2 = await seedDatabase();
+        expect(summary2.ticketsCount).toBe(summary1.ticketsCount);
+        expect(summary2.actionsCount).toBe(summary1.actionsCount);
 
-      const actionsCount2 = await prisma.actionTaken.count();
-      const ticketsCount2 = await prisma.ticket.count();
-      const usersCount2 = await prisma.user.count();
+        const actionsCount2 = await prisma.actionTaken.count();
+        const ticketsCount2 = await prisma.ticket.count();
+        const usersCount2 = await prisma.user.count();
 
-      // Idempotency assertions: counts must not inflate
-      expect(actionsCount2).toBe(actionsCount1);
-      expect(ticketsCount2).toBe(ticketsCount1);
-      expect(usersCount2).toBe(usersCount1);
+        // Idempotency assertions: counts must not inflate
+        expect(actionsCount2).toBe(actionsCount1);
+        expect(ticketsCount2).toBe(ticketsCount1);
+        expect(usersCount2).toBe(usersCount1);
 
-      // Verify that existing ticket state was NOT overwritten by re-running the seed script
-      const tkt2AfterSecondSeed = await prisma.ticket.findUniqueOrThrow({
-        where: { ticketNo: "TKT-2026-000002" },
-      });
-      expect(tkt2AfterSecondSeed.summary).toBe(modifiedSummary);
-
-      // Revert the temporary test summary modification
-      await prisma.ticket.update({
-        where: { ticketNo: "TKT-2026-000002" },
-        data: { summary: initialSummary },
-      });
+        // Verify that existing ticket state was NOT overwritten by re-running the seed script
+        const tkt2AfterSecondSeed = await prisma.ticket.findUniqueOrThrow({
+          where: { ticketNo: "TKT-2026-000002" },
+        });
+        expect(tkt2AfterSecondSeed.summary).toBe(modifiedSummary);
+      } finally {
+        // Guarantee clean revert even if test encounters an unexpected failure
+        await prisma.ticket.update({
+          where: { ticketNo: "TKT-2026-000002" },
+          data: { summary: initialSummary },
+        });
+      }
 
       // Verify all seeded ActionTaken IDs are distinct
       const seededActions = await prisma.actionTaken.findMany({
