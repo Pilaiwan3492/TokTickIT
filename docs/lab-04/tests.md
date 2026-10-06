@@ -201,7 +201,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **E2E-07** | E2E | AC-15, AC-16, AC-19, AC-20, BR-13 | Requester Dashboard journey: metric cards, recent tickets, drill-down | Cards show correct counts; clicking card filters My Tickets; zero-count empty state | `e2e/lab-04/dashboards.spec.ts` | `Planned` |
 | **E2E-08** | E2E | AC-17, AC-19, BR-14 | IT Staff Dashboard journey: 6 metric cards, priority strip, my actions, drill-down | Displays queue counts; clicking card filters staff queue; my actions drill down | `e2e/lab-04/dashboards.spec.ts` | `Planned` |
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Planned` |
-| **E2E-10** | E2E | AC-21, FR-17 | Full Regression journey across Labs 1–3 under authenticated Sprint 4 system | Ticket creation, attachments, comments, notes, and admin user management intact | `e2e/lab-04/regression.spec.ts` | `Planned` |
+| **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Planned` |
 
 ---
 
@@ -423,9 +423,16 @@ All screenshots will be captured during automated Playwright E2E execution and s
 | **Actions Taken Modal** | `04-action-taken-modal-mobile.png` | Mobile ($375 \times 667$) | Action Taken modal on mobile | Full-width modal sheet, touch-friendly submit button |
 | **Resolution Gate** | `05-ticket-resolution-gate-desktop.png` | Desktop ($1280 \times 800$) | Status transition dropdown with Resolution Gate | Only permitted next statuses shown; resolution confirmation dialog |
 | **Resolution Gate** | `05-ticket-resolution-gate-tablet.png` | Tablet ($820 \times 1180$) | Resolution Gate controls on tablet | Accessible dropdown select, clear warning cues |
+| **Resolution Gate** | `05-ticket-resolution-gate-mobile.png` | Mobile ($375 \times 667$) | Resolution Gate controls and modal on mobile | Full-width modal sheet, touch targets $\ge 44\text{px}$, zero overflow |
 | **Advisory Resolution** | `06-requester-resolve-indicator-desktop.png` | Desktop ($1280 \times 800$) | Requester advisory "Problem Appears Resolved" | Advisory banner displayed; formal status remains unchanged |
+| **Advisory Resolution** | `06-requester-resolve-indicator-tablet.png` | Tablet ($820 \times 1180$) | Advisory resolution banner on tablet | Responsive layout, visible advisory confirmation cues |
+| **Advisory Resolution** | `06-requester-resolve-indicator-mobile.png` | Mobile ($375 \times 667$) | Advisory resolution button and banner on mobile | Touch-friendly action button $\ge 44\text{px}$, clear advisory text |
 | **Concurrency Conflict**| `07-concurrency-conflict-banner-desktop.png` | Desktop ($1280 \times 800$) | Stale update HTTP 409 conflict banner | Non-destructive conflict banner with "Refresh" CTA; user input preserved |
+| **Concurrency Conflict**| `07-concurrency-conflict-banner-tablet.png` | Tablet ($820 \times 1180$) | Stale update conflict banner on tablet | Accessible conflict notification and "Refresh" trigger without text truncation |
+| **Concurrency Conflict**| `07-concurrency-conflict-banner-mobile.png` | Mobile ($375 \times 667$) | Stale update conflict banner on mobile | Full-width warning banner, preserved form fields, touch-friendly refresh CTA |
 | **Admin Dashboard** | `08-admin-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Administrator Dashboard with User Metrics | Staff operational metrics plus System User accounts summary panel |
+| **Admin Dashboard** | `08-admin-dashboard-tablet.png` | Tablet ($820 \times 1180$) | Administrator Dashboard on tablet viewport | 2-column cards layout for staff metrics and system user summary |
+| **Admin Dashboard** | `08-admin-dashboard-mobile.png` | Mobile ($375 \times 667$) | Administrator Dashboard on mobile viewport | 1-column stacked cards, legible user counters, zero horizontal scroll |
 
 ### 5.2 Responsive Visual Inspection Checklist
 

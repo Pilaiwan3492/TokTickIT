@@ -328,7 +328,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 A feature or increment in Sprint 4 is considered Done only when:
 1. **Contract Adherence**: The implementation strictly implements the specifications in `specification.md`, `ui-spec.md`, and `api-spec.md`.
 2. **Database Integrity**: The Prisma migration successfully applies without data loss, preserves legacy tickets without Actions Taken, and the seed script runs idempotently.
-3. **Automated Testing**: 100% of planned tests in `docs/lab-04/tests.md` pass across API (`server/tests/lab-04/`), UI component (`client/src/tests/lab-04/`), and E2E (`e2e/lab-04/`).
+3. **Automated Testing**: 100% of planned tests in `docs/lab-04/tests.md` pass across API (`server/tests/lab-04/`), UI component (`client/tests/lab-04/`), and E2E (`e2e/lab-04/`).
 4. **Zero Regression**: All automated test suites from Labs 1, 2, and 3 pass cleanly.
 5. **Responsive & Accessible**: All screens render cleanly across Desktop, Tablet, and Mobile with zero horizontal overflow, visible focus indicators, and touch targets $\ge 44\text{px}$.
 6. **Code Cleanliness**: Zero console errors, TypeScript compilation warnings, or broken links.
