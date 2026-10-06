@@ -389,6 +389,22 @@ async function main() {
       currentStatus: "OPEN" as const,
       isRequesterResolved: false,
     },
+    // Ticket 10: RESOLVED, Legacy Ticket with 0 Actions Taken (Tests legacy tolerance & BR-11 advisory cue)
+    {
+      ticketNo: "TKT-2026-000010",
+      requesterId: jenniferReqId,
+      userId: jenniferUserId,
+      ownerId: sarahStaffId,
+      categoryId: hwCatId,
+      relatedSystemId: laptopSysId,
+      summary: "Display brightness flickering on conference room external monitor",
+      description: "Legacy hardware issue resolved without formal Action Taken entries logged.",
+      requestedPriority: "LOW" as const,
+      itPriority: "LOW" as const,
+      status: "RESOLVED" as const,
+      currentStatus: "RESOLVED" as const,
+      isRequesterResolved: false,
+    },
   ];
 
   const ticketMap = new Map<string, string>(); // ticketNo -> Ticket.id
@@ -462,7 +478,148 @@ async function main() {
   }
   console.log(`✓ Seeded/verified ${seedNotes.length} Internal Notes`);
 
-  console.log("All TokTickIT Lab 3 seed data populated successfully and idempotently without state overwrites!");
+  // 7. Seed Actions Taken (Lab 4 Parent-Child Actions across Diverse Distributions)
+  const tkt2Id = ticketMap.get("TKT-2026-000002")!;
+  const tkt4Id = ticketMap.get("TKT-2026-000004")!;
+  const tkt5Id = ticketMap.get("TKT-2026-000005")!;
+  const tkt6Id = ticketMap.get("TKT-2026-000006")!;
+  const tkt7Id = ticketMap.get("TKT-2026-000007")!;
+  const tkt9Id = ticketMap.get("TKT-2026-000009")!;
+
+  const seedActions = [
+    // Ticket 2 (OPEN) - 1 Action (Michael Brown)
+    {
+      id: "act-seed-001",
+      ticketId: tkt2Id,
+      actionDate: new Date("2026-10-02T10:15:00Z"),
+      actionDescription: "Verified gateway routing table and pinged remote branch subnet.",
+      result: "Subnet reachable; packet loss observed on external peer hop.",
+      performedById: michaelStaffId,
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket 4 (WAITING_FOR_REQUESTER) - 1 Action with Follow-up (David Lee)
+    {
+      id: "act-seed-002",
+      ticketId: tkt4Id,
+      actionDate: new Date("2026-10-03T11:00:00Z"),
+      actionDescription: "Emailed department director requesting approval for ledger access.",
+      result: "Director requested clarification on specific ledger accounts required.",
+      performedById: davidStaffId,
+      followUpRequired: true,
+      followUpNote: "Awaiting response from Charlie Brown with specific cost center account codes.",
+      attachmentNotes: "Attached corporate access requisition form template.",
+    },
+    // Ticket 5 (RESOLVED) - 1 Action (Michael Brown)
+    {
+      id: "act-seed-003",
+      ticketId: tkt5Id,
+      actionDate: new Date("2026-10-04T14:20:00Z"),
+      actionDescription: "Installed latest DisplayLink USB-C firmware package 11.2 and tested dual video outputs.",
+      result: "Both displays recognized in 4K resolution; dock power delivery stable.",
+      performedById: michaelStaffId,
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket 6 (CLOSED) - 1 Action (Sarah Johnson)
+    {
+      id: "act-seed-004",
+      ticketId: tkt6Id,
+      actionDate: new Date("2026-10-03T09:30:00Z"),
+      actionDescription: "Reconfigured Exchange spam digest notification schedule to daily 8:00 AM delivery.",
+      result: "User confirmed quarantine digest email received successfully.",
+      performedById: sarahStaffId,
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket 9 (OPEN) - 1 Action with Follow-up (Admin John Smith)
+    {
+      id: "act-seed-005",
+      ticketId: tkt9Id,
+      actionDate: new Date("2026-10-05T08:45:00Z"),
+      actionDescription: "Generated ephemeral SOC2 auditor credentials with 72-hour TTL and MFA requirement.",
+      result: "Auditor successfully logged in and initiated compliance review.",
+      performedById: adminUserId,
+      followUpRequired: true,
+      followUpNote: "Audit window expires on Friday at 17:00; audit credentials will be automatically revoked.",
+      attachmentNotes: "Stored security audit authorization reference in ticket internal notes.",
+    },
+    // Ticket 3 (IN_PROGRESS, URGENT) - Multiple Actions by Multiple Contributors
+    // Contributor 1: Sarah Johnson
+    {
+      id: "act-seed-006",
+      ticketId: tkt3Id,
+      actionDate: new Date("2026-10-04T08:00:00Z"),
+      actionDescription: "Reviewed Microsoft 365 tenant health and Exchange ActiveSync diagnostics.",
+      result: "Discovered SSL certificate thumbprint mismatch across NLB nodes.",
+      performedById: sarahStaffId,
+      followUpRequired: true,
+      followUpNote: "Need secondary staff member to inspect edge firewall certificate bindings.",
+      attachmentNotes: "Saved diagnostic packet capture log.",
+    },
+    // Contributor 2: Michael Brown (different staff contributor)
+    {
+      id: "act-seed-007",
+      ticketId: tkt3Id,
+      actionDate: new Date("2026-10-04T10:30:00Z"),
+      actionDescription: "Regenerated SSL intermediate certificates on reverse proxy and restarted EAS service.",
+      result: "Mobile sync restored for 3 test devices; monitoring edge connection pool.",
+      performedById: michaelStaffId,
+      followUpRequired: true,
+      followUpNote: "Coordinate with Administrator for final certificate vault sync during change window.",
+      attachmentNotes: null,
+    },
+    // Contributor 3: John Smith (Admin contributor)
+    {
+      id: "act-seed-008",
+      ticketId: tkt3Id,
+      actionDate: new Date("2026-10-04T13:00:00Z"),
+      actionDescription: "Synchronized Key Vault secrets and updated failover cluster SSL thumbprint configuration.",
+      result: "Cluster health check green; zero HTTP 500 errors across all edge proxies.",
+      performedById: adminUserId,
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket 7 (REOPENED, HIGH) - Multiple Actions by Multiple Contributors
+    // Contributor 1: David Lee
+    {
+      id: "act-seed-009",
+      ticketId: tkt7Id,
+      actionDate: new Date("2026-10-02T16:00:00Z"),
+      actionDescription: "Rolled back router firmware from v2.4.1 to v2.3.9.",
+      result: "Router rebooted cleanly; initial ping test succeeded.",
+      performedById: davidStaffId,
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Contributor 2: Sarah Johnson
+    {
+      id: "act-seed-010",
+      ticketId: tkt7Id,
+      actionDate: new Date("2026-10-05T15:00:00Z"),
+      actionDescription: "Captured Wireshark traces during scheduled evening VoIP test call.",
+      result: "Identified MTU packet fragmentation causing tunnel drops at 1492 bytes.",
+      performedById: sarahStaffId,
+      followUpRequired: true,
+      followUpNote: "Adjust WAN interface MTU to 1420 bytes on next scheduled maintenance.",
+      attachmentNotes: "VoIP call capture trace attached.",
+    },
+  ];
+
+  for (const a of seedActions) {
+    const existing = await prisma.actionTaken.findUnique({ where: { id: a.id } });
+    if (!existing) {
+      await prisma.actionTaken.create({ data: a });
+    }
+  }
+  console.log(`✓ Seeded/verified ${seedActions.length} Actions Taken across diverse parent-child distributions`);
+
+  console.log("All TokTickIT Lab 4 seed data populated successfully and idempotently without state overwrites!");
 }
 
 main()
