@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import { getPrisma } from "../src/prisma.js";
 
-async function main() {
+export async function seedDatabase() {
   const prisma = getPrisma();
 
-  console.log("Starting TokTickIT Lab 3 database seeding...");
+  console.log("Starting TokTickIT Lab 4 database seeding...");
 
   // 1. Categories
   const categories = ["Account and Access", "Hardware", "Software", "Network"];
@@ -617,16 +617,32 @@ async function main() {
       await prisma.actionTaken.create({ data: a });
     }
   }
-  console.log(`✓ Seeded/verified ${seedActions.length} Actions Taken across diverse parent-child distributions`);
-
   console.log("All TokTickIT Lab 4 seed data populated successfully and idempotently without state overwrites!");
+
+  return {
+    categoriesCount: categories.length,
+    systemsCount: relatedSystems.length,
+    usersCount: seedUsers.length,
+    requesterProjectionsCount: requesterMap.size,
+    ticketsCount: seedTickets.length,
+    commentsCount: seedComments.length,
+    notesCount: seedNotes.length,
+    actionsCount: seedActions.length,
+  };
 }
 
-main()
-  .catch((e) => {
-    console.error("Error during seed execution:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await getPrisma().$disconnect();
-  });
+const isMain =
+  Boolean(process.argv[1]) &&
+  (process.argv[1].replace(/\\/g, "/").endsWith("prisma/seed.ts") ||
+    process.argv[1].replace(/\\/g, "/").endsWith("prisma/seed.js"));
+
+if (isMain) {
+  seedDatabase()
+    .catch((e) => {
+      console.error("Error during seed execution:", e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await getPrisma().$disconnect();
+    });
+}

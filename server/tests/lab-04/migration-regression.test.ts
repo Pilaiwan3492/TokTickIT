@@ -3,6 +3,7 @@ import request from "supertest";
 import bcrypt from "bcryptjs";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { seedDatabase } from "../../prisma/seed.js";
 
 describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG-04)", () => {
   const prisma = getPrisma();
@@ -90,28 +91,82 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
   // MIG-01: Prisma migration execution with zero data loss on existing tables
   // =========================================================================
   describe("MIG-01: Zero Data Loss & Schema Foreign Key Integrity", () => {
-    it("should preserve all existing tables and data records from Labs 1, 2, and 3", async () => {
-      const categoryCount = await prisma.category.count();
-      const relatedSystemCount = await prisma.relatedSystem.count();
+    it("should preserve all known baseline records and relationships from Labs 1, 2, and 3", async () => {
+      // 1. Lab 1 Baseline: 4 active categories and 6 active related systems
+      const expectedCategories = ["Account and Access", "Hardware", "Software", "Network"];
+      for (const name of expectedCategories) {
+        const cat = await prisma.category.findUnique({ where: { name } });
+        expect(cat).not.toBeNull();
+        expect(cat!.isActive).toBe(true);
+      }
+
+      const expectedSystems = [
+        "ERP System",
+        "HR Portal",
+        "Email & Calendar",
+        "VPN & Remote Access",
+        "Internal Wiki",
+        "Finance & Accounting",
+      ];
+      for (const name of expectedSystems) {
+        const sys = await prisma.relatedSystem.findUnique({ where: { name } });
+        expect(sys).not.toBeNull();
+        expect(sys!.isActive).toBe(true);
+      }
+
+      // 2. Lab 2 Baseline: RequesterUser legacy projections linked to User entities
+      const legacyRequesters = ["alice@example.com", "bob@example.com", "jennifer.anderson@example.com"];
+      for (const email of legacyRequesters) {
+        const req = await prisma.requesterUser.findFirst({ where: { email } });
+        expect(req).not.toBeNull();
+        expect(req!.userId).toBeTruthy();
+
+        const linkedUser = await prisma.user.findUnique({ where: { id: req!.userId! } });
+        expect(linkedUser).not.toBeNull();
+        expect(linkedUser!.email.toLowerCase()).toBe(email.toLowerCase());
+      }
+
+      // 3. Lab 2/3 Baseline: Known legacy tickets exist with correct attributes and intact relations
+      const legacyTicket1 = await prisma.ticket.findUnique({
+        where: { ticketNo: "TKT-2026-000001" },
+        include: { category: true, relatedSystem: true, requester: true },
+      });
+      expect(legacyTicket1).not.toBeNull();
+      expect(legacyTicket1!.status).toBe("NEW");
+      expect(legacyTicket1!.category.name).toBe("Hardware");
+      expect(legacyTicket1!.relatedSystem.name).toBe("Finance & Accounting");
+      expect(legacyTicket1!.requester).toBeDefined();
+
+      const legacyTicket3 = await prisma.ticket.findUnique({
+        where: { ticketNo: "TKT-2026-000003" },
+        include: { comments: true, notes: true, actionsTaken: true },
+      });
+      expect(legacyTicket3).not.toBeNull();
+      expect(legacyTicket3!.status).toBe("IN_PROGRESS");
+      expect(legacyTicket3!.itPriority).toBe("URGENT");
+      expect(legacyTicket3!.comments.length).toBeGreaterThanOrEqual(2);
+      expect(legacyTicket3!.notes.length).toBeGreaterThanOrEqual(2);
+
+      // Comments & Notes baseline integrity
+      const cmt1 = await prisma.comment.findUnique({ where: { id: "cmt-seed-001" } });
+      expect(cmt1).not.toBeNull();
+      expect(cmt1!.ticketId).toBe(legacyTicket3!.id);
+
+      const note1 = await prisma.internalNote.findUnique({ where: { id: "note-seed-001" } });
+      expect(note1).not.toBeNull();
+      expect(note1!.ticketId).toBe(legacyTicket3!.id);
+
+      // 4. Overall table counts are non-zero and preserved
       const userCount = await prisma.user.count();
-      const requesterUserCount = await prisma.requesterUser.count();
       const ticketCount = await prisma.ticket.count();
-      const commentCount = await prisma.comment.count();
-      const internalNoteCount = await prisma.internalNote.count();
       const actionTakenCount = await prisma.actionTaken.count();
 
-      expect(categoryCount).toBeGreaterThanOrEqual(4);
-      expect(relatedSystemCount).toBeGreaterThanOrEqual(6);
       expect(userCount).toBeGreaterThanOrEqual(11);
-      expect(requesterUserCount).toBeGreaterThanOrEqual(6);
       expect(ticketCount).toBeGreaterThanOrEqual(10);
-      expect(commentCount).toBeGreaterThanOrEqual(2);
-      expect(internalNoteCount).toBeGreaterThanOrEqual(2);
       expect(actionTakenCount).toBeGreaterThanOrEqual(10);
     });
 
     it("should enforce cascade delete on Ticket deletion for child ActionsTaken", async () => {
-      // Create a temporary ticket with a child ActionTaken
       const category = await prisma.category.findFirstOrThrow();
       const relatedSystem = await prisma.relatedSystem.findFirstOrThrow();
       const requester = await prisma.requesterUser.findFirstOrThrow();
@@ -147,24 +202,54 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
         where: { id: tempTicket.id },
       });
 
-      // Child action should be cascade-deleted
+      // Child action must be cascade-deleted
       const deletedAction = await prisma.actionTaken.findUnique({
         where: { id: tempAction.id },
       });
       expect(deletedAction).toBeNull();
     });
 
-    it("should enforce restrict delete on User when ActionsTaken are associated with that user", async () => {
-      // Attempting to delete a user who has performed actions must be blocked by foreign key constraint
-      const staffWithAction = await prisma.actionTaken.findFirstOrThrow({
-        select: { performedById: true },
+    it("should enforce ON DELETE RESTRICT on User specifically blocked by ActionTaken.performedById", async () => {
+      const defaultHash = bcrypt.hashSync("Password123!", 10);
+      const existingTicket = await prisma.ticket.findFirstOrThrow();
+
+      // 1. Create a clean isolated user with ZERO comments, ZERO notes, ZERO tickets, ZERO revoked tokens
+      const isolatedUser = await prisma.user.create({
+        data: {
+          email: `isolated.staff.${Date.now()}@toktickit.com`,
+          name: "Isolated Staff Member",
+          role: "IT_STAFF",
+          isActive: true,
+          passwordHash: defaultHash,
+        },
       });
 
+      // 2. Attach an ActionTaken solely referencing this isolated user
+      const isolatedAction = await prisma.actionTaken.create({
+        data: {
+          ticketId: existingTicket.id,
+          actionDescription: "Work logged by isolated staff for restrict foreign key test",
+          result: "Action recorded",
+          performedById: isolatedUser.id,
+        },
+      });
+
+      // 3. Attempting to delete the isolated user must fail due to ActionTaken.performedById ON DELETE RESTRICT
       await expect(
         prisma.user.delete({
-          where: { id: staffWithAction.performedById },
+          where: { id: isolatedUser.id },
         })
       ).rejects.toThrow();
+
+      // 4. Once the ActionTaken is removed, deletion of the isolated user must succeed
+      await prisma.actionTaken.delete({
+        where: { id: isolatedAction.id },
+      });
+
+      const deletedUser = await prisma.user.delete({
+        where: { id: isolatedUser.id },
+      });
+      expect(deletedUser.id).toBe(isolatedUser.id);
     });
 
     it("should support chronological query on ActionTaken via compound index [ticketId, actionDate ASC]", async () => {
@@ -248,7 +333,7 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
   });
 
   // =========================================================================
-  // MIG-03: Idempotent seed script execution across multiple runs
+  // MIG-03: Seed coverage & True Idempotency across Multiple Executions
   // =========================================================================
   describe("MIG-03: Seed Coverage & True Idempotency", () => {
     it("should contain tickets across all 8 canonical statuses", async () => {
@@ -321,26 +406,68 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
       expect(actionWithAttachmentNotes!.attachmentNotes).toBeTruthy();
     });
 
-    it("should maintain data consistency and avoid duplicates on seed re-execution", async () => {
-      const countBefore = await prisma.actionTaken.count();
-      const ticketCountBefore = await prisma.ticket.count();
+    it("should execute seedDatabase() multiple times without duplicate keys or resetting ticket state", async () => {
+      // 1. First execution of seedDatabase() to establish baseline
+      const summary1 = await seedDatabase();
+      expect(summary1.ticketsCount).toBeGreaterThanOrEqual(10);
+      expect(summary1.actionsCount).toBeGreaterThanOrEqual(10);
 
-      // Verify that all seeded ActionTaken IDs are distinct
+      const actionsCount1 = await prisma.actionTaken.count();
+      const ticketsCount1 = await prisma.ticket.count();
+      const usersCount1 = await prisma.user.count();
+
+      // Verify that Ticket 2 has a known initial description
+      const tkt2Initial = await prisma.ticket.findUniqueOrThrow({
+        where: { ticketNo: "TKT-2026-000002" },
+      });
+      const initialSummary = tkt2Initial.summary;
+
+      // 2. Simulate operational modification: user edits the summary of Ticket 2
+      const modifiedSummary = `${initialSummary} [TEST EDIT PRESERVED]`;
+      await prisma.ticket.update({
+        where: { ticketNo: "TKT-2026-000002" },
+        data: { summary: modifiedSummary },
+      });
+
+      // 3. Second execution of seedDatabase()
+      const summary2 = await seedDatabase();
+      expect(summary2.ticketsCount).toBe(summary1.ticketsCount);
+      expect(summary2.actionsCount).toBe(summary1.actionsCount);
+
+      const actionsCount2 = await prisma.actionTaken.count();
+      const ticketsCount2 = await prisma.ticket.count();
+      const usersCount2 = await prisma.user.count();
+
+      // Idempotency assertions: counts must not inflate
+      expect(actionsCount2).toBe(actionsCount1);
+      expect(ticketsCount2).toBe(ticketsCount1);
+      expect(usersCount2).toBe(usersCount1);
+
+      // Verify that existing ticket state was NOT overwritten by re-running the seed script
+      const tkt2AfterSecondSeed = await prisma.ticket.findUniqueOrThrow({
+        where: { ticketNo: "TKT-2026-000002" },
+      });
+      expect(tkt2AfterSecondSeed.summary).toBe(modifiedSummary);
+
+      // Revert the temporary test summary modification
+      await prisma.ticket.update({
+        where: { ticketNo: "TKT-2026-000002" },
+        data: { summary: initialSummary },
+      });
+
+      // Verify all seeded ActionTaken IDs are distinct
       const seededActions = await prisma.actionTaken.findMany({
         where: { id: { startsWith: "act-seed-" } },
       });
-
       const uniqueIds = new Set(seededActions.map((a) => a.id));
       expect(uniqueIds.size).toBe(seededActions.length);
-      expect(countBefore).toBeGreaterThanOrEqual(10);
-      expect(ticketCountBefore).toBeGreaterThanOrEqual(10);
     });
   });
 
   // =========================================================================
-  // MIG-04: Full regression verification across Labs 1, 2, and 3 APIs
+  // MIG-04: Labs 1–3 Migration Regression Smoke Suite
   // =========================================================================
-  describe("MIG-04: Full Labs 1–3 Regression Suite under Migrated Schema", () => {
+  describe("MIG-04: Labs 1–3 Migration Regression Smoke Suite", () => {
     // Lab 1 Regression
     it("Lab 1: should return HTTP 200 for health check endpoint", async () => {
       const res = await request(app).get("/api/health");
@@ -355,7 +482,7 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
       expect(res.body.data.length).toBeGreaterThanOrEqual(4);
     });
 
-    // Lab 2 Regression
+    // Lab 2 Regression: Ticket Creation, Detail, My Tickets Filtering & Attachments
     it("Lab 2: should create a new ticket via POST /api/v1/tickets", async () => {
       const category = await prisma.category.findFirstOrThrow();
       const relatedSystem = await prisma.relatedSystem.findFirstOrThrow();
@@ -393,7 +520,54 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
       expect(res.body.data.ticketNo).toBe(ticket.ticketNo);
     });
 
-    // Lab 3 Regression
+    it("Lab 2: should support search and filter query in My Tickets (GET /api/v1/tickets)", async () => {
+      const res = await request(app)
+        .get("/api/v1/tickets?search=Regression&status=NEW")
+        .set("Authorization", `Bearer ${tokenRequester}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it("Lab 2: should upload, retrieve via ticket detail, and download attachment on ticket", async () => {
+      const ticket = await prisma.ticket.findFirstOrThrow({
+        where: { userId: testRequesterUser.id },
+      });
+
+      const testBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+
+      const uploadRes = await request(app)
+        .post(`/api/v1/tickets/${ticket.id}/attachments`)
+        .set("Authorization", `Bearer ${tokenRequester}`)
+        .attach("file", testBuffer, "diagnostic-screenshot.png");
+
+      expect(uploadRes.status).toBe(201);
+      expect(uploadRes.body.data).toBeDefined();
+      expect(uploadRes.body.data.fileName).toBe("diagnostic-screenshot.png");
+
+      // Verify attachment appears inside ticket detail query
+      const detailRes = await request(app)
+        .get(`/api/v1/tickets/${ticket.id}`)
+        .set("Authorization", `Bearer ${tokenRequester}`);
+
+      expect(detailRes.status).toBe(200);
+      expect(Array.isArray(detailRes.body.data.attachments)).toBe(true);
+      expect(
+        detailRes.body.data.attachments.some(
+          (a: { fileName: string }) => a.fileName === "diagnostic-screenshot.png"
+        )
+      ).toBe(true);
+
+      // Verify attachment download endpoint
+      const attachmentId = uploadRes.body.data.id;
+      const downloadRes = await request(app)
+        .get(`/api/v1/attachments/${attachmentId}/download`)
+        .set("Authorization", `Bearer ${tokenRequester}`);
+
+      expect(downloadRes.status).toBe(200);
+    });
+
+    // Lab 3 Regression: Auth, RBAC, Comments, Notes & Admin User Management
     it("Lab 3: should authenticate user via POST /api/v1/auth/login", async () => {
       const res = await request(app)
         .post("/api/v1/auth/login")
@@ -457,6 +631,25 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+    });
+
+    it("Lab 3: should permit Administrator to manage users and forbid IT Staff", async () => {
+      // 1. Admin access succeeds
+      const adminRes = await request(app)
+        .get("/api/v1/admin/users")
+        .set("Authorization", `Bearer ${tokenAdmin}`);
+
+      expect(adminRes.status).toBe(200);
+      expect(Array.isArray(adminRes.body.data)).toBe(true);
+      expect(adminRes.body.data.length).toBeGreaterThanOrEqual(10);
+
+      // 2. IT Staff access is forbidden
+      const staffRes = await request(app)
+        .get("/api/v1/admin/users")
+        .set("Authorization", `Bearer ${tokenStaff}`);
+
+      expect(staffRes.status).toBe(403);
+      expect(staffRes.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
     });
   });
 });
