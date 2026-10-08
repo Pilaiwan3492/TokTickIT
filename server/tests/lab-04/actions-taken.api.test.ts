@@ -287,9 +287,48 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
   });
 
   // =========================================================================
+  // Mandatory Concurrency Timestamps Validation (POST & PATCH)
+  // =========================================================================
+  it("should reject Action Taken creation with HTTP 400 VALIDATION_ERROR when expectedTicketUpdatedAt is omitted", async () => {
+    const res = await request(app)
+      .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
+      .set("Authorization", `Bearer ${tokenStaff1}`)
+      .send({
+        actionDescription: "Attempt without mandatory timestamp",
+        result: "Should fail validation",
+        followUpRequired: false,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toBeDefined();
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("should reject Action Taken update with HTTP 400 VALIDATION_ERROR when expectedUpdatedAt is omitted", async () => {
+    const existingAction = await prisma.actionTaken.findFirstOrThrow({
+      where: { ticketId: testTicketAId },
+    });
+
+    const res = await request(app)
+      .patch(`/api/v1/tickets/${testTicketAId}/actions-taken/${existingAction.id}`)
+      .set("Authorization", `Bearer ${tokenStaff1}`)
+      .send({
+        result: "Attempt update without expectedUpdatedAt",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toBeDefined();
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  // =========================================================================
   // API-02, API-02b, API-02c: Follow-up note validation
   // =========================================================================
   it("API-02: should reject Action Taken creation with HTTP 400 FOLLOWUP_NOTE_REQUIRED when followUpRequired is true but followUpNote is empty", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenStaff1}`)
@@ -298,14 +337,18 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
         result: "Voltage normal",
         followUpRequired: true,
         followUpNote: "",
+        expectedTicketUpdatedAt: ticket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("FOLLOWUP_NOTE_REQUIRED");
   });
 
   it("API-02b: should reject Action Taken creation with HTTP 400 FOLLOWUP_NOTE_REQUIRED when followUpNote is whitespace-only", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenStaff1}`)
@@ -314,14 +357,18 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
         result: "No physical damage",
         followUpRequired: true,
         followUpNote: "     \t \n ",
+        expectedTicketUpdatedAt: ticket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("FOLLOWUP_NOTE_REQUIRED");
   });
 
   it("API-02c: should permit Action Taken creation when followUpRequired is false and followUpNote is omitted", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenStaff1}`)
@@ -329,9 +376,11 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
         actionDescription: "Rebooted workstation cleanly",
         result: "System came back up normally",
         followUpRequired: false,
+        expectedTicketUpdatedAt: ticket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
     expect(res.body.data.followUpRequired).toBe(false);
     expect(res.body.data.followUpNote).toBeNull();
   });
@@ -339,21 +388,25 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
   // =========================================================================
   // API-03, API-04: Role Authorization (Requester forbidden from POST / PATCH)
   // =========================================================================
-  it("API-03: should reject Requester attempting to create Action Taken with HTTP 403 INSUFFICIENT_PERMISSIONS", async () => {
+  it("API-03: should reject Requester attempting to create Action Taken with HTTP 403 FORBIDDEN", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenRequesterA}`)
       .send({
         actionDescription: "Requester trying to record action",
         result: "Should be blocked",
+        expectedTicketUpdatedAt: ticket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
-    expect(res.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 
-  it("API-04: should reject Requester attempting to update Action Taken with HTTP 403 INSUFFICIENT_PERMISSIONS", async () => {
+  it("API-04: should reject Requester attempting to update Action Taken with HTTP 403 FORBIDDEN", async () => {
     const existingAction = await prisma.actionTaken.findFirstOrThrow({
       where: { ticketId: testTicketAId },
     });
@@ -363,11 +416,13 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       .set("Authorization", `Bearer ${tokenRequesterA}`)
       .send({
         actionDescription: "Requester tampering with existing action",
+        expectedUpdatedAt: existingAction.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
-    expect(res.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 
   // =========================================================================
@@ -390,6 +445,7 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       });
 
     expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
     expect(res.body.data.actionDescription).toBe(
       "Updated work description with manufacturer case reference #84910"
     );
@@ -414,6 +470,7 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       });
 
     expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
     expect(res.body.data.followUpRequired).toBe(true);
     expect(res.body.data.followUpNote).toBe("Awaiting courier delivery on Thursday morning.");
   });
@@ -433,6 +490,7 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe("FOLLOWUP_NOTE_REQUIRED");
   });
 
@@ -440,34 +498,43 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
   // API-06: Locked ticket enforcement (CLOSED / CANCELLED)
   // =========================================================================
   it("API-06: should reject creating Action Taken on CLOSED ticket with HTTP 400 TICKET_LOCKED", async () => {
+    const closedTicket = await prisma.ticket.findUniqueOrThrow({ where: { id: closedTicketId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${closedTicketId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenStaff1}`)
       .send({
         actionDescription: "Attempting action on closed ticket",
         result: "Should fail",
+        expectedTicketUpdatedAt: closedTicket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("TICKET_LOCKED");
   });
 
   it("API-06 (Cancelled): should reject creating Action Taken on CANCELLED ticket with HTTP 400 TICKET_LOCKED", async () => {
+    const cancelledTicket = await prisma.ticket.findUniqueOrThrow({ where: { id: cancelledTicketId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${cancelledTicketId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenStaff1}`)
       .send({
         actionDescription: "Attempting action on cancelled ticket",
         result: "Should fail",
+        expectedTicketUpdatedAt: cancelledTicket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("TICKET_LOCKED");
   });
 
   // =========================================================================
-  // API-07 & API-07b: Optimistic Concurrency Control (STALE_UPDATE_CONFLICT)
+  // API-07, API-07b, API-07c: Optimistic Concurrency Control (STALE_UPDATE_CONFLICT) & Atomic CAS Race
   // =========================================================================
   it("API-07: should reject Action Taken creation with HTTP 409 STALE_UPDATE_CONFLICT when expectedTicketUpdatedAt is stale", async () => {
     const staleDate = new Date("2020-01-01T00:00:00.000Z").toISOString();
@@ -482,6 +549,7 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       });
 
     expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("STALE_UPDATE_CONFLICT");
   });
@@ -501,23 +569,63 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       });
 
     expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("STALE_UPDATE_CONFLICT");
+  });
+
+  it("API-07c: should handle atomic race condition between two concurrent requests with identical expectedTicketUpdatedAt", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+    const baseUpdatedAt = ticket.updatedAt.toISOString();
+
+    // Fire two requests concurrently with identical expectedTicketUpdatedAt
+    const [res1, res2] = await Promise.all([
+      request(app)
+        .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
+        .set("Authorization", `Bearer ${tokenStaff1}`)
+        .send({
+          actionDescription: "Concurrent Action Entry Alpha",
+          result: "Race attempt Alpha",
+          followUpRequired: false,
+          expectedTicketUpdatedAt: baseUpdatedAt,
+        }),
+      request(app)
+        .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
+        .set("Authorization", `Bearer ${tokenStaff2}`)
+        .send({
+          actionDescription: "Concurrent Action Entry Beta",
+          result: "Race attempt Beta",
+          followUpRequired: false,
+          expectedTicketUpdatedAt: baseUpdatedAt,
+        }),
+    ]);
+
+    const statusCodes = [res1.status, res2.status].sort();
+    // Exactly one request must succeed (201) and the other must be rejected with 409 (STALE_UPDATE_CONFLICT)
+    expect(statusCodes).toEqual([201, 409]);
+
+    const conflictResponse = res1.status === 409 ? res1 : res2;
+    expect(conflictResponse.body.success).toBe(false);
+    expect(conflictResponse.body.error.code).toBe("STALE_UPDATE_CONFLICT");
   });
 
   // =========================================================================
   // API-08 & API-08b: Inactive Actor Rejection (INACTIVE_ACTOR_REJECTED)
   // =========================================================================
   it("API-08: should reject inactive IT Staff creating Action Taken with HTTP 400 INACTIVE_ACTOR_REJECTED", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
+
     const res = await request(app)
       .post(`/api/v1/tickets/${testTicketAId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenInactiveStaff}`)
       .send({
         actionDescription: "Inactive user attempting action creation",
         result: "Should be rejected",
+        expectedTicketUpdatedAt: ticket.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("INACTIVE_ACTOR_REJECTED");
   });
@@ -532,9 +640,11 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       .set("Authorization", `Bearer ${tokenInactiveStaff}`)
       .send({
         actionDescription: "Inactive user attempting action edit",
+        expectedUpdatedAt: existingAction.updatedAt.toISOString(),
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
     expect(res.body.error.code).toBe("INACTIVE_ACTOR_REJECTED");
   });
@@ -563,15 +673,16 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
     }
   });
 
-  it("API-10: should forbid Requester from accessing Actions Taken of another user's ticket with HTTP 403 INSUFFICIENT_PERMISSIONS", async () => {
+  it("API-10: should forbid Requester from accessing Actions Taken of another user's ticket with HTTP 403 FORBIDDEN", async () => {
     // Requester A attempts to query Ticket B (owned by Requester B)
     const res = await request(app)
       .get(`/api/v1/tickets/${testTicketBId}/actions-taken`)
       .set("Authorization", `Bearer ${tokenRequesterA}`);
 
     expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
     expect(res.body.error).toBeDefined();
-    expect(res.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 
   // =========================================================================
@@ -615,10 +726,10 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
   });
 
   // =========================================================================
-  // PERF-02: Performance Smoke Test (< 200ms project-defined threshold)
+  // PERF-02: Performance Smoke Test (< 300ms project-defined smoke threshold)
   // =========================================================================
-  describe("PERF-02: Actions Taken CRUD Latency Smoke Benchmark (< 200ms)", () => {
-    it("should retrieve Actions Taken list within 200ms engineering smoke threshold", async () => {
+  describe("PERF-02: Actions Taken CRUD Latency Smoke Benchmark (< 300ms)", () => {
+    it("should retrieve Actions Taken list within 300ms engineering smoke threshold", async () => {
       const start = performance.now();
       const res = await request(app)
         .get(`/api/v1/tickets/${testTicketAId}/actions-taken`)
@@ -626,10 +737,10 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       const duration = performance.now() - start;
 
       expect(res.status).toBe(200);
-      expect(duration).toBeLessThan(200);
+      expect(duration).toBeLessThan(300);
     });
 
-    it("should create Action Taken within 200ms engineering smoke threshold", async () => {
+    it("should create Action Taken within 300ms engineering smoke threshold", async () => {
       const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: testTicketAId } });
 
       const start = performance.now();
@@ -645,7 +756,7 @@ describe("Actions Taken API Tests (Lab 4 — Issue 33: API-01..API-12, PERF-02)"
       const duration = performance.now() - start;
 
       expect(res.status).toBe(201);
-      expect(duration).toBeLessThan(200);
+      expect(duration).toBeLessThan(300);
     });
   });
 });

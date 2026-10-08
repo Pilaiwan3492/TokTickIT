@@ -8,7 +8,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 /**
  * GET /api/v1/tickets/:id/actions-taken
  * Retrieve all Actions Taken for a ticket, chronologically sorted by actionDate ASC.
- * - Requester: Allowed only if requester owns the ticket (returns 403 INSUFFICIENT_PERMISSIONS if not owned).
+ * - Requester: Allowed only if requester owns the ticket (returns 403 FORBIDDEN if not owned).
  * - IT Staff / Admin: Allowed for all tickets.
  */
 export const getActionsTakenHandler = async (
@@ -21,6 +21,7 @@ export const getActionsTakenHandler = async (
 
     if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return res.status(404).json({
+        success: false,
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
@@ -40,6 +41,7 @@ export const getActionsTakenHandler = async (
 
     if (!ticket) {
       return res.status(404).json({
+        success: false,
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
@@ -56,8 +58,9 @@ export const getActionsTakenHandler = async (
 
       if (!isOwner) {
         return res.status(403).json({
+          success: false,
           error: {
-            code: "INSUFFICIENT_PERMISSIONS",
+            code: "FORBIDDEN",
             message: "You do not have permission to view Actions Taken for this ticket.",
           },
         });
@@ -91,6 +94,7 @@ export const getActionsTakenHandler = async (
   } catch (error) {
     console.error("Error in getActionsTakenHandler:", error);
     return res.status(500).json({
+      success: false,
       error: {
         code: "SERVER_ERROR",
         message: "An unexpected error occurred while retrieving Actions Taken.",
@@ -102,9 +106,10 @@ export const getActionsTakenHandler = async (
 /**
  * POST /api/v1/tickets/:id/actions-taken
  * Record a new operational Action Taken under a ticket.
- * - Allowed Roles: IT_STAFF, ADMIN (Requester rejected with 403 INSUFFICIENT_PERMISSIONS).
+ * - Allowed Roles: IT_STAFF, ADMIN (Requester rejected with 403 FORBIDDEN).
  * - Automatic performedBy binding: Authed user ID is used; client cannot supply arbitrary actor.
- * - Enforces active actor check, followUpNote validation, closed/cancelled ticket lock, and optimistic concurrency.
+ * - Enforces active actor check, followUpNote validation, closed/cancelled ticket lock,
+ *   mandatory expectedTicketUpdatedAt, and atomic compare-and-swap optimistic concurrency.
  */
 export const createActionTakenHandler = async (
   req: AuthenticatedRequest,
@@ -114,12 +119,13 @@ export const createActionTakenHandler = async (
     const prisma = getPrisma();
     const { id } = req.params;
 
-    // 1. Role check: Requesters are strictly forbidden (FR-06, BR-07, API-03)
-    if (req.user?.role === "REQUESTER") {
+    // 1. Role check: Only IT_STAFF and ADMIN are allowed (FR-06, BR-07, API-03)
+    if (!req.user || (req.user.role !== "IT_STAFF" && req.user.role !== "ADMIN")) {
       return res.status(403).json({
+        success: false,
         error: {
-          code: "INSUFFICIENT_PERMISSIONS",
-          message: "Requesters are not permitted to create Actions Taken.",
+          code: "FORBIDDEN",
+          message: "Only IT Staff and Administrators are permitted to create Actions Taken.",
         },
       });
     }
@@ -127,6 +133,7 @@ export const createActionTakenHandler = async (
     // 2. Inactive actor check (FR-05, BR-04, API-08)
     if (!req.user || !req.user.isActive) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "INACTIVE_ACTOR_REJECTED",
           message: "The authenticated user performing this operation is marked inactive.",
@@ -136,33 +143,10 @@ export const createActionTakenHandler = async (
 
     if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return res.status(404).json({
+        success: false,
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
-        },
-      });
-    }
-
-    // 3. Ticket existence and state check
-    const ticket = await prisma.ticket.findUnique({
-      where: { id },
-    });
-
-    if (!ticket) {
-      return res.status(404).json({
-        error: {
-          code: "TICKET_NOT_FOUND",
-          message: "Ticket not found.",
-        },
-      });
-    }
-
-    // 4. Ticket locked check (FR-07, BR-12, API-06)
-    if (ticket.status === "CLOSED" || ticket.status === "CANCELLED") {
-      return res.status(400).json({
-        error: {
-          code: "TICKET_LOCKED",
-          message: "Actions Taken cannot be added to a closed or cancelled ticket.",
         },
       });
     }
@@ -177,21 +161,25 @@ export const createActionTakenHandler = async (
       expectedTicketUpdatedAt,
     } = req.body || {};
 
-    // 5. Optimistic concurrency check (BR-17, API-07)
-    if (expectedTicketUpdatedAt) {
-      if (isConcurrencyStale(expectedTicketUpdatedAt, ticket.updatedAt)) {
-        return res.status(409).json({
-          error: {
-            code: "STALE_UPDATE_CONFLICT",
-            message: "Ticket was modified by another user concurrently. Please refresh and try again.",
-          },
-        });
-      }
+    // 3. Mandatory expectedTicketUpdatedAt validation (BR-17, api-spec.md)
+    if (
+      !expectedTicketUpdatedAt ||
+      typeof expectedTicketUpdatedAt !== "string" ||
+      isNaN(new Date(expectedTicketUpdatedAt).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedTicketUpdatedAt is required as a valid ISO timestamp.",
+        },
+      });
     }
 
-    // 6. Payload validation
+    // 4. Payload validation
     if (!actionDescription || typeof actionDescription !== "string" || actionDescription.trim().length === 0) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message: "Action description is required.",
@@ -201,6 +189,7 @@ export const createActionTakenHandler = async (
 
     if (!result || typeof result !== "string" || result.trim().length === 0) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message: "Result is required.",
@@ -212,6 +201,7 @@ export const createActionTakenHandler = async (
     const followUpValidation = validateFollowUpNote(isFollowUpReq, followUpNote);
     if (!followUpValidation.isValid) {
       return res.status(400).json({
+        success: false,
         error: {
           code: followUpValidation.errorCode,
           message: followUpValidation.errorMessage,
@@ -224,6 +214,7 @@ export const createActionTakenHandler = async (
       const parsed = new Date(actionDate);
       if (isNaN(parsed.getTime())) {
         return res.status(400).json({
+          success: false,
           error: {
             code: "VALIDATION_ERROR",
             message: "Invalid actionDate format.",
@@ -233,15 +224,66 @@ export const createActionTakenHandler = async (
       parsedActionDate = parsed;
     }
 
-    // 7. Atomic transaction: Create ActionTaken & update Ticket.updatedAt
-    const [createdAction] = await prisma.$transaction([
-      prisma.actionTaken.create({
+    // 5. Atomic transaction with row-level lock (Compare-and-Swap / concurrency guard)
+    const txResult = await prisma.$transaction(async (tx) => {
+      // Row-lock Ticket to ensure atomic serialized evaluation
+      const tickets = await tx.$queryRaw<Array<{
+        id: string;
+        status: string;
+        updatedAt: Date;
+      }>>`SELECT id, status, "updatedAt" FROM "Ticket" WHERE id = ${id} FOR UPDATE`;
+
+      if (!tickets || tickets.length === 0) {
+        return {
+          status: 404,
+          body: {
+            success: false,
+            error: {
+              code: "TICKET_NOT_FOUND",
+              message: "Ticket not found.",
+            },
+          },
+        };
+      }
+
+      const ticket = tickets[0];
+
+      // Closed or cancelled guard (FR-07, BR-12, API-06)
+      if (ticket.status === "CLOSED" || ticket.status === "CANCELLED") {
+        return {
+          status: 400,
+          body: {
+            success: false,
+            error: {
+              code: "TICKET_LOCKED",
+              message: "Actions Taken cannot be added to a closed or cancelled ticket.",
+            },
+          },
+        };
+      }
+
+      // Optimistic concurrency check under row lock
+      if (isConcurrencyStale(expectedTicketUpdatedAt, ticket.updatedAt)) {
+        return {
+          status: 409,
+          body: {
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Ticket was modified by another user concurrently. Please refresh and try again.",
+            },
+          },
+        };
+      }
+
+      // Create ActionTaken record
+      const createdAction = await tx.actionTaken.create({
         data: {
           ticketId: id,
           actionDate: parsedActionDate,
           actionDescription: actionDescription.trim(),
           result: result.trim(),
-          performedById: req.user.id, // Authoritative binding to authenticated actor (BR-03)
+          performedById: req.user!.id, // Authoritative binding to authenticated actor (BR-03)
           followUpRequired: isFollowUpReq,
           followUpNote: isFollowUpReq ? followUpNote?.trim() : (followUpNote ? followUpNote.trim() : null),
           attachmentNotes: attachmentNotes ? String(attachmentNotes).trim() : null,
@@ -256,21 +298,29 @@ export const createActionTakenHandler = async (
             },
           },
         },
-      }),
-      prisma.ticket.update({
+      });
+
+      // Update parent ticket updatedAt to advance concurrency timestamp
+      await tx.ticket.update({
         where: { id },
         data: { updatedAt: new Date() },
-      }),
-    ]);
+      });
 
-    return res.status(201).json({
-      success: true,
-      data: createdAction,
-      message: "Action Taken successfully recorded",
+      return {
+        status: 201,
+        body: {
+          success: true,
+          data: createdAction,
+          message: "Action Taken successfully recorded",
+        },
+      };
     });
+
+    return res.status(txResult.status).json(txResult.body);
   } catch (error) {
     console.error("Error in createActionTakenHandler:", error);
     return res.status(500).json({
+      success: false,
       error: {
         code: "SERVER_ERROR",
         message: "An unexpected error occurred while creating Action Taken.",
@@ -282,9 +332,10 @@ export const createActionTakenHandler = async (
 /**
  * PATCH /api/v1/tickets/:id/actions-taken/:actionId
  * Modify details of an existing Action Taken record.
- * - Allowed Roles: IT_STAFF, ADMIN (Requester rejected with 403 INSUFFICIENT_PERMISSIONS).
+ * - Allowed Roles: IT_STAFF, ADMIN (Requester rejected with 403 FORBIDDEN).
  * - Performer Immutability: original performedById is preserved and cannot be altered.
- * - Enforces active actor check, followUpNote validation, closed/cancelled ticket lock, and optimistic concurrency.
+ * - Enforces active actor check, followUpNote validation, closed/cancelled ticket lock,
+ *   mandatory expectedUpdatedAt, and atomic optimistic concurrency.
  */
 export const updateActionTakenHandler = async (
   req: AuthenticatedRequest,
@@ -294,12 +345,13 @@ export const updateActionTakenHandler = async (
     const prisma = getPrisma();
     const { id, actionId } = req.params;
 
-    // 1. Role check: Requesters are strictly forbidden (FR-06, BR-07, API-04)
-    if (req.user?.role === "REQUESTER") {
+    // 1. Role check: Only IT_STAFF and ADMIN are allowed (FR-06, BR-07, API-04)
+    if (!req.user || (req.user.role !== "IT_STAFF" && req.user.role !== "ADMIN")) {
       return res.status(403).json({
+        success: false,
         error: {
-          code: "INSUFFICIENT_PERMISSIONS",
-          message: "Requesters are not permitted to modify Actions Taken.",
+          code: "FORBIDDEN",
+          message: "Only IT Staff and Administrators are permitted to modify Actions Taken.",
         },
       });
     }
@@ -307,6 +359,7 @@ export const updateActionTakenHandler = async (
     // 2. Inactive actor check (FR-05, BR-04, API-08b)
     if (!req.user || !req.user.isActive) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "INACTIVE_ACTOR_REJECTED",
           message: "The authenticated user performing this operation is marked inactive.",
@@ -316,50 +369,10 @@ export const updateActionTakenHandler = async (
 
     if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return res.status(404).json({
+        success: false,
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
-        },
-      });
-    }
-
-    // 3. Ticket existence and state check
-    const ticket = await prisma.ticket.findUnique({
-      where: { id },
-    });
-
-    if (!ticket) {
-      return res.status(404).json({
-        error: {
-          code: "TICKET_NOT_FOUND",
-          message: "Ticket not found.",
-        },
-      });
-    }
-
-    // 4. Ticket locked check (FR-07, BR-12)
-    if (ticket.status === "CLOSED" || ticket.status === "CANCELLED") {
-      return res.status(400).json({
-        error: {
-          code: "TICKET_LOCKED",
-          message: "Actions Taken cannot be modified on a closed or cancelled ticket.",
-        },
-      });
-    }
-
-    // 5. Existing ActionTaken lookup
-    const existingAction = await prisma.actionTaken.findFirst({
-      where: {
-        id: actionId,
-        ticketId: id,
-      },
-    });
-
-    if (!existingAction) {
-      return res.status(404).json({
-        error: {
-          code: "ACTION_NOT_FOUND",
-          message: "Action Taken record not found for this ticket.",
         },
       });
     }
@@ -374,21 +387,25 @@ export const updateActionTakenHandler = async (
       expectedUpdatedAt,
     } = req.body || {};
 
-    // 6. Optimistic concurrency check (BR-17, API-07b)
-    if (expectedUpdatedAt) {
-      if (isConcurrencyStale(expectedUpdatedAt, existingAction.updatedAt)) {
-        return res.status(409).json({
-          error: {
-            code: "STALE_UPDATE_CONFLICT",
-            message: "Action Taken record was modified since expectedUpdatedAt. Please refresh.",
-          },
-        });
-      }
+    // 3. Mandatory expectedUpdatedAt validation (BR-17, api-spec.md)
+    if (
+      !expectedUpdatedAt ||
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+        },
+      });
     }
 
-    // 7. Field validations
+    // 4. Field validations
     if (actionDescription !== undefined && (typeof actionDescription !== "string" || actionDescription.trim().length === 0)) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message: "Action description cannot be empty.",
@@ -398,29 +415,10 @@ export const updateActionTakenHandler = async (
 
     if (result !== undefined && (typeof result !== "string" || result.trim().length === 0)) {
       return res.status(400).json({
+        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message: "Result cannot be empty.",
-        },
-      });
-    }
-
-    const effectiveFollowUpRequired =
-      followUpRequired !== undefined ? Boolean(followUpRequired) : existingAction.followUpRequired;
-
-    let effectiveFollowUpNote: string | null | undefined;
-    if (followUpNote !== undefined) {
-      effectiveFollowUpNote = followUpNote;
-    } else {
-      effectiveFollowUpNote = existingAction.followUpNote;
-    }
-
-    const followUpValidation = validateFollowUpNote(effectiveFollowUpRequired, effectiveFollowUpNote);
-    if (!followUpValidation.isValid) {
-      return res.status(400).json({
-        error: {
-          code: followUpValidation.errorCode,
-          message: followUpValidation.errorMessage,
         },
       });
     }
@@ -430,6 +428,7 @@ export const updateActionTakenHandler = async (
       const parsed = new Date(actionDate);
       if (isNaN(parsed.getTime())) {
         return res.status(400).json({
+          success: false,
           error: {
             code: "VALIDATION_ERROR",
             message: "Invalid actionDate format.",
@@ -439,9 +438,105 @@ export const updateActionTakenHandler = async (
       parsedActionDate = parsed;
     }
 
-    // 8. Atomic transaction: Update ActionTaken & touch Ticket.updatedAt
-    const [updatedAction] = await prisma.$transaction([
-      prisma.actionTaken.update({
+    // 5. Atomic transaction with row-level locks
+    const txResult = await prisma.$transaction(async (tx) => {
+      // Row-lock ActionTaken record
+      const actions = await tx.$queryRaw<Array<{
+        id: string;
+        ticketId: string;
+        followUpRequired: boolean;
+        followUpNote: string | null;
+        updatedAt: Date;
+      }>>`SELECT id, "ticketId", "followUpRequired", "followUpNote", "updatedAt" FROM "ActionTaken" WHERE id = ${actionId} AND "ticketId" = ${id} FOR UPDATE`;
+
+      if (!actions || actions.length === 0) {
+        return {
+          status: 404,
+          body: {
+            success: false,
+            error: {
+              code: "ACTION_NOT_FOUND",
+              message: "Action Taken record not found for this ticket.",
+            },
+          },
+        };
+      }
+      const existingAction = actions[0];
+
+      // Row-lock parent Ticket
+      const tickets = await tx.$queryRaw<Array<{
+        id: string;
+        status: string;
+      }>>`SELECT id, status FROM "Ticket" WHERE id = ${id} FOR UPDATE`;
+
+      if (!tickets || tickets.length === 0) {
+        return {
+          status: 404,
+          body: {
+            success: false,
+            error: {
+              code: "TICKET_NOT_FOUND",
+              message: "Ticket not found.",
+            },
+          },
+        };
+      }
+      const ticket = tickets[0];
+
+      // Ticket lock guard
+      if (ticket.status === "CLOSED" || ticket.status === "CANCELLED") {
+        return {
+          status: 400,
+          body: {
+            success: false,
+            error: {
+              code: "TICKET_LOCKED",
+              message: "Actions Taken cannot be modified on a closed or cancelled ticket.",
+            },
+          },
+        };
+      }
+
+      // Optimistic concurrency check under row lock
+      if (isConcurrencyStale(expectedUpdatedAt, existingAction.updatedAt)) {
+        return {
+          status: 409,
+          body: {
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Action Taken record was modified since expectedUpdatedAt. Please refresh.",
+            },
+          },
+        };
+      }
+
+      const effectiveFollowUpRequired =
+        followUpRequired !== undefined ? Boolean(followUpRequired) : existingAction.followUpRequired;
+
+      let effectiveFollowUpNote: string | null | undefined;
+      if (followUpNote !== undefined) {
+        effectiveFollowUpNote = followUpNote;
+      } else {
+        effectiveFollowUpNote = existingAction.followUpNote;
+      }
+
+      const followUpValidation = validateFollowUpNote(effectiveFollowUpRequired, effectiveFollowUpNote);
+      if (!followUpValidation.isValid) {
+        return {
+          status: 400,
+          body: {
+            success: false,
+            error: {
+              code: followUpValidation.errorCode,
+              message: followUpValidation.errorMessage,
+            },
+          },
+        };
+      }
+
+      // Update ActionTaken record
+      const updatedAction = await tx.actionTaken.update({
         where: { id: actionId },
         data: {
           actionDate: parsedActionDate,
@@ -464,21 +559,29 @@ export const updateActionTakenHandler = async (
             },
           },
         },
-      }),
-      prisma.ticket.update({
+      });
+
+      // Advance parent ticket updatedAt
+      await tx.ticket.update({
         where: { id },
         data: { updatedAt: new Date() },
-      }),
-    ]);
+      });
 
-    return res.status(200).json({
-      success: true,
-      data: updatedAction,
-      message: "Action Taken successfully updated",
+      return {
+        status: 200,
+        body: {
+          success: true,
+          data: updatedAction,
+          message: "Action Taken successfully updated",
+        },
+      };
     });
+
+    return res.status(txResult.status).json(txResult.body);
   } catch (error) {
     console.error("Error in updateActionTakenHandler:", error);
     return res.status(500).json({
+      success: false,
       error: {
         code: "SERVER_ERROR",
         message: "An unexpected error occurred while updating Action Taken.",
