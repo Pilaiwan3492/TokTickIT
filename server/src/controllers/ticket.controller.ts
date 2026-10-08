@@ -514,6 +514,19 @@ export const getTicketDetailHandler = async (
             },
           },
         },
+        actionsTaken: {
+          orderBy: { actionDate: "asc" },
+          include: {
+            performedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
 

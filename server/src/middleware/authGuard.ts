@@ -118,6 +118,16 @@ export const requireAuth = async (
     }
 
     if (!user.isActive) {
+      if (req.originalUrl?.includes("/actions-taken")) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "INACTIVE_ACTOR_REJECTED",
+            message: "The authenticated user performing this operation is marked inactive.",
+          },
+        });
+      }
+
       return res.status(401).json({
         error: {
           code: "ACCOUNT_INACTIVE",

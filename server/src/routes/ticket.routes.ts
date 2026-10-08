@@ -10,8 +10,12 @@ import { uploadMiddleware, uploadAttachmentHandler } from "../controllers/attach
 import { getCommentsHandler, createCommentHandler } from "../controllers/comment.controller.js";
 import { getNotesHandler, createNoteHandler } from "../controllers/note.controller.js";
 import { requireAuth, requirePasswordChanged, requireRole } from "../middleware/authGuard.js";
+import actionsTakenRoutes from "./actions-taken.routes.js";
 
 const router = Router();
+
+// Mount Lab 4 Actions Taken endpoints
+router.use("/:id/actions-taken", actionsTakenRoutes);
 
 // Protect all ticket endpoints with authentication and password-change gating
 router.use(requireAuth, requirePasswordChanged);

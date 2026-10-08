@@ -536,6 +536,11 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
         where: { userId: testRequesterUser.id },
       });
 
+      // Clear any prior attachments on this ticket so count is 0
+      await prisma.attachment.deleteMany({
+        where: { ticketId: ticket.id },
+      });
+
       const testBuffer = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
       const uploadRes = await request(app)
