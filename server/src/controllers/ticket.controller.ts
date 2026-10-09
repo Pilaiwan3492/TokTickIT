@@ -2,6 +2,13 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authGuard.js";
 import { getPrisma } from "../prisma.js";
 import { generateTicketNumber } from "../utils/ticketNoGenerator.js";
+import { isConcurrencyStale } from "../utils/actionValidation.js";
+import {
+  isValidStatus,
+  isValidTransition,
+  isTerminalStatus,
+  type TicketStatusType,
+} from "../services/ticket-workflow.service.js";
 
 export const createTicketHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -573,6 +580,7 @@ export const setResolutionIndicatorHandler = async (
 
     if (!userId) {
       return res.status(401).json({
+        success: false,
         error: {
           code: "SESSION_INVALID",
           message: "Authentication token is required.",
@@ -580,30 +588,21 @@ export const setResolutionIndicatorHandler = async (
       });
     }
 
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
-      return res.status(400).json({
+    // Role check: Only Requesters can trigger advisory resolution indicator
+    if (req.user?.role !== "REQUESTER") {
+      return res.status(403).json({
+        success: false,
         error: {
-          code: "VALIDATION_ERROR",
-          message: "Ticket ID must be a valid UUID.",
+          code: "FORBIDDEN",
+          message: "Only the owning Requester can indicate resolution on a ticket.",
         },
       });
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        userId: true,
-        requesterId: true,
-        isRequesterResolved: true,
-        currentStatus: true,
-        status: true,
-      },
-    });
-
-    if (!ticket) {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return res.status(404).json({
+        success: false,
         error: {
           code: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
@@ -611,55 +610,317 @@ export const setResolutionIndicatorHandler = async (
       });
     }
 
-    const requester = await prisma.requesterUser.findFirst({
-      where: {
-        OR: [
-          { userId },
-          { email: req.user!.email },
-        ],
-      },
+    const { expectedUpdatedAt } = req.body || {};
+
+    // Atomic transaction with row lock
+    const txResult = await prisma.$transaction(async (tx) => {
+      const tickets = await tx.$queryRaw<Array<{
+        id: string;
+        ticketNo: string;
+        userId: string | null;
+        requesterId: number;
+        status: string;
+        currentStatus: string;
+        isRequesterResolved: boolean;
+        updatedAt: Date;
+      }>>`SELECT id, "ticketNo", "userId", "requesterId", status, "currentStatus", "isRequesterResolved", "updatedAt" FROM "Ticket" WHERE id = ${id} FOR UPDATE`;
+
+      if (!tickets || tickets.length === 0) {
+        return {
+          statusCode: 404,
+          payload: {
+            success: false,
+            error: {
+              code: "TICKET_NOT_FOUND",
+              message: "Ticket not found.",
+            },
+          },
+        };
+      }
+
+      const ticket = tickets[0];
+
+      // Ownership verification (checked before timestamp to prevent info/status leaks)
+      const requester = await tx.requesterUser.findFirst({
+        where: {
+          OR: [
+            { userId },
+            { email: req.user!.email },
+          ],
+        },
+      });
+
+      const isOwner =
+        ticket.userId === userId ||
+        (ticket.userId === null && requester && ticket.requesterId === requester.id);
+
+      if (!isOwner) {
+        return {
+          statusCode: 403,
+          payload: {
+            success: false,
+            error: {
+              code: "FORBIDDEN",
+              message: "You do not have permission to indicate resolution on this ticket.",
+            },
+          },
+        };
+      }
+
+      // Mandatory expectedUpdatedAt validation for Lab 4 concurrency (BR-17, api-spec.md)
+      // Backward compatibility: If expectedUpdatedAt is absent but isRequesterResolved is explicitly passed (Lab 3 legacy call), allow it.
+      if (expectedUpdatedAt !== undefined) {
+        if (
+          typeof expectedUpdatedAt !== "string" ||
+          isNaN(new Date(expectedUpdatedAt).getTime())
+        ) {
+          return {
+            statusCode: 400,
+            payload: {
+              success: false,
+              error: {
+                code: "VALIDATION_ERROR",
+                message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+              },
+            },
+          };
+        }
+
+        // Optimistic concurrency check under row lock (API-18b, BR-17)
+        if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
+          return {
+            statusCode: 409,
+            payload: {
+              success: false,
+              error: {
+                code: "STALE_UPDATE_CONFLICT",
+                message: "Ticket was modified concurrently. Please refresh and try again.",
+              },
+            },
+          };
+        }
+      } else if (req.body?.isRequesterResolved === undefined) {
+        // If both expectedUpdatedAt and isRequesterResolved are missing (e.g. empty {}), return 400 VALIDATION_ERROR
+        return {
+          statusCode: 400,
+          payload: {
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+            },
+          },
+        };
+      }
+
+      // Set isRequesterResolved: true without altering formal status (BR-10, FR-10)
+      const updatedTicket = await tx.ticket.update({
+        where: { id },
+        data: {
+          isRequesterResolved: true,
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        statusCode: 200,
+        payload: {
+          success: true,
+          data: {
+            id: updatedTicket.id,
+            ticketId: updatedTicket.id,
+            ticketNumber: updatedTicket.ticketNo,
+            status: updatedTicket.status,
+            isResolvedByUser: true,
+            isRequesterResolved: true,
+            updatedAt: updatedTicket.updatedAt,
+          },
+          message: "Resolution indication recorded. IT Staff will review and finalize the ticket.",
+        },
+      };
     });
 
-    const isOwner =
-      ticket.userId === userId ||
-      (ticket.userId === null && requester && ticket.requesterId === requester.id);
+    return res.status(txResult.statusCode).json(txResult.payload);
+  } catch (error) {
+    console.error("Error setting resolution indicator:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "SERVER_ERROR",
+        message: "An unexpected error occurred while setting resolution indicator.",
+      },
+    });
+  }
+};
 
-    if (!isOwner) {
+/**
+ * PATCH /api/v1/tickets/:id/status
+ * Transition a ticket status according to the canonical Status Transition Matrix.
+ * - Allowed Roles: IT_STAFF, ADMIN (Requesters rejected with 403 FORBIDDEN).
+ * - Enforces mandatory expectedUpdatedAt optimistic concurrency check (BR-17).
+ * - Enforces atomic Compare-and-Swap with row-level locking (SELECT ... FOR UPDATE).
+ * - Rejects disallowed transitions with HTTP 400 INVALID_STATUS_TRANSITION.
+ * - Rejects terminal tickets (CLOSED / CANCELLED) with HTTP 400 INVALID_STATUS_TRANSITION.
+ */
+export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+
+    // 1. Role-based access control (FR-11, BR-11, AC-11, API-13c, API-17)
+    if (req.user?.role !== "IT_STAFF" && req.user?.role !== "ADMIN") {
       return res.status(403).json({
+        success: false,
         error: {
           code: "FORBIDDEN",
-          message: "You do not have permission to indicate resolution on this ticket.",
+          message: "Only IT Staff and Administrators are permitted to transition ticket status.",
         },
       });
     }
 
-    // Idempotent update: set isRequesterResolved = true without modifying official status
-    const updated = await prisma.ticket.update({
-      where: { id },
-      data: {
-        isRequesterResolved: true,
-      },
-      select: {
-        id: true,
-        isRequesterResolved: true,
-        currentStatus: true,
-        status: true,
-      },
+    // 2. Validate ticket ID UUID
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        },
+      });
+    }
+
+    const { status: targetStatus, expectedUpdatedAt } = req.body || {};
+
+    // 3. Mandatory expectedUpdatedAt validation (BR-17, api-spec.md)
+    if (
+      !expectedUpdatedAt ||
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+        },
+      });
+    }
+
+    // 4. Validate target status
+    if (!targetStatus || !isValidStatus(targetStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Target status is required and must be a valid ticket status.",
+        },
+      });
+    }
+
+    // 5. Atomic transaction with row lock
+    const txResult = await prisma.$transaction(async (tx) => {
+      // Row-lock ticket to guarantee atomic serialization against concurrent race conditions
+      const tickets = await tx.$queryRaw<Array<{
+        id: string;
+        ticketNo: string;
+        status: string;
+        currentStatus: string;
+        updatedAt: Date;
+      }>>`SELECT id, "ticketNo", status, "currentStatus", "updatedAt" FROM "Ticket" WHERE id = ${id} FOR UPDATE`;
+
+      if (!tickets || tickets.length === 0) {
+        return {
+          statusCode: 404,
+          payload: {
+            success: false,
+            error: {
+              code: "TICKET_NOT_FOUND",
+              message: "Ticket not found.",
+            },
+          },
+        };
+      }
+
+      const ticket = tickets[0];
+      const currentStatus = (ticket.currentStatus || ticket.status) as TicketStatusType;
+
+      // Terminal status check: Cannot transition from CLOSED or CANCELLED (BR-12, AC-13, API-20)
+      if (isTerminalStatus(currentStatus)) {
+        return {
+          statusCode: 400,
+          payload: {
+            success: false,
+            error: {
+              code: "INVALID_STATUS_TRANSITION",
+              message: `Cannot transition status from terminal state ${currentStatus}.`,
+            },
+          },
+        };
+      }
+
+      // Transition matrix validation (FR-08, FR-09, BR-09, AC-08, AC-09, API-13, API-14)
+      if (!isValidTransition(currentStatus, targetStatus)) {
+        return {
+          statusCode: 400,
+          payload: {
+            success: false,
+            error: {
+              code: "INVALID_STATUS_TRANSITION",
+              message: `Transition from ${currentStatus} to ${targetStatus} is not permitted.`,
+            },
+          },
+        };
+      }
+
+      // Optimistic concurrency check under row lock (BR-17, FR-12, AC-12, API-13d, API-18)
+      if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
+        return {
+          statusCode: 409,
+          payload: {
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Ticket was modified concurrently. Please refresh and try again.",
+            },
+          },
+        };
+      }
+
+      // Apply transition
+      const updatedTicket = await tx.ticket.update({
+        where: { id },
+        data: {
+          status: targetStatus as any,
+          currentStatus: targetStatus as any,
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        statusCode: 200,
+        payload: {
+          success: true,
+          data: {
+            id: updatedTicket.id,
+            ticketNumber: updatedTicket.ticketNo,
+            previousStatus: currentStatus,
+            status: updatedTicket.status,
+            updatedAt: updatedTicket.updatedAt,
+          },
+          message: `Ticket status successfully transitioned to ${targetStatus}`,
+        },
+      };
     });
 
-    return res.status(200).json({
-      data: {
-        ticketId: updated.id,
-        isRequesterResolved: updated.isRequesterResolved,
-        message: "Problem resolution indicated successfully.",
-      },
-    });
+    return res.status(txResult.statusCode).json(txResult.payload);
   } catch (error) {
-    console.error("Error setting resolution indicator:", error);
+    console.error("Error in updateTicketStatusHandler:", error);
     return res.status(500).json({
+      success: false,
       error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error",
+        code: "SERVER_ERROR",
+        message: "An unexpected error occurred while updating ticket status.",
       },
     });
   }
