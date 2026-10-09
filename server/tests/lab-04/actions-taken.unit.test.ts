@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateFollowUpNote, isConcurrencyStale } from "../../src/utils/actionValidation.js";
+import { validateFollowUpNote, isConcurrencyStale, isValidIsoDateTime } from "../../src/utils/actionValidation.js";
 
 describe("Actions Taken Unit Tests (Lab 4 — UNIT-01 & UNIT-04)", () => {
   // =========================================================================
@@ -69,6 +69,39 @@ describe("Actions Taken Unit Tests (Lab 4 — UNIT-01 & UNIT-04)", () => {
       expect(isConcurrencyStale(null, dbDate)).toBe(false);
       expect(isConcurrencyStale(undefined, dbDate)).toBe(false);
       expect(isConcurrencyStale("invalid-date", dbDate)).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // Strict ISO 8601 DateTime Validator Unit Tests
+  // =========================================================================
+  describe("Strict ISO 8601 DateTime Validation (isValidIsoDateTime)", () => {
+    it("should accept valid standard ISO 8601 UTC timestamps with Z", () => {
+      expect(isValidIsoDateTime("2026-10-09T17:00:00.000Z")).toBe(true);
+      expect(isValidIsoDateTime("2026-05-13T16:00:00Z")).toBe(true);
+    });
+
+    it("should accept valid ISO 8601 timestamps with timezone offsets", () => {
+      expect(isValidIsoDateTime("2026-10-09T23:59:59+07:00")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-05:00")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00.123+0700")).toBe(true);
+    });
+
+    it("should reject non-ISO date formats", () => {
+      expect(isValidIsoDateTime("2026/10/09 17:00:00")).toBe(false);
+      expect(isValidIsoDateTime("May 13, 2026")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09")).toBe(false); // Date only without time component
+      expect(isValidIsoDateTime("10-09-2026T17:00:00Z")).toBe(false);
+    });
+
+    it("should reject invalid/garbage inputs and non-strings", () => {
+      expect(isValidIsoDateTime("")).toBe(false);
+      expect(isValidIsoDateTime("   ")).toBe(false);
+      expect(isValidIsoDateTime("invalid-timestamp")).toBe(false);
+      expect(isValidIsoDateTime(null)).toBe(false);
+      expect(isValidIsoDateTime(undefined)).toBe(false);
+      expect(isValidIsoDateTime(123456789)).toBe(false);
+      expect(isValidIsoDateTime({})).toBe(false);
     });
   });
 });

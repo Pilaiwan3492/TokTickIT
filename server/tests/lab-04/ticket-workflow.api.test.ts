@@ -589,6 +589,49 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(res.body.error.code).toBe("VALIDATION_ERROR");
     });
 
+    it("should reject PATCH /status when expectedUpdatedAt is an invalid or non-ISO string with HTTP 400 VALIDATION_ERROR", async () => {
+      const ticket = await createTestTicket("OPEN");
+
+      const resInvalid = await request(app)
+        .patch(`/api/v1/tickets/${ticket.id}/status`)
+        .set("Authorization", `Bearer ${tokenStaff1}`)
+        .send({
+          status: "IN_PROGRESS",
+          expectedUpdatedAt: "not-an-iso-string",
+        });
+
+      expect(resInvalid.status).toBe(400);
+      expect(resInvalid.body.success).toBe(false);
+      expect(resInvalid.body.error.code).toBe("VALIDATION_ERROR");
+
+      const resNonIso = await request(app)
+        .patch(`/api/v1/tickets/${ticket.id}/status`)
+        .set("Authorization", `Bearer ${tokenStaff1}`)
+        .send({
+          status: "IN_PROGRESS",
+          expectedUpdatedAt: "2026/10/09 12:00:00",
+        });
+
+      expect(resNonIso.status).toBe(400);
+      expect(resNonIso.body.success).toBe(false);
+      expect(resNonIso.body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("should reject POST /resolve-indicator when expectedUpdatedAt is an invalid or non-ISO string with HTTP 400 VALIDATION_ERROR", async () => {
+      const ticket = await createTestTicket("OPEN", "A");
+
+      const res = await request(app)
+        .post(`/api/v1/tickets/${ticket.id}/resolve-indicator`)
+        .set("Authorization", `Bearer ${tokenRequesterA}`)
+        .send({
+          expectedUpdatedAt: "2026/10/09",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    });
+
     it("should handle atomic race condition between two concurrent PATCH /status requests where exactly one succeeds", async () => {
       const ticket = await createTestTicket("OPEN");
       const baseUpdatedAt = ticket.updatedAt.toISOString();
@@ -614,9 +657,53 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       const statusCodes = [res1.status, res2.status].sort();
       expect(statusCodes).toEqual([200, 409]);
 
+      const winnerRes = res1.status === 200 ? res1 : res2;
+      expect(winnerRes.status).toBe(200);
+      expect(winnerRes.body.success).toBe(true);
+
       const conflictRes = res1.status === 409 ? res1 : res2;
+      expect(conflictRes.status).toBe(409);
       expect(conflictRes.body.success).toBe(false);
       expect(conflictRes.body.error.code).toBe("STALE_UPDATE_CONFLICT");
+      expect(conflictRes.body.error.message).toContain("concurrently");
+    });
+
+    it("should reject the losing request with HTTP 409 STALE_UPDATE_CONFLICT even when both concurrent requests target the exact same status", async () => {
+      const ticket = await createTestTicket("OPEN");
+      const baseUpdatedAt = ticket.updatedAt.toISOString();
+
+      // Fire two concurrent requests both targeting IN_PROGRESS with identical initial expectedUpdatedAt
+      const [res1, res2] = await Promise.all([
+        request(app)
+          .patch(`/api/v1/tickets/${ticket.id}/status`)
+          .set("Authorization", `Bearer ${tokenStaff1}`)
+          .send({
+            status: "IN_PROGRESS",
+            expectedUpdatedAt: baseUpdatedAt,
+          }),
+        request(app)
+          .patch(`/api/v1/tickets/${ticket.id}/status`)
+          .set("Authorization", `Bearer ${tokenStaff2}`)
+          .send({
+            status: "IN_PROGRESS",
+            expectedUpdatedAt: baseUpdatedAt,
+          }),
+      ]);
+
+      const statusCodes = [res1.status, res2.status].sort();
+      // Crucial: The second request must receive 409 STALE_UPDATE_CONFLICT, NOT 400 INVALID_STATUS_TRANSITION
+      expect(statusCodes).toEqual([200, 409]);
+
+      const winnerRes = res1.status === 200 ? res1 : res2;
+      expect(winnerRes.status).toBe(200);
+      expect(winnerRes.body.success).toBe(true);
+      expect(winnerRes.body.data.status).toBe("IN_PROGRESS");
+
+      const loserRes = res1.status === 409 ? res1 : res2;
+      expect(loserRes.status).toBe(409);
+      expect(loserRes.body.success).toBe(false);
+      expect(loserRes.body.error.code).toBe("STALE_UPDATE_CONFLICT");
+      expect(loserRes.body.error.message).toContain("concurrently");
     });
   });
 

@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authGuard.js";
 import { getPrisma } from "../prisma.js";
 import { generateTicketNumber } from "../utils/ticketNoGenerator.js";
-import { isConcurrencyStale } from "../utils/actionValidation.js";
+import { isConcurrencyStale, isValidIsoDateTime } from "../utils/actionValidation.js";
 import {
   isValidStatus,
   isValidTransition,
@@ -612,6 +612,17 @@ export const setResolutionIndicatorHandler = async (
 
     const { expectedUpdatedAt } = req.body || {};
 
+    // 3. Mandatory expectedUpdatedAt ISO DateTime validation (BR-17, api-spec.md Section 3.2)
+    if (!isValidIsoDateTime(expectedUpdatedAt)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedUpdatedAt is required as a valid ISO DateTime string.",
+        },
+      });
+    }
+
     // Atomic transaction with row lock
     const txResult = await prisma.$transaction(async (tx) => {
       const tickets = await tx.$queryRaw<Array<{
@@ -640,7 +651,7 @@ export const setResolutionIndicatorHandler = async (
 
       const ticket = tickets[0];
 
-      // Ownership verification (checked before timestamp to prevent info/status leaks)
+      // Ownership verification (checked before stale check to prevent info/status leaks)
       const requester = await tx.requesterUser.findFirst({
         where: {
           OR: [
@@ -667,47 +678,15 @@ export const setResolutionIndicatorHandler = async (
         };
       }
 
-      // Mandatory expectedUpdatedAt validation for Lab 4 concurrency (BR-17, api-spec.md)
-      // Backward compatibility: If expectedUpdatedAt is absent but isRequesterResolved is explicitly passed (Lab 3 legacy call), allow it.
-      if (expectedUpdatedAt !== undefined) {
-        if (
-          typeof expectedUpdatedAt !== "string" ||
-          isNaN(new Date(expectedUpdatedAt).getTime())
-        ) {
-          return {
-            statusCode: 400,
-            payload: {
-              success: false,
-              error: {
-                code: "VALIDATION_ERROR",
-                message: "expectedUpdatedAt is required as a valid ISO timestamp.",
-              },
-            },
-          };
-        }
-
-        // Optimistic concurrency check under row lock (API-18b, BR-17)
-        if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
-          return {
-            statusCode: 409,
-            payload: {
-              success: false,
-              error: {
-                code: "STALE_UPDATE_CONFLICT",
-                message: "Ticket was modified concurrently. Please refresh and try again.",
-              },
-            },
-          };
-        }
-      } else if (req.body?.isRequesterResolved === undefined) {
-        // If both expectedUpdatedAt and isRequesterResolved are missing (e.g. empty {}), return 400 VALIDATION_ERROR
+      // Optimistic concurrency check under row lock (API-18b, BR-17)
+      if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
         return {
-          statusCode: 400,
+          statusCode: 409,
           payload: {
             success: false,
             error: {
-              code: "VALIDATION_ERROR",
-              message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Ticket was modified concurrently. Please refresh and try again.",
             },
           },
         };
@@ -792,17 +771,13 @@ export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: 
 
     const { status: targetStatus, expectedUpdatedAt } = req.body || {};
 
-    // 3. Mandatory expectedUpdatedAt validation (BR-17, api-spec.md)
-    if (
-      !expectedUpdatedAt ||
-      typeof expectedUpdatedAt !== "string" ||
-      isNaN(new Date(expectedUpdatedAt).getTime())
-    ) {
+    // 3. Mandatory expectedUpdatedAt ISO DateTime validation (BR-17, api-spec.md)
+    if (!isValidIsoDateTime(expectedUpdatedAt)) {
       return res.status(400).json({
         success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: "expectedUpdatedAt is required as a valid ISO timestamp.",
+          message: "expectedUpdatedAt is required as a valid ISO DateTime string.",
         },
       });
     }
@@ -845,6 +820,23 @@ export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: 
       const ticket = tickets[0];
       const currentStatus = (ticket.currentStatus || ticket.status) as TicketStatusType;
 
+      // Optimistic concurrency check under row lock (BR-17, FR-12, AC-12, API-13d, API-18)
+      // Must be evaluated FIRST after row lock before transition checks,
+      // guaranteeing that any concurrent request acting on an outdated version
+      // consistently receives 409 STALE_UPDATE_CONFLICT rather than 400 INVALID_STATUS_TRANSITION.
+      if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
+        return {
+          statusCode: 409,
+          payload: {
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Ticket was modified concurrently. Please refresh and try again.",
+            },
+          },
+        };
+      }
+
       // Terminal status check: Cannot transition from CLOSED or CANCELLED (BR-12, AC-13, API-20)
       if (isTerminalStatus(currentStatus)) {
         return {
@@ -868,20 +860,6 @@ export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: 
             error: {
               code: "INVALID_STATUS_TRANSITION",
               message: `Transition from ${currentStatus} to ${targetStatus} is not permitted.`,
-            },
-          },
-        };
-      }
-
-      // Optimistic concurrency check under row lock (BR-17, FR-12, AC-12, API-13d, API-18)
-      if (isConcurrencyStale(expectedUpdatedAt, ticket.updatedAt)) {
-        return {
-          statusCode: 409,
-          payload: {
-            success: false,
-            error: {
-              code: "STALE_UPDATE_CONFLICT",
-              message: "Ticket was modified concurrently. Please refresh and try again.",
             },
           },
         };

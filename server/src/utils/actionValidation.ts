@@ -51,3 +51,21 @@ export function isConcurrencyStale(
   // Mismatch indicates the server record was updated concurrently
   return clientTime !== dbTime;
 }
+
+/**
+ * Strict ISO 8601 DateTime format regex (YYYY-MM-DDTHH:mm:ss[.sss][Z|+-HH:mm]).
+ */
+export const ISO_DATE_REGEX =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
+
+/**
+ * Validates whether an input is a non-empty string conforming strictly to ISO 8601 DateTime.
+ */
+export function isValidIsoDateTime(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_REGEX.test(value)) {
+    return false;
+  }
+  const date = new Date(value);
+  return !isNaN(date.getTime());
+}
+
