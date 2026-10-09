@@ -94,6 +94,35 @@ describe("Actions Taken Unit Tests (Lab 4 — UNIT-01 & UNIT-04)", () => {
       expect(isValidIsoDateTime("10-09-2026T17:00:00Z")).toBe(false);
     });
 
+    it("should reject calendar-impossible dates (month days overflow, non-leap Feb 29, invalid hours/minutes)", () => {
+      // February 31 does not exist
+      expect(isValidIsoDateTime("2026-02-31T10:00:00.000Z")).toBe(false);
+      // April 31 does not exist (April has 30 days)
+      expect(isValidIsoDateTime("2026-04-31T10:00:00.000Z")).toBe(false);
+      // June 31 does not exist
+      expect(isValidIsoDateTime("2026-06-31T10:00:00.000Z")).toBe(false);
+      // September 31 does not exist
+      expect(isValidIsoDateTime("2026-09-31T10:00:00.000Z")).toBe(false);
+      // November 31 does not exist
+      expect(isValidIsoDateTime("2026-11-31T10:00:00.000Z")).toBe(false);
+      // 2025 is not a leap year (February 29 does not exist)
+      expect(isValidIsoDateTime("2025-02-29T10:00:00.000Z")).toBe(false);
+      // 2024 IS a leap year (February 29 DOES exist)
+      expect(isValidIsoDateTime("2024-02-29T10:00:00.000Z")).toBe(true);
+      // Month 0 or 13 does not exist
+      expect(isValidIsoDateTime("2026-00-15T10:00:00.000Z")).toBe(false);
+      expect(isValidIsoDateTime("2026-13-15T10:00:00.000Z")).toBe(false);
+      // Day 0 or 32 does not exist
+      expect(isValidIsoDateTime("2026-01-00T10:00:00.000Z")).toBe(false);
+      expect(isValidIsoDateTime("2026-01-32T10:00:00.000Z")).toBe(false);
+      // Hour 24+ does not exist
+      expect(isValidIsoDateTime("2026-01-15T24:00:00.000Z")).toBe(false);
+      expect(isValidIsoDateTime("2026-01-15T25:00:00.000Z")).toBe(false);
+      // Minute/second 60+ does not exist
+      expect(isValidIsoDateTime("2026-01-15T10:60:00.000Z")).toBe(false);
+      expect(isValidIsoDateTime("2026-01-15T10:00:60.000Z")).toBe(false);
+    });
+
     it("should reject invalid/garbage inputs and non-strings", () => {
       expect(isValidIsoDateTime("")).toBe(false);
       expect(isValidIsoDateTime("   ")).toBe(false);

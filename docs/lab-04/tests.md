@@ -96,7 +96,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **API-18** | API | AC-12, BR-17 | Status transition with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-18b** | API | BR-17 | Advisory resolution indicator with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-19** | API | AC-13, BR-09, BR-12 | IT Staff transitions ticket from `RESOLVED` to `CLOSED` | HTTP 200 OK; status updated to terminal `CLOSED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
-| **API-20** | API | AC-13, BR-09, BR-12 | Transition attempt from terminal status `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
+| **API-20** | API | AC-13, BR-09, BR-12 | Transition attempt from terminal status `CLOSED` or `CANCELLED` | HTTP 400 Bad Request with code `TICKET_LOCKED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-21** | API | AC-14, BR-09 | IT Staff transitions ticket from `RESOLVED` to `REOPENED` | HTTP 200 OK; status updated to `REOPENED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 | **API-22** | API | AC-14, BR-09 | Transition from `REOPENED` back into workflow (`IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`) | HTTP 200 OK; each permitted transition successfully persists | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Planned` |
 

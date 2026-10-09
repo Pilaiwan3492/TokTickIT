@@ -477,7 +477,7 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(res.body.data.status).toBe("CLOSED");
     });
 
-    it("API-20: should reject any transition attempt out of terminal CLOSED status with HTTP 400", async () => {
+    it("API-20: should reject any transition attempt out of terminal CLOSED status with HTTP 400 TICKET_LOCKED", async () => {
       const ticket = await createTestTicket("CLOSED");
 
       const targets: TicketStatusType[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "REOPENED"];
@@ -492,11 +492,11 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
 
         expect(res.status).toBe(400);
         expect(res.body.success).toBe(false);
-        expect(res.body.error.code).toBe("INVALID_STATUS_TRANSITION");
+        expect(res.body.error.code).toBe("TICKET_LOCKED");
       }
     });
 
-    it("API-20 (Cancelled): should reject any transition attempt out of terminal CANCELLED status with HTTP 400", async () => {
+    it("API-20 (Cancelled): should reject any transition attempt out of terminal CANCELLED status with HTTP 400 TICKET_LOCKED", async () => {
       const ticket = await createTestTicket("CANCELLED");
 
       const res = await request(app)
@@ -509,7 +509,7 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe("INVALID_STATUS_TRANSITION");
+      expect(res.body.error.code).toBe("TICKET_LOCKED");
     });
   });
 
@@ -630,6 +630,35 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("should reject PATCH /status and POST /resolve-indicator when timestamp has invalid calendar date (e.g. Feb 31, Apr 31) with HTTP 400 VALIDATION_ERROR", async () => {
+      const ticket = await createTestTicket("OPEN", "A");
+
+      // February 31 is calendar-impossible
+      const patchRes = await request(app)
+        .patch(`/api/v1/tickets/${ticket.id}/status`)
+        .set("Authorization", `Bearer ${tokenStaff1}`)
+        .send({
+          status: "IN_PROGRESS",
+          expectedUpdatedAt: "2026-02-31T12:00:00.000Z",
+        });
+
+      expect(patchRes.status).toBe(400);
+      expect(patchRes.body.success).toBe(false);
+      expect(patchRes.body.error.code).toBe("VALIDATION_ERROR");
+
+      // April 31 is calendar-impossible
+      const postRes = await request(app)
+        .post(`/api/v1/tickets/${ticket.id}/resolve-indicator`)
+        .set("Authorization", `Bearer ${tokenRequesterA}`)
+        .send({
+          expectedUpdatedAt: "2026-04-31T12:00:00.000Z",
+        });
+
+      expect(postRes.status).toBe(400);
+      expect(postRes.body.success).toBe(false);
+      expect(postRes.body.error.code).toBe("VALIDATION_ERROR");
     });
 
     it("should handle atomic race condition between two concurrent PATCH /status requests where exactly one succeeds", async () => {

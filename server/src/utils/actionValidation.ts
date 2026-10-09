@@ -56,16 +56,77 @@ export function isConcurrencyStale(
  * Strict ISO 8601 DateTime format regex (YYYY-MM-DDTHH:mm:ss[.sss][Z|+-HH:mm]).
  */
 export const ISO_DATE_REGEX =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-]\d{2}):?(\d{2}))$/;
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function getDaysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+  if ([4, 6, 9, 11].includes(month)) {
+    return 30;
+  }
+  if ([1, 3, 5, 7, 8, 10, 12].includes(month)) {
+    return 31;
+  }
+  return 0;
+}
 
 /**
- * Validates whether an input is a non-empty string conforming strictly to ISO 8601 DateTime.
+ * Validates whether an input is a non-empty string conforming strictly to ISO 8601 DateTime,
+ * verifying both syntax and authentic calendar day/month/leap-year correctness.
  */
 export function isValidIsoDateTime(value: unknown): value is string {
-  if (typeof value !== "string" || !ISO_DATE_REGEX.test(value)) {
+  if (typeof value !== "string") {
     return false;
   }
+
+  const match = ISO_DATE_REGEX.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const hour = parseInt(match[4], 10);
+  const minute = parseInt(match[5], 10);
+  const second = parseInt(match[6], 10);
+
+  if (month < 1 || month > 12) {
+    return false;
+  }
+
+  const maxDays = getDaysInMonth(year, month);
+  if (day < 1 || day > maxDays) {
+    return false;
+  }
+
+  if (hour < 0 || hour > 23) {
+    return false;
+  }
+
+  if (minute < 0 || minute > 59) {
+    return false;
+  }
+
+  if (second < 0 || second > 59) {
+    return false;
+  }
+
+  if (match[7] && match[8]) {
+    const tzHour = Math.abs(parseInt(match[7], 10));
+    const tzMinute = parseInt(match[8], 10);
+    if (tzHour > 23 || tzMinute > 59) {
+      return false;
+    }
+  }
+
   const date = new Date(value);
   return !isNaN(date.getTime());
 }
+
 

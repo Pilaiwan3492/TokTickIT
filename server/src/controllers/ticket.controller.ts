@@ -837,14 +837,14 @@ export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: 
         };
       }
 
-      // Terminal status check: Cannot transition from CLOSED or CANCELLED (BR-12, AC-13, API-20)
+      // Terminal status check: Cannot transition from CLOSED or CANCELLED (BR-12, AC-13, API-20, api-spec.md)
       if (isTerminalStatus(currentStatus)) {
         return {
           statusCode: 400,
           payload: {
             success: false,
             error: {
-              code: "INVALID_STATUS_TRANSITION",
+              code: "TICKET_LOCKED",
               message: `Cannot transition status from terminal state ${currentStatus}.`,
             },
           },
