@@ -739,7 +739,7 @@ export const setResolutionIndicatorHandler = async (
  * - Enforces mandatory expectedUpdatedAt optimistic concurrency check (BR-17).
  * - Enforces atomic Compare-and-Swap with row-level locking (SELECT ... FOR UPDATE).
  * - Rejects disallowed transitions with HTTP 400 INVALID_STATUS_TRANSITION.
- * - Rejects terminal tickets (CLOSED / CANCELLED) with HTTP 400 INVALID_STATUS_TRANSITION.
+ * - Rejects terminal tickets (CLOSED / CANCELLED) with HTTP 400 TICKET_LOCKED.
  */
 export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {

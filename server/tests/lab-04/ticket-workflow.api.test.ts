@@ -285,7 +285,7 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(res.body.error.code).toBe("STALE_UPDATE_CONFLICT");
     });
 
-    it("API-13e: Resolution Gate Rejection (Ineligible Status) — Transition to RESOLVED from NEW is rejected with 400", async () => {
+    it("API-13e: Resolution Gate Rejection (Ineligible Status) — Transition to RESOLVED from NEW is rejected with 400 INVALID_STATUS_TRANSITION", async () => {
       const ticket = await createTestTicket("NEW");
 
       const res = await request(app)
@@ -299,6 +299,24 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe("INVALID_STATUS_TRANSITION");
+    });
+
+    it("API-13e: Resolution Gate Rejection (Terminal Statuses) — Transition to RESOLVED from CLOSED or CANCELLED is rejected with 400 TICKET_LOCKED", async () => {
+      for (const terminalStatus of ["CLOSED", "CANCELLED"] as const) {
+        const ticket = await createTestTicket(terminalStatus);
+
+        const res = await request(app)
+          .patch(`/api/v1/tickets/${ticket.id}/status`)
+          .set("Authorization", `Bearer ${tokenStaff1}`)
+          .send({
+            status: "RESOLVED",
+            expectedUpdatedAt: ticket.updatedAt.toISOString(),
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe("TICKET_LOCKED");
+      }
     });
   });
 
