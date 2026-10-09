@@ -316,7 +316,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 
 ### 10.4 Hardening, Accessibility & Regression Acceptance Criteria
 - **AC-21**: Given an existing user account from earlier labs, when performing authentication and ticket operations, then all Lab 1–3 functionality (attachments, comments, notes, admin user management) continues to operate with zero regressions.
-- **AC-22**: Given an unauthenticated user attempting to access dashboard or Actions Taken endpoints, then the server rejects the request with HTTP 401 `UNAUTHORIZED`.
+- **AC-22**: Given an unauthenticated user attempting to access dashboard or Actions Taken endpoints, then the server rejects the request with HTTP 401 `SESSION_INVALID`.
 - **AC-23**: Given any dashboard or ticket screen rendered on Mobile ($375\text{px}$) and Tablet ($768\text{px}$), then no horizontal scrollbar is present and all primary touch targets measure at least $44 \times 44\text{px}$.
 - **AC-24**: Given an Action Taken form submission that fails due to network or validation errors, then the entered values are preserved in the form fields.
 - **AC-25**: Given a user rapidly double-clicking a submit button, then duplicate submissions are prevented and exactly one request is processed.

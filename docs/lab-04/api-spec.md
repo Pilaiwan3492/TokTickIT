@@ -94,7 +94,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 #### Error Responses
-- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `401 Unauthorized` (`SESSION_INVALID`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): Authenticated Requester does not own this ticket.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Specified ticket does not exist.
 
@@ -162,7 +162,7 @@ Record a new operational action under a ticket.
 - `400 Bad Request` (`FOLLOWUP_NOTE_REQUIRED`): `followUpRequired` is `true`, but `followUpNote` is empty or missing.
 - `400 Bad Request` (`INACTIVE_ACTOR_REJECTED`): The authenticated user performing the operation is marked `isActive: false`.
 - `400 Bad Request` (`TICKET_LOCKED`): Ticket status is `CLOSED` or `CANCELLED`.
-- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `401 Unauthorized` (`SESSION_INVALID`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): User role is `REQUESTER`.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket was modified by another user concurrently.
@@ -228,7 +228,7 @@ Modify details of an existing Action Taken record.
 - `400 Bad Request` (`FOLLOWUP_NOTE_REQUIRED`): Updated `followUpRequired` to `true` without providing a note.
 - `400 Bad Request` (`INACTIVE_ACTOR_REJECTED`): The authenticated user performing the update is marked `isActive: false`.
 - `400 Bad Request` (`TICKET_LOCKED`): Ticket status is `CLOSED` or `CANCELLED`.
-- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `401 Unauthorized` (`SESSION_INVALID`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): User role is `REQUESTER` (Requesters cannot update Actions Taken).
 - `404 Not Found` (`TICKET_NOT_FOUND`): Specified ticket does not exist.
 - `404 Not Found` (`ACTION_NOT_FOUND`): Specified Action Taken ID does not exist under this ticket.
@@ -286,7 +286,7 @@ Transition a ticket to an allowed next state according to the Status Transition 
 #### Error Responses
 - `400 Bad Request` (`INVALID_STATUS_TRANSITION`): Attempting an illegal jump (e.g. `NEW` $\rightarrow$ `RESOLVED`).
 - `400 Bad Request` (`TICKET_LOCKED`): Attempting to modify a `CLOSED` or `CANCELLED` ticket.
-- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `401 Unauthorized` (`SESSION_INVALID`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): Non-staff user attempting status transition.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket `updatedAt` is newer than `expectedUpdatedAt`.
@@ -329,7 +329,7 @@ Allows the owning Requester to signal that the issue appears resolved.
 
 #### Error Responses
 - `400 Bad Request` (`VALIDATION_ERROR`): Missing `expectedUpdatedAt`.
-- `401 Unauthorized` (`UNAUTHORIZED`): Missing or invalid Bearer token.
+- `401 Unauthorized` (`SESSION_INVALID`): Missing or invalid Bearer token.
 - `403 Forbidden` (`FORBIDDEN`): Authenticated user does not own this ticket.
 - `404 Not Found` (`TICKET_NOT_FOUND`): Ticket does not exist.
 - `409 Conflict` (`STALE_UPDATE_CONFLICT`): Ticket `updatedAt` is newer than `expectedUpdatedAt`.
@@ -483,7 +483,8 @@ Retrieve operational queue metrics, status breakdowns, and recent queue activity
 
 | Error Code | HTTP Status | Context / Trigger Condition |
 | :--- | :---: | :--- |
-| `UNAUTHORIZED` | 401 | Missing, malformed, or expired Bearer token |
+| `SESSION_INVALID` | 401 | Missing, malformed, or invalid Bearer token |
+| `SESSION_EXPIRED` | 401 | Bearer token has expired |
 | `SESSION_REVOKED` | 401 | Bearer token has been invalidated via logout |
 | `FORBIDDEN` | 403 | User role is not permitted to perform operation |
 | `PASSWORD_CHANGE_REQUIRED` | 403 | User must complete first-login password change before proceeding |
