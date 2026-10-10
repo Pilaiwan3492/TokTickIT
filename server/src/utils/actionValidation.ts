@@ -77,7 +77,8 @@ function getDaysInMonth(year: number, month: number): number {
 
 /**
  * Validates whether an input is a non-empty string conforming strictly to ISO 8601 DateTime,
- * verifying both syntax and authentic calendar day/month/leap-year correctness.
+ * verifying syntax, authentic calendar day/month/leap-year correctness, time bounds,
+ * and strict timezone offset bounds (hours 00-23, minutes 00-59 for both + and - offsets).
  */
 export function isValidIsoDateTime(value: unknown): value is string {
   if (typeof value !== "string") {
@@ -117,10 +118,11 @@ export function isValidIsoDateTime(value: unknown): value is string {
     return false;
   }
 
-  if (match[7] && match[8]) {
+  // Validate timezone offset components when [+-]HH:?MM is used instead of Z
+  if (match[7] !== undefined && match[8] !== undefined) {
     const tzHour = Math.abs(parseInt(match[7], 10));
     const tzMinute = parseInt(match[8], 10);
-    if (tzHour > 23 || tzMinute > 59) {
+    if (tzHour < 0 || tzHour > 23 || tzMinute < 0 || tzMinute > 59) {
       return false;
     }
   }

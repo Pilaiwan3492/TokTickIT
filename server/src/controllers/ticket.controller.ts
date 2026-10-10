@@ -7,6 +7,7 @@ import {
   isValidStatus,
   isValidTransition,
   isTerminalStatus,
+  isResolutionGateEligible,
   type TicketStatusType,
 } from "../services/ticket-workflow.service.js";
 
@@ -846,6 +847,20 @@ export const updateTicketStatusHandler = async (req: AuthenticatedRequest, res: 
             error: {
               code: "TICKET_LOCKED",
               message: `Cannot transition status from terminal state ${currentStatus}.`,
+            },
+          },
+        };
+      }
+
+      // Resolution Gate rule (BR-11, API-13b, API-13e): target RESOLVED requires eligible current status (OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, or REOPENED)
+      if (targetStatus === "RESOLVED" && !isResolutionGateEligible(currentStatus)) {
+        return {
+          statusCode: 400,
+          payload: {
+            success: false,
+            error: {
+              code: "INVALID_STATUS_TRANSITION",
+              message: `Ticket in status ${currentStatus} is not eligible to pass the Resolution Gate to RESOLVED.`,
             },
           },
         };

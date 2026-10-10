@@ -81,10 +81,37 @@ describe("Actions Taken Unit Tests (Lab 4 — UNIT-01 & UNIT-04)", () => {
       expect(isValidIsoDateTime("2026-05-13T16:00:00Z")).toBe(true);
     });
 
-    it("should accept valid ISO 8601 timestamps with timezone offsets", () => {
+    it("should accept valid ISO 8601 timestamps with positive and negative timezone offsets", () => {
       expect(isValidIsoDateTime("2026-10-09T23:59:59+07:00")).toBe(true);
       expect(isValidIsoDateTime("2026-10-09T12:00:00-05:00")).toBe(true);
       expect(isValidIsoDateTime("2026-10-09T12:00:00.123+0700")).toBe(true);
+      // Explicit reviewer boundary cases (valid offsets)
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+12:59")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+05:30")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-03:45")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+00:00")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-00:00")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+23:59")).toBe(true);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-23:59")).toBe(true);
+    });
+
+    it("should reject invalid ISO 8601 timezone offsets (minute >= 60 or hour > 23 for both + and -)", () => {
+      // Explicit reviewer boundary cases (invalid minute offsets >= 60)
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+12:60")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+00:60")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-00:60")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-12:60")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+07:99")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-03:60")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00.000+1260")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00.000-0060")).toBe(false);
+      // Invalid timezone offset hours (> 23 for both positive and negative)
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+24:00")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-24:00")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+25:30")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-25:30")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00+99:00")).toBe(false);
+      expect(isValidIsoDateTime("2026-10-09T12:00:00-99:00")).toBe(false);
     });
 
     it("should reject non-ISO date formats", () => {

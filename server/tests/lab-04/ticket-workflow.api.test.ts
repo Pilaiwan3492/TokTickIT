@@ -234,8 +234,13 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
   // API-13b, API-13c, API-13d, API-13e: Resolution Gate Backend Enforcement
   // =========================================================================
   describe("Resolution Gate Enforcement (API-13b..API-13e)", () => {
-    it("API-13b: Valid Resolution Gate Transition from OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER to RESOLVED", async () => {
-      const eligibleStatuses: TicketStatusType[] = ["OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"];
+    it("API-13b: Valid Resolution Gate Transition from OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, REOPENED to RESOLVED", async () => {
+      const eligibleStatuses: TicketStatusType[] = [
+        "OPEN",
+        "IN_PROGRESS",
+        "WAITING_FOR_REQUESTER",
+        "REOPENED",
+      ];
 
       for (const status of eligibleStatuses) {
         const ticket = await createTestTicket(status);
@@ -677,6 +682,41 @@ describe("Ticket Workflow & Status Lifecycle API Tests (Lab 4 — Issue 34: API-
       expect(postRes.status).toBe(400);
       expect(postRes.body.success).toBe(false);
       expect(postRes.body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("should reject PATCH /status and POST /resolve-indicator when timestamp has invalid ISO timezone offset (e.g. +12:60, +00:60, -00:60, +24:00) with HTTP 400 VALIDATION_ERROR", async () => {
+      const ticket = await createTestTicket("OPEN", "A");
+
+      for (const badOffsetTs of [
+        "2026-10-09T12:00:00+12:60",
+        "2026-10-09T12:00:00+00:60",
+        "2026-10-09T12:00:00-00:60",
+        "2026-10-09T12:00:00+24:00",
+        "2026-10-09T12:00:00-24:00",
+      ]) {
+        const patchRes = await request(app)
+          .patch(`/api/v1/tickets/${ticket.id}/status`)
+          .set("Authorization", `Bearer ${tokenStaff1}`)
+          .send({
+            status: "IN_PROGRESS",
+            expectedUpdatedAt: badOffsetTs,
+          });
+
+        expect(patchRes.status).toBe(400);
+        expect(patchRes.body.success).toBe(false);
+        expect(patchRes.body.error.code).toBe("VALIDATION_ERROR");
+
+        const postRes = await request(app)
+          .post(`/api/v1/tickets/${ticket.id}/resolve-indicator`)
+          .set("Authorization", `Bearer ${tokenRequesterA}`)
+          .send({
+            expectedUpdatedAt: badOffsetTs,
+          });
+
+        expect(postRes.status).toBe(400);
+        expect(postRes.body.success).toBe(false);
+        expect(postRes.body.error.code).toBe("VALIDATION_ERROR");
+      }
     });
 
     it("should handle atomic race condition between two concurrent PATCH /status requests where exactly one succeeds", async () => {

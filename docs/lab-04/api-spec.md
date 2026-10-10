@@ -268,6 +268,9 @@ Transition a ticket to an allowed next state according to the Status Transition 
 - `CLOSED` $\rightarrow$ No transitions allowed (terminal)
 - `CANCELLED` $\rightarrow$ No transitions allowed (terminal)
 
+#### Resolution Gate Eligibility (BR-11):
+- Only tickets currently in `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, or `REOPENED` are eligible to transition to `RESOLVED` (by an authenticated `IT_STAFF` or `ADMIN` with matching `expectedUpdatedAt`).
+
 #### Success Response (`200 OK`)
 ```json
 {
