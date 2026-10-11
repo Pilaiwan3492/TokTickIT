@@ -5,6 +5,7 @@ import {
   getTicketsHandler,
   getTicketDetailHandler,
   setResolutionIndicatorHandler,
+  updateTicketStatusHandler,
 } from "../controllers/ticket.controller.js";
 import { uploadMiddleware, uploadAttachmentHandler } from "../controllers/attachment.controller.js";
 import { getCommentsHandler, createCommentHandler } from "../controllers/comment.controller.js";
@@ -31,8 +32,13 @@ router.get("/", requireRole(["REQUESTER"]), getTicketsHandler);
 // POST /api/v1/tickets/:id/attachments (Upload Attachment)
 router.post("/:id/attachments", requireRole(["REQUESTER"]), uploadMiddleware, uploadAttachmentHandler);
 
-// POST /api/v1/tickets/:id/resolve-indicator (Problem Appears Resolved)
-router.post("/:id/resolve-indicator", requireRole(["REQUESTER"]), setResolutionIndicatorHandler);
+// POST /api/v1/tickets/:id/resolve-indicator (Problem Appears Resolved - Requester only, enforced with FORBIDDEN)
+router.post("/:id/resolve-indicator", setResolutionIndicatorHandler);
+
+// --- Operational endpoints (IT_STAFF, ADMIN only) ---
+
+// PATCH /api/v1/tickets/:id/status (Ticket Status Transition - IT Staff & Admin only, enforced with FORBIDDEN)
+router.patch("/:id/status", updateTicketStatusHandler);
 
 // --- Shared endpoints (Requester, IT_STAFF, ADMIN) ---
 
@@ -45,8 +51,6 @@ router.get("/:id/comments", requireRole(["REQUESTER", "IT_STAFF", "ADMIN"]), get
 // POST /api/v1/tickets/:id/comments (Create Public Comment)
 router.post("/:id/comments", requireRole(["REQUESTER", "IT_STAFF", "ADMIN"]), createCommentHandler);
 
-// --- Operational endpoints (IT_STAFF, ADMIN only) ---
-
 // GET /api/v1/tickets/:id/notes (Retrieve Internal Notes)
 router.get("/:id/notes", requireRole(["IT_STAFF", "ADMIN"]), getNotesHandler);
 
@@ -54,4 +58,3 @@ router.get("/:id/notes", requireRole(["IT_STAFF", "ADMIN"]), getNotesHandler);
 router.post("/:id/notes", requireRole(["IT_STAFF", "ADMIN"]), createNoteHandler);
 
 export default router;
-

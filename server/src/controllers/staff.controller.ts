@@ -3,14 +3,14 @@ import { AuthenticatedRequest } from "../middleware/authGuard.js";
 import { getPrisma } from "../prisma.js";
 import { Priority, TicketStatus } from "@prisma/client";
 
-// BR-16: Status Transition Matrix
+// BR-16 / Lab 4 BR-09 & BR-11: Canonical Status Transition Matrix
 export const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   NEW: [TicketStatus.OPEN, TicketStatus.CANCELLED],
-  OPEN: [TicketStatus.IN_PROGRESS, TicketStatus.WAITING_FOR_REQUESTER, TicketStatus.CANCELLED],
+  OPEN: [TicketStatus.IN_PROGRESS, TicketStatus.WAITING_FOR_REQUESTER, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
   IN_PROGRESS: [TicketStatus.WAITING_FOR_REQUESTER, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
   WAITING_FOR_REQUESTER: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
   RESOLVED: [TicketStatus.CLOSED, TicketStatus.REOPENED],
-  REOPENED: [TicketStatus.IN_PROGRESS, TicketStatus.CANCELLED],
+  REOPENED: [TicketStatus.IN_PROGRESS, TicketStatus.WAITING_FOR_REQUESTER, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
   CLOSED: [], // Terminal
   CANCELLED: [], // Terminal
 };

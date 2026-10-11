@@ -113,10 +113,10 @@ To address this:
 - **BR-10**: The Requester's "Problem Appears Resolved" indication (`isResolvedByUser = true`) is strictly advisory. It does not alter the formal `status` of the ticket to `RESOLVED`.
 - **BR-11 (Resolution Gate Rule)**: A ticket cannot transition to `RESOLVED` unless the backend resolution gate conditions are strictly satisfied:
   1. **Authorized Role**: The authenticated actor must have role `IT_STAFF` or `ADMIN`. Requesters are strictly forbidden.
-  2. **Permitted Current Status**: The ticket must currently be in an eligible status (`OPEN`, `IN_PROGRESS`, or `WAITING_FOR_REQUESTER`).
+  2. **Permitted Current Status**: The ticket must currently be in an eligible status (`OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, or `REOPENED`).
   3. **Decoupled Advisory Indicator**: A Requester's `isResolvedByUser` indication is an advisory cue that does NOT satisfy or bypass this gate on its own.
   4. **Concurrency Guard**: Incoming `expectedUpdatedAt` must match the current database record without stale conflict.
-  If any condition fails, the backend rejects the transition with HTTP 400 (`INVALID_STATUS_TRANSITION`), HTTP 403 (`FORBIDDEN`), or HTTP 409 (`STALE_UPDATE_CONFLICT`).
+  If any condition fails, the backend rejects the transition with HTTP 400 (`INVALID_STATUS_TRANSITION` or `TICKET_LOCKED`), HTTP 403 (`FORBIDDEN`), or HTTP 409 (`STALE_UPDATE_CONFLICT`).
 - **BR-12**: Once a ticket reaches `CLOSED` or `CANCELLED`, it is terminal and immutable; no further status transitions or Actions Taken entries are permitted.
 
 ### 5.3 Role Dashboard Calculation Rules
@@ -316,7 +316,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 
 ### 10.4 Hardening, Accessibility & Regression Acceptance Criteria
 - **AC-21**: Given an existing user account from earlier labs, when performing authentication and ticket operations, then all Lab 1–3 functionality (attachments, comments, notes, admin user management) continues to operate with zero regressions.
-- **AC-22**: Given an unauthenticated user attempting to access dashboard or Actions Taken endpoints, then the server rejects the request with HTTP 401 `UNAUTHORIZED`.
+- **AC-22**: Given an unauthenticated user attempting to access dashboard or Actions Taken endpoints, then the server rejects the request with HTTP 401 `SESSION_INVALID`.
 - **AC-23**: Given any dashboard or ticket screen rendered on Mobile ($375\text{px}$) and Tablet ($768\text{px}$), then no horizontal scrollbar is present and all primary touch targets measure at least $44 \times 44\text{px}$.
 - **AC-24**: Given an Action Taken form submission that fails due to network or validation errors, then the entered values are preserved in the form fields.
 - **AC-25**: Given a user rapidly double-clicking a submit button, then duplicate submissions are prevented and exactly one request is processed.

@@ -341,7 +341,7 @@ describe("Lab 3 Comments, Notes & Resolution API Tests (Issue 25)", () => {
     // Verify initial status
     const initialTicket = await prisma.ticket.findUnique({
       where: { id: ticketAId },
-      select: { currentStatus: true, status: true, isRequesterResolved: true },
+      select: { currentStatus: true, status: true, isRequesterResolved: true, updatedAt: true },
     });
     expect(initialTicket?.currentStatus).toBe("OPEN");
     expect(initialTicket?.isRequesterResolved).toBe(false);
@@ -350,7 +350,10 @@ describe("Lab 3 Comments, Notes & Resolution API Tests (Issue 25)", () => {
     const res = await request(app)
       .post(`/api/v1/tickets/${ticketAId}/resolve-indicator`)
       .set("Authorization", `Bearer ${tokenRequesterA}`)
-      .send({ isRequesterResolved: true });
+      .send({
+        isRequesterResolved: true,
+        expectedUpdatedAt: initialTicket?.updatedAt.toISOString(),
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.data.ticketId).toBe(ticketAId);
@@ -367,10 +370,17 @@ describe("Lab 3 Comments, Notes & Resolution API Tests (Issue 25)", () => {
 
   // --- Idempotency: Repeated resolution indicator calls ---
   it("should handle repeated POST /resolve-indicator idempotently without throwing or modifying status", async () => {
+    const currentTicketA = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketAId },
+    });
+
     const resSecond = await request(app)
       .post(`/api/v1/tickets/${ticketAId}/resolve-indicator`)
       .set("Authorization", `Bearer ${tokenRequesterA}`)
-      .send({ isRequesterResolved: true });
+      .send({
+        isRequesterResolved: true,
+        expectedUpdatedAt: currentTicketA.updatedAt.toISOString(),
+      });
 
     expect(resSecond.status).toBe(200);
     expect(resSecond.body.data.isRequesterResolved).toBe(true);
@@ -431,17 +441,24 @@ describe("Lab 3 Comments, Notes & Resolution API Tests (Issue 25)", () => {
     });
 
     it("should reject Requester A trying to mark Ticket B as resolved with HTTP 403", async () => {
+      const ticketB = await prisma.ticket.findUniqueOrThrow({
+        where: { id: ticketBId },
+      });
+
       const res = await request(app)
         .post(`/api/v1/tickets/${ticketBId}/resolve-indicator`)
         .set("Authorization", `Bearer ${tokenRequesterA}`)
-        .send({ isRequesterResolved: true });
+        .send({
+          isRequesterResolved: true,
+          expectedUpdatedAt: ticketB.updatedAt.toISOString(),
+        });
 
       expect(res.status).toBe(403);
 
-      const ticketB = await prisma.ticket.findUnique({
+      const dbTicketB = await prisma.ticket.findUnique({
         where: { id: ticketBId },
       });
-      expect(ticketB?.isRequesterResolved).toBe(false);
+      expect(dbTicketB?.isRequesterResolved).toBe(false);
     });
   });
 
