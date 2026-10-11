@@ -51,6 +51,18 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingAction, setEditingAction] = useState<ActionTaken | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const nextActions = actions || [];
@@ -312,9 +324,187 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
             ? "No actions recorded yet. Click 'Add Action Taken' to log work done on this ticket."
             : "No actions have been logged for this ticket yet."}
         </div>
+      ) : isMobileViewport ? (
+        /* Mobile Card-Based Layout (375px - 480px / < 768px per ui-spec.md Section 5) */
+        <div
+          data-testid="actions-taken-mobile-cards"
+          className="d-flex flex-column gap-3"
+          style={{ maxWidth: "100%", overflowX: "hidden" }}
+        >
+          {sortedActions.map((action) => {
+            const performerName = action.performedBy?.name || "IT Staff";
+            const performerRole =
+              action.performedBy?.role === "ADMIN" ? "Admin" : "IT Staff";
+
+            return (
+              <div
+                key={action.id}
+                data-testid={`action-taken-card-${action.id}`}
+                className="card p-3 rounded-3"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  border: "1px solid #D5DDD8",
+                  maxWidth: "100%",
+                  overflowX: "hidden",
+                }}
+              >
+                {/* Card Header: Action Date/Time & Performer Badge */}
+                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2 pb-2 border-bottom" style={{ borderColor: "#D5DDD8" }}>
+                  <div>
+                    <div className="text-uppercase fw-semibold" style={{ color: "#5F6863", fontSize: 11 }}>
+                      Date / Time
+                    </div>
+                    <div className="small fw-semibold" style={{ color: "#24272A" }}>
+                      {formatActionDate(action.actionDate)}
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column align-items-end gap-1">
+                    <span className="small fw-semibold" style={{ color: "#24272A" }}>
+                      {performerName}
+                    </span>
+                    <span
+                      className="badge rounded-pill"
+                      style={{
+                        backgroundColor: "#EAF6EF",
+                        color: "#006B3C",
+                        border: "1px solid #A3D9B8",
+                        fontSize: "11px",
+                      }}
+                    >
+                      {performerRole}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Description */}
+                <div className="mb-2">
+                  <div className="text-uppercase fw-semibold mb-1" style={{ color: "#5F6863", fontSize: 11 }}>
+                    Action Description
+                  </div>
+                  <div
+                    className="small text-break"
+                    style={{
+                      color: "#24272A",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {action.actionDescription}
+                  </div>
+                </div>
+
+                {/* Result */}
+                <div className="mb-2">
+                  <div className="text-uppercase fw-semibold mb-1" style={{ color: "#5F6863", fontSize: 11 }}>
+                    Result
+                  </div>
+                  <div
+                    className="small text-break"
+                    style={{
+                      color: "#24272A",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {action.result}
+                  </div>
+                </div>
+
+                {/* Follow-Up Flag & Note */}
+                <div className="mb-2">
+                  <div className="text-uppercase fw-semibold mb-1" style={{ color: "#5F6863", fontSize: 11 }}>
+                    Follow-Up
+                  </div>
+                  {action.followUpRequired ? (
+                    <div className="d-flex flex-column align-items-start gap-1">
+                      <span
+                        data-testid={`followup-badge-${action.id}`}
+                        className="badge rounded-pill fw-semibold"
+                        style={{
+                          backgroundColor: "#FEF3C7",
+                          color: "#D97706",
+                          border: "1px solid #FDE68A",
+                          fontSize: "11px",
+                        }}
+                      >
+                        Follow-up Required
+                      </span>
+                      {action.followUpNote && (
+                        <span
+                          className="small text-break"
+                          style={{
+                            color: "#B45309",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
+                          }}
+                        >
+                          {action.followUpNote}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="small text-break" style={{ color: "#5F6863", wordBreak: "break-word" }}>
+                      {action.followUpNote ? action.followUpNote : "None"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Attachment Notes */}
+                <div className="mb-2">
+                  <div className="text-uppercase fw-semibold mb-1" style={{ color: "#5F6863", fontSize: 11 }}>
+                    Attachment Notes
+                  </div>
+                  <div
+                    className="small text-break"
+                    style={{
+                      color: "#5F6863",
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {action.attachmentNotes || "-"}
+                  </div>
+                </div>
+
+                {/* Mobile Card Edit Button (Staff/Admin only — >= 44px touch target, full width, zero overflow) */}
+                {isStaffOrAdmin && (
+                  <div className="pt-2 mt-1 border-top" style={{ borderColor: "#D5DDD8" }}>
+                    <span title={disabledReasonTooltip} className="d-block w-100">
+                      <button
+                        type="button"
+                        data-testid={`edit-action-btn-${action.id}`}
+                        aria-label={`Edit action ${action.actionDescription}`}
+                        className="btn btn-sm btn-outline-secondary fw-semibold w-100"
+                        disabled={isActionModificationDisabled}
+                        aria-disabled={isActionModificationDisabled}
+                        title={disabledReasonTooltip}
+                        onClick={() => handleOpenEditModal(action)}
+                        style={{
+                          minHeight: 44,
+                          maxWidth: "100%",
+                          borderColor: "#D5DDD8",
+                          color: isActionModificationDisabled ? "#94A3B8" : "#006B3C",
+                          outlineOffset: "2px",
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        /* Chronological Actions Taken Table / Responsive List */
-        <div className="table-responsive">
+        /* Desktop & Tablet Responsive Table (>= 768px per ui-spec.md Section 5) */
+        <div
+          data-testid="actions-taken-desktop-table"
+          className="table-responsive"
+        >
           <table
             className="table align-middle mb-0"
             style={{ borderColor: "#D5DDD8" }}
@@ -503,7 +693,7 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
                             title={disabledReasonTooltip}
                             onClick={() => handleOpenEditModal(action)}
                             style={{
-                              minHeight: 38,
+                              minHeight: 44,
                               borderColor: "#D5DDD8",
                               color: isActionModificationDisabled
                                 ? "#94A3B8"

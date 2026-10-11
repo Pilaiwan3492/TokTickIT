@@ -990,5 +990,94 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
     });
     expect(document.activeElement).toBe(addBtn);
   });
+
+  // =========================================================================
+  // Responsive Layout: Mobile (375px - 480px) Card-Based Layout vs Desktop Table
+  // =========================================================================
+  it("renders individual Action Taken cards on Mobile (375px - 480px) without overflow and opens Edit modal from card", async () => {
+    const originalInnerWidth = window.innerWidth;
+
+    try {
+      // Simulate Mobile viewport at 375px
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 375,
+      });
+      fireEvent.resize(window);
+
+      render(
+        <ActionsTakenList
+          ticketId="tkt-uuid-100"
+          ticketStatus="IN_PROGRESS"
+          ticketUpdatedAt="2026-09-01T19:00:00.000Z"
+          actions={sampleActions}
+          currentUser={activeStaffUser}
+        />
+      );
+
+      // Mobile card container is rendered; desktop table is not
+      expect(screen.getByTestId("actions-taken-mobile-cards")).toBeInTheDocument();
+      expect(screen.queryByTestId("actions-taken-desktop-table")).not.toBeInTheDocument();
+
+      // Each action is rendered as an individual card
+      const card1 = screen.getByTestId("action-taken-card-act-uuid-001");
+      const card2 = screen.getByTestId("action-taken-card-act-uuid-002");
+      expect(card1).toBeInTheDocument();
+      expect(card2).toBeInTheDocument();
+      expect(card1.style.overflowX).toBe("hidden");
+
+      // Verify content inside mobile cards
+      expect(
+        within(card1).getByText(/Inspected core switch port 12 and ran cable diagnostics\./i)
+      ).toBeInTheDocument();
+      expect(
+        within(card1).getByText(/Follow-Up Required/i)
+      ).toBeInTheDocument();
+      expect(
+        within(card1).getByText(/Replace Cat6 patch cable during maintenance window at 18:00\./i)
+      ).toBeInTheDocument();
+
+      // Resize to 480px (upper mobile bound) -> still renders mobile cards
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 480,
+      });
+      fireEvent.resize(window);
+      expect(screen.getByTestId("actions-taken-mobile-cards")).toBeInTheDocument();
+
+      // Verify Edit button on mobile card is full-width, >= 44px touch target, and opens Edit modal
+      const mobileEditBtn = within(card1).getByTestId("edit-action-btn-act-uuid-001");
+      expect(mobileEditBtn).toHaveClass("w-100");
+      expect(mobileEditBtn.style.minHeight).toBe("44px");
+      expect(mobileEditBtn.style.maxWidth).toBe("100%");
+
+      fireEvent.click(mobileEditBtn);
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText("Edit Action Taken")).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole("button", { name: /Cancel/i }));
+
+      // Resize back to Desktop (1280px) -> switches to desktop table
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 1280,
+      });
+      fireEvent.resize(window);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actions-taken-desktop-table")).toBeInTheDocument();
+        expect(screen.queryByTestId("actions-taken-mobile-cards")).not.toBeInTheDocument();
+      });
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: originalInnerWidth,
+      });
+      fireEvent.resize(window);
+    }
+  });
 });
 
