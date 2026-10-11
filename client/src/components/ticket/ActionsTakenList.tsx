@@ -210,11 +210,13 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
       id="actions-taken"
       data-testid="actions-taken-section"
       aria-labelledby="actions-taken-heading"
-      className="card shadow-sm border-0 mb-4 p-4"
+      className="card shadow-sm border-0 mb-4 p-3 p-sm-4"
       style={{
         backgroundColor: "#FFFFFF",
         border: "1px solid #D5DDD8",
         borderRadius: "10px",
+        maxWidth: "100%",
+        overflowX: "hidden",
       }}
     >
       {/* Section Header */}
@@ -246,11 +248,12 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
               title={disabledReasonTooltip}
               data-testid="add-action-tooltip-wrapper"
               className="d-inline-block"
+              style={{ maxWidth: "100%" }}
             >
               <button
                 type="button"
                 data-testid="add-action-taken-btn"
-                className="btn btn-sm text-white fw-semibold d-inline-flex align-items-center gap-1 px-3"
+                className="btn btn-sm text-white fw-semibold d-inline-flex align-items-center justify-content-center gap-1 px-3"
                 disabled={isActionModificationDisabled}
                 aria-disabled={isActionModificationDisabled}
                 title={disabledReasonTooltip}
@@ -263,6 +266,7 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
                     ? "#94A3B8"
                     : "#006B3C",
                   minHeight: 44,
+                  maxWidth: "100%",
                   outlineOffset: "2px",
                 }}
               >

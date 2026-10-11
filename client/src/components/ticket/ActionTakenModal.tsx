@@ -348,29 +348,29 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     >
       <div
         ref={modalContentRef}
-        className="bg-white rounded-3 shadow"
+        className="bg-white rounded-3 shadow p-3 p-sm-4"
         style={{
           width: "100%",
           maxWidth: "600px",
           maxHeight: "92vh",
           overflowY: "auto",
+          overflowX: "hidden",
           border: "1px solid #D5DDD8",
-          padding: "24px",
         }}
       >
         {/* Modal Header */}
-        <div className="d-flex justify-content-between align-items-start mb-2">
-          <div>
+        <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <div style={{ minWidth: 0 }}>
             <h3
               id="action-taken-modal-title"
-              className="h5 fw-bold mb-1"
+              className="h5 fw-bold mb-1 text-break"
               style={{ color: "#24272A" }}
             >
               {mode === "edit" ? "Edit Action Taken" : "Add Action Taken"}
             </h3>
             <p
               id="action-taken-modal-desc"
-              className="small mb-0"
+              className="small mb-0 text-break"
               style={{ color: "#5F6863" }}
             >
               Record diagnostic steps, technical work performed, and outcomes for this ticket.
@@ -378,7 +378,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           </div>
           <button
             type="button"
-            className="btn-close"
+            className="btn-close flex-shrink-0"
             aria-label="Close modal"
             disabled={isSubmitting}
             onClick={onClose}
@@ -451,6 +451,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
                 }}
                 style={{
                   minHeight: 44,
+                  maxWidth: "100%",
                   borderColor: fieldErrors.actionDate ? "#B42318" : "#D5DDD8",
                 }}
               />
@@ -478,6 +479,8 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
                 className="d-flex align-items-center justify-content-between rounded-2 px-3"
                 style={{
                   minHeight: 44,
+                  maxWidth: "100%",
+                  overflow: "hidden",
                   backgroundColor: "#F0F4F2",
                   border: "1px solid #D5DDD8",
                 }}
@@ -494,6 +497,8 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
                     color: "#24272A",
                     fontSize: "14px",
                     outline: "none",
+                    minWidth: 0,
+                    width: "100%",
                   }}
                 />
                 <span
@@ -702,7 +707,10 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           </div>
 
           {/* Footer Action Buttons */}
-          <div className="d-flex justify-content-end gap-2 pt-2 border-top" style={{ borderColor: "#D5DDD8" }}>
+          <div
+            className="d-flex flex-wrap justify-content-end gap-2 pt-2 border-top"
+            style={{ borderColor: "#D5DDD8" }}
+          >
             <button
               type="button"
               className="btn btn-outline-secondary fw-medium px-3"
@@ -715,7 +723,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
             <button
               type="submit"
               data-testid="save-action-taken-btn"
-              className="btn text-white fw-semibold px-4 d-inline-flex align-items-center gap-2"
+              className="btn text-white fw-semibold px-4 d-inline-flex align-items-center justify-content-center gap-2"
               disabled={isSubmitting}
               style={{
                 backgroundColor: "#006B3C",

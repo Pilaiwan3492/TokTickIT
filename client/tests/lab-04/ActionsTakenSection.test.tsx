@@ -1056,6 +1056,14 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
       fireEvent.click(mobileEditBtn);
       const dialog = screen.getByRole("dialog");
       expect(within(dialog).getByText("Edit Action Taken")).toBeInTheDocument();
+
+      // Verify Create/Edit Modal inner container, Performed By input, and footer buttons do not overflow on mobile
+      const performedByInput = within(dialog).getByLabelText(/Performed By/i) as HTMLInputElement;
+      expect(["0", "0px"]).toContain(performedByInput.style.minWidth);
+      const saveChangesBtn = within(dialog).getByTestId("save-action-taken-btn");
+      expect(saveChangesBtn.style.minHeight).toBe("44px");
+      expect(saveChangesBtn.parentElement).toHaveClass("flex-wrap");
+
       fireEvent.click(within(dialog).getByRole("button", { name: /Cancel/i }));
 
       // Resize back to Desktop (1280px) -> switches to desktop table
