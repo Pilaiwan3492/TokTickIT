@@ -57,3 +57,10 @@ export async function getActiveRequesters(): Promise<Requester[]> {
   // 2. Lab 2 response format: { data: [...] }
   return Array.isArray(result) ? result : result.data;
 }
+
+export {
+  getActionsTaken,
+  createActionTaken,
+  updateActionTaken,
+} from "./api/actionsTaken.api";
+

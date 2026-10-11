@@ -8,6 +8,8 @@ import {
   TicketPriority,
   TicketStatusType,
 } from "../types/staff";
+import { getActionsTaken } from "../api/actionsTaken.api";
+import { ActionsTakenList } from "../components/ticket/ActionsTakenList";
 
 // BR-16: Status Transition Matrix definition
 const STATUS_TRANSITIONS: Record<TicketStatusType, TicketStatusType[]> = {
@@ -79,7 +81,17 @@ export const StaffTicketDetail: React.FC = () => {
         throw new Error(ticketData.error?.message || "Failed to load ticket details.");
       }
 
-      setTicket(ticketData.data);
+      const loadedTicket = ticketData.data;
+      if (loadedTicket && !Array.isArray(loadedTicket.actionsTaken)) {
+        try {
+          const fetchedActions = await getActionsTaken(id);
+          loadedTicket.actionsTaken = fetchedActions;
+        } catch {
+          loadedTicket.actionsTaken = [];
+        }
+      }
+
+      setTicket(loadedTicket);
       if (assigneesRes.ok && assigneesData.data) {
         setAssignees(assigneesData.data);
       }
@@ -503,6 +515,28 @@ export const StaffTicketDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Actions Taken Section (Lab 4 — Issue 35) */}
+      <ActionsTakenList
+        ticketId={ticket.id}
+        ticketStatus={currentStatus}
+        ticketUpdatedAt={ticket.updatedAt}
+        actions={ticket.actionsTaken || []}
+        currentUser={user}
+        onActionsChange={(updatedActions, newTicketUpdatedAt) => {
+          setTicket((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  actionsTaken: updatedActions,
+                  updatedAt: newTicketUpdatedAt || prev.updatedAt,
+                }
+              : prev
+          );
+          showToast("Action Taken saved successfully.");
+        }}
+        onRefreshTicket={fetchTicketData}
+      />
 
       {/* Tabbed Communication & Attachments Section */}
       <div className="card shadow-sm border-0 p-3" style={{ backgroundColor: "#FFFFFF" }}>
