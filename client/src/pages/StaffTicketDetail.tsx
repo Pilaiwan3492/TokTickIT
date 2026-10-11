@@ -62,11 +62,13 @@ export const StaffTicketDetail: React.FC = () => {
   const [isPostingNote, setIsPostingNote] = useState(false);
 
   // Fetch ticket details & assignees
-  const fetchTicketData = useCallback(async () => {
+  const fetchTicketData = useCallback(async (silent = false) => {
     if (!id) return;
 
     try {
-      setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const [ticketRes, assigneesRes] = await Promise.all([
@@ -97,9 +99,13 @@ export const StaffTicketDetail: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to load staff ticket:", err);
-      setError(err.message || "An unexpected error occurred.");
+      if (!silent) {
+        setError(err.message || "An unexpected error occurred.");
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [id]);
 
@@ -535,7 +541,7 @@ export const StaffTicketDetail: React.FC = () => {
           );
           showToast("Action Taken saved successfully.");
         }}
-        onRefreshTicket={fetchTicketData}
+        onRefreshTicket={() => fetchTicketData(true)}
       />
 
       {/* Tabbed Communication & Attachments Section */}

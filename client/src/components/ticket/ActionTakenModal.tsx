@@ -19,7 +19,7 @@ export interface ActionTakenModalProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<void>;
-  onRefreshTicket?: () => void;
+  onRefreshTicket?: () => Promise<void> | void;
 }
 
 const formatForDateTimeLocal = (isoStr?: string): string => {
@@ -60,6 +60,9 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
   const [attachmentNotes, setAttachmentNotes] = useState<string>(
     initialAction?.attachmentNotes || ""
   );
+  const [latestActionUpdatedAt, setLatestActionUpdatedAt] = useState<string | undefined>(
+    initialAction?.updatedAt
+  );
 
   // Validation & Error states
   const [fieldErrors, setFieldErrors] = useState<{
@@ -71,10 +74,36 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isConflictError, setIsConflictError] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isRefreshingConflict, setIsRefreshingConflict] = useState<boolean>(false);
 
   // Synchronous ref lock to guarantee strict single-dispatch on rapid double-clicks (UI-26, BR-19)
   const isSubmittingRef = useRef<boolean>(false);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const modalContentRef = useRef<HTMLDivElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  // Synchronize expectedUpdatedAt when parent refreshes initialAction after a 409 conflict
+  // without overwriting any user-edited form fields (BR-17, BR-18, UI-03, UI-13)
+  useEffect(() => {
+    if (initialAction?.updatedAt) {
+      setLatestActionUpdatedAt(initialAction.updatedAt);
+    }
+  }, [initialAction?.updatedAt]);
+
+  // Capture trigger element on open and restore focus when modal closes
+  useEffect(() => {
+    if (isOpen) {
+      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+        triggerElementRef.current = document.activeElement;
+      }
+    } else if (triggerElementRef.current) {
+      const target = triggerElementRef.current;
+      triggerElementRef.current = null;
+      if (typeof target.focus === "function") {
+        target.focus();
+      }
+    }
+  }, [isOpen]);
 
   // Reset form state ONLY when modal opens or switches target record
   useEffect(() => {
@@ -86,6 +115,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
         setFollowUpRequired(Boolean(initialAction.followUpRequired));
         setFollowUpNote(initialAction.followUpNote || "");
         setAttachmentNotes(initialAction.attachmentNotes || "");
+        setLatestActionUpdatedAt(initialAction.updatedAt);
       } else {
         setActionDate(formatForDateTimeLocal());
         setActionDescription("");
@@ -93,11 +123,13 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
         setFollowUpRequired(false);
         setFollowUpNote("");
         setAttachmentNotes("");
+        setLatestActionUpdatedAt(undefined);
       }
       setFieldErrors({});
       setSubmitError(null);
       setIsConflictError(false);
       setIsSubmitting(false);
+      setIsRefreshingConflict(false);
       isSubmittingRef.current = false;
 
       // Focus primary input on open
@@ -107,12 +139,39 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     }
   }, [isOpen, mode, initialAction?.id]);
 
-  // Escape key handler
+  // Keyboard accessibility: Escape dismissal and Tab / Shift+Tab focus trap
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isSubmittingRef.current) {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && modalContentRef.current) {
+        const focusableSelector =
+          'button:not([disabled]), [href], input:not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled]):not([readonly]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+        const focusableElements = Array.from(
+          modalContentRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
+        const activeEl = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (activeEl === firstEl || !modalContentRef.current.contains(activeEl)) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (activeEl === lastEl || !modalContentRef.current.contains(activeEl)) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -120,6 +179,18 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const handleRefreshConflict = async () => {
+    if (!onRefreshTicket || isRefreshingConflict) return;
+    try {
+      setIsRefreshingConflict(true);
+      await onRefreshTicket();
+      setIsConflictError(false);
+      setSubmitError(null);
+    } finally {
+      setIsRefreshingConflict(false);
+    }
+  };
 
   // Determine immutable Performer display (BR-03, UI-04)
   const performerName =
@@ -210,6 +281,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           followUpNote: trimmedFollowUpNote,
           attachmentNotes: trimmedAttachmentNotes,
           expectedUpdatedAt:
+            latestActionUpdatedAt ||
             initialAction.updatedAt ||
             ticketUpdatedAt ||
             new Date().toISOString(),
@@ -275,6 +347,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
       }}
     >
       <div
+        ref={modalContentRef}
         className="bg-white rounded-3 shadow"
         style={{
           width: "100%",
@@ -338,14 +411,15 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
                 <button
                   type="button"
                   className="btn btn-sm fw-semibold"
-                  onClick={onRefreshTicket}
+                  disabled={isRefreshingConflict}
+                  onClick={handleRefreshConflict}
                   style={{
                     backgroundColor: "#B42318",
                     color: "#FFFFFF",
                     minHeight: 38,
                   }}
                 >
-                  Refresh Ticket
+                  {isRefreshingConflict ? "Refreshing..." : "Refresh Ticket"}
                 </button>
               </div>
             )}

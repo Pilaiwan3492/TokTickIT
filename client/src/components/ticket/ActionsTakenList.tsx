@@ -6,6 +6,7 @@ import {
 } from "../../types/ticket";
 import { AuthUser } from "../../types/auth";
 import {
+  getActionsTaken,
   createActionTaken,
   updateActionTaken,
 } from "../../api/actionsTaken.api";
@@ -29,7 +30,7 @@ export interface ActionsTakenListProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<{ action: ActionTaken; ticketUpdatedAt?: string } | ActionTaken | void>;
-  onRefreshTicket?: () => void;
+  onRefreshTicket?: () => Promise<void> | void;
 }
 
 export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
@@ -52,7 +53,13 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
   const [editingAction, setEditingAction] = useState<ActionTaken | null>(null);
 
   useEffect(() => {
-    setLocalActions(actions || []);
+    const nextActions = actions || [];
+    setLocalActions(nextActions);
+    setEditingAction((prev) => {
+      if (!prev) return null;
+      const refreshed = nextActions.find((item) => item.id === prev.id);
+      return refreshed || prev;
+    });
   }, [actions]);
 
   useEffect(() => {
@@ -529,7 +536,25 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
           onClose={handleCloseModal}
           onSubmitCreate={handleCreateSubmit}
           onSubmitEdit={handleEditSubmit}
-          onRefreshTicket={onRefreshTicket}
+          onRefreshTicket={async () => {
+            if (onRefreshTicket) {
+              await onRefreshTicket();
+            }
+            try {
+              const latestActions = await getActionsTaken(ticketId);
+              if (Array.isArray(latestActions) && latestActions.length > 0) {
+                setLocalActions(latestActions);
+                setEditingAction((prev) => {
+                  if (!prev) return null;
+                  const match = latestActions.find((item) => item.id === prev.id);
+                  return match || prev;
+                });
+                onActionsChange?.(latestActions);
+              }
+            } catch {
+              // Ignore if parent refresh already handled ticket reload
+            }
+          }}
         />
       )}
     </section>

@@ -807,4 +807,188 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
       (screen.getByLabelText(/Action Description/i) as HTMLTextAreaElement).value
     ).toBe("Flushed postfix queue on relay-01");
   });
+
+  // =========================================================================
+  // Edit Mode HTTP 409 Conflict -> Refresh Ticket updates expectedUpdatedAt while preserving user input -> Retry succeeds
+  // =========================================================================
+  it("updates expectedUpdatedAt in Edit mode when clicking 'Refresh Ticket' after HTTP 409 while preserving user edits", async () => {
+    let patchAttempt = 0;
+    const capturedExpectedTimestamps: string[] = [];
+    const freshTimestamp = "2026-09-03T15:30:00.000Z";
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = url.toString();
+
+      // GET /api/v1/tickets/tkt-uuid-100/actions-taken returns refreshed action with new updatedAt
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken") && (!init?.method || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ticketId: "tkt-uuid-100",
+              ticketNumber: "TKT-2026-000100",
+              actionsTaken: [
+                {
+                  ...sampleActions[0],
+                  updatedAt: freshTimestamp,
+                },
+                sampleActions[1],
+              ],
+            },
+          }),
+        } as Response);
+      }
+
+      // PATCH /api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001") && init?.method === "PATCH") {
+        patchAttempt += 1;
+        const body = JSON.parse(String(init.body));
+        capturedExpectedTimestamps.push(body.expectedUpdatedAt);
+
+        // First attempt fails with 409 STALE_UPDATE_CONFLICT
+        if (patchAttempt === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 409,
+            json: async () => ({
+              success: false,
+              error: {
+                code: "STALE_UPDATE_CONFLICT",
+                message: "Action Taken record was modified since expectedUpdatedAt. Please refresh.",
+              },
+            }),
+          } as Response);
+        }
+
+        // Second attempt (after Refresh Ticket) succeeds with fresh expectedUpdatedAt
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...sampleActions[0],
+              actionDescription: body.actionDescription,
+              result: body.result,
+              updatedAt: "2026-09-03T15:35:00.000Z",
+            },
+            ticketUpdatedAt: "2026-09-03T15:35:00.000Z",
+          }),
+        } as Response);
+      }
+
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <ActionsTakenList
+        ticketId="tkt-uuid-100"
+        ticketStatus="IN_PROGRESS"
+        ticketUpdatedAt="2026-09-01T19:00:00.000Z"
+        actions={sampleActions}
+        currentUser={activeStaffUser}
+      />
+    );
+
+    // 1. Open Edit modal on first action (initial updatedAt: "2026-09-01T10:15:00.000Z")
+    fireEvent.click(screen.getByTestId("edit-action-btn-act-uuid-001"));
+
+    const dialog = screen.getByRole("dialog");
+    const descInput = within(dialog).getByLabelText(/Action Description/i) as HTMLTextAreaElement;
+    const resultInput = within(dialog).getByLabelText(/^Result/i) as HTMLTextAreaElement;
+
+    // 2. User edits both fields
+    fireEvent.change(descInput, {
+      target: { value: "Inspected core switch port 12, replaced SFP transceiver." },
+    });
+    fireEvent.change(resultInput, {
+      target: { value: "Optical signal levels normalized (-2.4 dBm)." },
+    });
+
+    // 3. First Save -> hits HTTP 409
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      expect(
+        within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+    });
+    expect(capturedExpectedTimestamps[0]).toBe("2026-09-01T10:15:00.000Z");
+
+    // 4. Click "Refresh Ticket" inside the conflict banner
+    const refreshBtn = within(dialog).getByRole("button", { name: /Refresh Ticket/i });
+    fireEvent.click(refreshBtn);
+
+    // Wait for conflict banner to clear after refresh
+    await waitFor(() => {
+      expect(
+        within(dialog).queryByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).not.toBeInTheDocument();
+    });
+
+    // CRITICAL: User's typed text is still preserved in the modal!
+    expect(descInput.value).toBe("Inspected core switch port 12, replaced SFP transceiver.");
+    expect(resultInput.value).toBe("Optical signal levels normalized (-2.4 dBm).");
+
+    // 5. Click "Save Changes" again -> now sends the refreshed expectedUpdatedAt and succeeds!
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      expect(patchAttempt).toBe(2);
+      expect(capturedExpectedTimestamps[1]).toBe(freshTimestamp);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Optical signal levels normalized (-2.4 dBm).")
+      ).toBeInTheDocument();
+    });
+  });
+
+  // =========================================================================
+  // Accessibility: Focus Trap (Tab / Shift+Tab) and Focus Restoration on Modal Close
+  // =========================================================================
+  it("traps keyboard Tab / Shift+Tab focus within the modal and restores focus to trigger button on close", async () => {
+    render(
+      <ActionsTakenList
+        ticketId="tkt-uuid-100"
+        ticketStatus="IN_PROGRESS"
+        ticketUpdatedAt="2026-09-01T19:00:00.000Z"
+        actions={sampleActions}
+        currentUser={activeStaffUser}
+      />
+    );
+
+    const addBtn = screen.getByRole("button", { name: /\+ Add Action Taken/i });
+    addBtn.focus();
+    expect(document.activeElement).toBe(addBtn);
+
+    // Open modal
+    fireEvent.click(addBtn);
+    const dialog = screen.getByRole("dialog");
+
+    const closeBtn = within(dialog).getByRole("button", { name: /Close modal/i });
+    const saveBtn = within(dialog).getByTestId("save-action-taken-btn");
+
+    // Focus last focusable element (Save button) and press Tab -> wraps to first focusable element (Close button)
+    saveBtn.focus();
+    expect(document.activeElement).toBe(saveBtn);
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: false });
+    expect(document.activeElement).toBe(closeBtn);
+
+    // Focus first focusable element (Close button) and press Shift+Tab -> wraps to last focusable element (Save button)
+    closeBtn.focus();
+    expect(document.activeElement).toBe(closeBtn);
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(saveBtn);
+
+    // Press Escape to close modal -> focus is restored back to the "+ Add Action Taken" button
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(document.activeElement).toBe(addBtn);
+  });
 });
+
