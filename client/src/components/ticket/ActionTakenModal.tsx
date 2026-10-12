@@ -270,13 +270,13 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
       return;
     }
 
-    // Block saving in Edit mode if conflict has not been resolved with a verified latest timestamp
-    if (mode === "edit" && (isConflictError || !latestActionUpdatedAt)) {
+    // Block saving if a concurrency conflict has not been resolved via Refresh Ticket
+    if (isConflictError || (mode === "edit" && !latestActionUpdatedAt)) {
       setIsConflictError(true);
       setSubmitError(
         (prev) =>
           prev ||
-          "Please refresh the ticket to load the latest Action Taken version before saving."
+          "Please refresh the ticket to load the latest version before saving."
       );
       return;
     }

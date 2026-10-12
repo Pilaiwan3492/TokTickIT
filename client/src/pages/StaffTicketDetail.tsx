@@ -101,6 +101,8 @@ export const StaffTicketDetail: React.FC = () => {
       console.error("Failed to load staff ticket:", err);
       if (!silent) {
         setError(err.message || "An unexpected error occurred.");
+      } else {
+        throw err;
       }
     } finally {
       if (!silent) {

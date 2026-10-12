@@ -735,23 +735,16 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
               await onRefreshTicket();
             }
 
-            if (modalMode !== "edit") {
-              try {
-                const latestActions = await getActionsTaken(ticketId);
-                if (Array.isArray(latestActions)) {
-                  setLocalActions(latestActions);
-                  onActionsChange?.(latestActions);
-                }
-              } catch {
-                // In create mode, parent onRefreshTicket handles ticket reload
-              }
-              return undefined;
-            }
-
             const latestActions = await getActionsTaken(ticketId);
 
             if (!Array.isArray(latestActions)) {
               throw new Error("Unable to refresh Actions Taken.");
+            }
+
+            if (modalMode !== "edit") {
+              setLocalActions(latestActions);
+              onActionsChange?.(latestActions);
+              return undefined;
             }
 
             const actionId = editingAction?.id;
