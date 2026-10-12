@@ -30,7 +30,7 @@ export interface ActionsTakenListProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<{ action: ActionTaken; ticketUpdatedAt?: string } | ActionTaken | void>;
-  onRefreshTicket?: () => Promise<void> | void;
+  onRefreshTicket?: () => Promise<ActionTaken | void> | ActionTaken | void;
 }
 
 export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
@@ -734,20 +734,49 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
             if (onRefreshTicket) {
               await onRefreshTicket();
             }
-            try {
-              const latestActions = await getActionsTaken(ticketId);
-              if (Array.isArray(latestActions) && latestActions.length > 0) {
-                setLocalActions(latestActions);
-                setEditingAction((prev) => {
-                  if (!prev) return null;
-                  const match = latestActions.find((item) => item.id === prev.id);
-                  return match || prev;
-                });
-                onActionsChange?.(latestActions);
+
+            if (modalMode !== "edit") {
+              try {
+                const latestActions = await getActionsTaken(ticketId);
+                if (Array.isArray(latestActions)) {
+                  setLocalActions(latestActions);
+                  onActionsChange?.(latestActions);
+                }
+              } catch {
+                // In create mode, parent onRefreshTicket handles ticket reload
               }
-            } catch {
-              // Ignore if parent refresh already handled ticket reload
+              return undefined;
             }
+
+            const latestActions = await getActionsTaken(ticketId);
+
+            if (!Array.isArray(latestActions)) {
+              throw new Error("Unable to refresh Actions Taken.");
+            }
+
+            const actionId = editingAction?.id;
+
+            if (!actionId) {
+              throw new Error(
+                "Unable to identify the Action Taken being edited."
+              );
+            }
+
+            const refreshedAction = latestActions.find(
+              (item) => item.id === actionId
+            );
+
+            if (!refreshedAction?.updatedAt) {
+              throw new Error(
+                "The Action Taken could not be found after refresh. Please reload the ticket."
+              );
+            }
+
+            setLocalActions(latestActions);
+            setEditingAction(refreshedAction);
+            onActionsChange?.(latestActions);
+
+            return refreshedAction;
           }}
         />
       )}

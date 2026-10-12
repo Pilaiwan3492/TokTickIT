@@ -946,6 +946,203 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
   });
 
   // =========================================================================
+  // Test B: Edit Mode HTTP 409 Conflict -> Refresh Ticket fails -> keeps conflict banner & blocks saving with stale timestamp
+  // =========================================================================
+  it("keeps conflict state and prevents saving with stale expectedUpdatedAt when 'Refresh Ticket' fails in Edit mode", async () => {
+    let patchAttempt = 0;
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = url.toString();
+
+      // GET /api/v1/tickets/tkt-uuid-100/actions-taken fails with HTTP 500
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken") && (!init?.method || init.method === "GET")) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({
+            success: false,
+            error: {
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Database connection timeout while refreshing actions.",
+            },
+          }),
+        } as Response);
+      }
+
+      // PATCH /api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001") && init?.method === "PATCH") {
+        patchAttempt += 1;
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Action Taken record was modified since expectedUpdatedAt. Please refresh.",
+            },
+          }),
+        } as Response);
+      }
+
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <ActionsTakenList
+        ticketId="tkt-uuid-100"
+        ticketStatus="IN_PROGRESS"
+        ticketUpdatedAt="2026-09-01T19:00:00.000Z"
+        actions={sampleActions}
+        currentUser={activeStaffUser}
+      />
+    );
+
+    // 1. Open Edit modal on first action
+    fireEvent.click(screen.getByTestId("edit-action-btn-act-uuid-001"));
+
+    const dialog = screen.getByRole("dialog");
+    const descInput = within(dialog).getByLabelText(/Action Description/i) as HTMLTextAreaElement;
+
+    fireEvent.change(descInput, {
+      target: { value: "Updated diagnostic description before refresh failure." },
+    });
+
+    // 2. First Save -> hits HTTP 409
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      expect(
+        within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+    });
+    expect(patchAttempt).toBe(1);
+
+    // 3. Click "Refresh Ticket" -> GET fails with 500
+    fireEvent.click(within(dialog).getByRole("button", { name: /Refresh Ticket/i }));
+
+    // 4. Verify conflict banner remains visible and displays the refresh error message
+    await waitFor(() => {
+      expect(
+        within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(/Database connection timeout while refreshing actions\./i)
+      ).toBeInTheDocument();
+    });
+
+    // User input is still preserved
+    expect(descInput.value).toBe("Updated diagnostic description before refresh failure.");
+
+    // 5. Attempting to click "Save Changes" does NOT send another PATCH with the stale timestamp
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+    expect(patchAttempt).toBe(1);
+    expect(
+      within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+    ).toBeInTheDocument();
+  });
+
+  // =========================================================================
+  // Test C: Edit Mode HTTP 409 Conflict -> Refresh succeeds but edited Action Taken is missing -> keeps conflict & blocks stale PATCH
+  // =========================================================================
+  it("keeps conflict state and prevents saving with stale expectedUpdatedAt when refreshed list does not contain the edited Action Taken", async () => {
+    let patchAttempt = 0;
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = url.toString();
+
+      // GET /api/v1/tickets/tkt-uuid-100/actions-taken returns list WITHOUT act-uuid-001
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken") && (!init?.method || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ticketId: "tkt-uuid-100",
+              ticketNumber: "TKT-2026-000100",
+              actionsTaken: [sampleActions[1]],
+            },
+          }),
+        } as Response);
+      }
+
+      // PATCH /api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001
+      if (urlStr.includes("/api/v1/tickets/tkt-uuid-100/actions-taken/act-uuid-001") && init?.method === "PATCH") {
+        patchAttempt += 1;
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Action Taken record was modified since expectedUpdatedAt. Please refresh.",
+            },
+          }),
+        } as Response);
+      }
+
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <ActionsTakenList
+        ticketId="tkt-uuid-100"
+        ticketStatus="IN_PROGRESS"
+        ticketUpdatedAt="2026-09-01T19:00:00.000Z"
+        actions={sampleActions}
+        currentUser={activeStaffUser}
+      />
+    );
+
+    // 1. Open Edit modal on first action (act-uuid-001)
+    fireEvent.click(screen.getByTestId("edit-action-btn-act-uuid-001"));
+
+    const dialog = screen.getByRole("dialog");
+    const descInput = within(dialog).getByLabelText(/Action Description/i) as HTMLTextAreaElement;
+
+    fireEvent.change(descInput, {
+      target: { value: "Edited action description when record is missing after refresh." },
+    });
+
+    // 2. First Save -> hits HTTP 409
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      expect(
+        within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+    });
+    expect(patchAttempt).toBe(1);
+
+    // 3. Click "Refresh Ticket" -> GET succeeds (200) but act-uuid-001 is not in actionsTaken
+    fireEvent.click(within(dialog).getByRole("button", { name: /Refresh Ticket/i }));
+
+    // 4. Verify conflict banner remains visible and shows missing action error
+    await waitFor(() => {
+      expect(
+        within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          /The Action Taken could not be found after refresh\. Please reload the ticket\./i
+        )
+      ).toBeInTheDocument();
+    });
+
+    // User input is still preserved
+    expect(descInput.value).toBe("Edited action description when record is missing after refresh.");
+
+    // 5. Clicking "Save Changes" does NOT send another PATCH with the old updatedAt
+    fireEvent.click(within(dialog).getByRole("button", { name: /Save Changes/i }));
+    expect(patchAttempt).toBe(1);
+    expect(
+      within(dialog).getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+    ).toBeInTheDocument();
+  });
+
+  // =========================================================================
   // Accessibility: Focus Trap (Tab / Shift+Tab) and Focus Restoration on Modal Close
   // =========================================================================
   it("traps keyboard Tab / Shift+Tab focus within the modal and restores focus to trigger button on close", async () => {

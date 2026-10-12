@@ -19,7 +19,7 @@ export interface ActionTakenModalProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<void>;
-  onRefreshTicket?: () => Promise<void> | void;
+  onRefreshTicket?: () => Promise<ActionTaken | void> | ActionTaken | void;
 }
 
 const formatForDateTimeLocal = (isoStr?: string): string => {
@@ -184,9 +184,31 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     if (!onRefreshTicket || isRefreshingConflict) return;
     try {
       setIsRefreshingConflict(true);
-      await onRefreshTicket();
+      const refreshedAction = await onRefreshTicket();
+
+      if (mode === "edit") {
+        if (
+          !refreshedAction ||
+          refreshedAction.id !== initialAction?.id ||
+          !refreshedAction.updatedAt
+        ) {
+          throw new Error(
+            "Unable to verify the latest Action Taken version after refresh. Please close and reopen the editor."
+          );
+        }
+        setLatestActionUpdatedAt(refreshedAction.updatedAt);
+      }
+
       setIsConflictError(false);
       setSubmitError(null);
+    } catch (err: any) {
+      setIsConflictError(true);
+      if (mode === "edit") {
+        setLatestActionUpdatedAt(undefined);
+      }
+      setSubmitError(
+        err?.message || "Refresh failed. Please try again before saving."
+      );
     } finally {
       setIsRefreshingConflict(false);
     }
@@ -248,6 +270,17 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
       return;
     }
 
+    // Block saving in Edit mode if conflict has not been resolved with a verified latest timestamp
+    if (mode === "edit" && (isConflictError || !latestActionUpdatedAt)) {
+      setIsConflictError(true);
+      setSubmitError(
+        (prev) =>
+          prev ||
+          "Please refresh the ticket to load the latest Action Taken version before saving."
+      );
+      return;
+    }
+
     setSubmitError(null);
     setIsConflictError(false);
 
@@ -280,11 +313,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           followUpRequired,
           followUpNote: trimmedFollowUpNote,
           attachmentNotes: trimmedAttachmentNotes,
-          expectedUpdatedAt:
-            latestActionUpdatedAt ||
-            initialAction.updatedAt ||
-            ticketUpdatedAt ||
-            new Date().toISOString(),
+          expectedUpdatedAt: latestActionUpdatedAt!,
         });
       } else if (onSubmitCreate) {
         await onSubmitCreate({
@@ -311,6 +340,9 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
       const code = err?.code || err?.data?.error?.code;
       if (status === 409 || code === "STALE_UPDATE_CONFLICT") {
         setIsConflictError(true);
+        if (mode === "edit") {
+          setLatestActionUpdatedAt(undefined);
+        }
         setSubmitError(
           err?.message ||
             "This record was modified by another user. Please refresh the ticket and try again."
