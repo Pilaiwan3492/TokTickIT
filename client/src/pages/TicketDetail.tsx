@@ -37,6 +37,7 @@ export default function TicketDetail() {
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentSuccess, setCommentSuccess] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState<string | null>(null);
 
   const fetchTicket = useCallback(async () => {
     if (!id) {
@@ -74,12 +75,20 @@ export default function TicketDetail() {
 
       const responseData = await res.json();
       const loadedTicket = responseData.data || responseData;
-      if (loadedTicket && !Array.isArray(loadedTicket.actionsTaken)) {
-        try {
-          const fetchedActions = await getActionsTaken(id);
-          loadedTicket.actionsTaken = fetchedActions;
-        } catch {
-          loadedTicket.actionsTaken = [];
+      if (loadedTicket) {
+        if (Array.isArray(loadedTicket.actionsTaken)) {
+          setActionsError(null);
+        } else {
+          try {
+            const fetchedActions = await getActionsTaken(id);
+            loadedTicket.actionsTaken = fetchedActions;
+            setActionsError(null);
+          } catch (err: any) {
+            console.error("Error fetching actions taken:", err);
+            const msg = err?.message || "Failed to load Actions Taken.";
+            setActionsError(msg);
+            loadedTicket.actionsTaken = undefined;
+          }
         }
       }
       setTicket(loadedTicket);
@@ -788,9 +797,12 @@ export default function TicketDetail() {
           ticketStatus={ticket.currentStatus}
           ticketUpdatedAt={ticket.updatedAt}
           actions={ticket.actionsTaken || []}
+          actionsError={actionsError}
+          onRetryLoadActions={fetchTicket}
           currentUser={user}
           readOnly={user?.role !== "IT_STAFF" && user?.role !== "ADMIN"}
           onActionsChange={(updatedActions, newTicketUpdatedAt) => {
+            setActionsError(null);
             setTicket((prev) =>
               prev
                 ? {

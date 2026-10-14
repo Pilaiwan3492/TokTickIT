@@ -6,6 +6,11 @@ import {
 } from "../../types/ticket";
 import { AuthUser } from "../../types/auth";
 
+export interface RefreshResult {
+  action?: ActionTaken;
+  ticketUpdatedAt?: string;
+}
+
 export interface ActionTakenModalProps {
   isOpen: boolean;
   mode: "create" | "edit";
@@ -19,7 +24,11 @@ export interface ActionTakenModalProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<void>;
-  onRefreshTicket?: () => Promise<ActionTaken | void> | ActionTaken | void;
+  onRefreshTicket?: () =>
+    | Promise<RefreshResult | ActionTaken | void>
+    | RefreshResult
+    | ActionTaken
+    | void;
 }
 
 const formatForDateTimeLocal = (isoStr?: string): string => {
@@ -63,6 +72,9 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
   const [latestActionUpdatedAt, setLatestActionUpdatedAt] = useState<string | undefined>(
     initialAction?.updatedAt
   );
+  const [latestTicketUpdatedAt, setLatestTicketUpdatedAt] = useState<string | undefined>(
+    ticketUpdatedAt
+  );
 
   // Validation & Error states
   const [fieldErrors, setFieldErrors] = useState<{
@@ -90,6 +102,12 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     }
   }, [initialAction?.updatedAt]);
 
+  useEffect(() => {
+    if (ticketUpdatedAt) {
+      setLatestTicketUpdatedAt(ticketUpdatedAt);
+    }
+  }, [ticketUpdatedAt]);
+
   // Capture trigger element on open and restore focus when modal closes
   useEffect(() => {
     if (isOpen) {
@@ -116,6 +134,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
         setFollowUpNote(initialAction.followUpNote || "");
         setAttachmentNotes(initialAction.attachmentNotes || "");
         setLatestActionUpdatedAt(initialAction.updatedAt);
+        setLatestTicketUpdatedAt(ticketUpdatedAt);
       } else {
         setActionDate(formatForDateTimeLocal());
         setActionDescription("");
@@ -124,6 +143,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
         setFollowUpNote("");
         setAttachmentNotes("");
         setLatestActionUpdatedAt(undefined);
+        setLatestTicketUpdatedAt(ticketUpdatedAt);
       }
       setFieldErrors({});
       setSubmitError(null);
@@ -184,7 +204,23 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     if (!onRefreshTicket || isRefreshingConflict) return;
     try {
       setIsRefreshingConflict(true);
-      const refreshedAction = await onRefreshTicket();
+      const refreshResult = await onRefreshTicket();
+
+      let refreshedAction: ActionTaken | undefined = undefined;
+      let refreshedTicketUpdatedAt: string | undefined = undefined;
+
+      if (refreshResult && typeof refreshResult === "object") {
+        if ("updatedAt" in refreshResult && typeof (refreshResult as ActionTaken).id === "string") {
+          refreshedAction = refreshResult as ActionTaken;
+          refreshedTicketUpdatedAt =
+            (refreshResult as any).ticketUpdatedAt || (refreshResult as ActionTaken).updatedAt;
+        } else {
+          refreshedAction = (refreshResult as any).action;
+          refreshedTicketUpdatedAt = (refreshResult as any).ticketUpdatedAt;
+        }
+      } else if (typeof refreshResult === "string") {
+        refreshedTicketUpdatedAt = refreshResult;
+      }
 
       if (mode === "edit") {
         if (
@@ -197,6 +233,18 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           );
         }
         setLatestActionUpdatedAt(refreshedAction.updatedAt);
+        if (refreshedTicketUpdatedAt) {
+          setLatestTicketUpdatedAt(refreshedTicketUpdatedAt);
+        }
+      } else {
+        const freshUpdatedAt =
+          refreshedTicketUpdatedAt || ticketUpdatedAt || latestTicketUpdatedAt;
+        if (!freshUpdatedAt) {
+          throw new Error(
+            "Unable to verify the latest ticket version after refresh. Please reload the ticket."
+          );
+        }
+        setLatestTicketUpdatedAt(freshUpdatedAt);
       }
 
       setIsConflictError(false);
@@ -205,6 +253,8 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
       setIsConflictError(true);
       if (mode === "edit") {
         setLatestActionUpdatedAt(undefined);
+      } else {
+        setLatestTicketUpdatedAt(undefined);
       }
       setSubmitError(
         err?.message || "Refresh failed. Please try again before saving."
@@ -271,7 +321,11 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
     }
 
     // Block saving if a concurrency conflict has not been resolved via Refresh Ticket
-    if (isConflictError || (mode === "edit" && !latestActionUpdatedAt)) {
+    if (
+      isConflictError ||
+      (mode === "edit" && !latestActionUpdatedAt) ||
+      (mode === "create" && !latestTicketUpdatedAt)
+    ) {
       setIsConflictError(true);
       setSubmitError(
         (prev) =>
@@ -323,8 +377,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
           followUpRequired,
           followUpNote: trimmedFollowUpNote,
           attachmentNotes: trimmedAttachmentNotes,
-          expectedTicketUpdatedAt:
-            ticketUpdatedAt || new Date().toISOString(),
+          expectedTicketUpdatedAt: latestTicketUpdatedAt!,
         });
       }
 
@@ -342,6 +395,8 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
         setIsConflictError(true);
         if (mode === "edit") {
           setLatestActionUpdatedAt(undefined);
+        } else {
+          setLatestTicketUpdatedAt(undefined);
         }
         setSubmitError(
           err?.message ||

@@ -704,9 +704,14 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
   // StaffTicketDetail Page Integration & HTTP 409 Conflict Banner Recovery
   // =========================================================================
   it("integrates ActionsTakenList inside StaffTicketDetail and displays Refresh Ticket CTA on HTTP 409 conflict", async () => {
+    let postAttempt = 0;
+    const capturedTimestamps: string[] = [];
+    const freshTicketUpdatedAt = "2026-09-02T12:00:00.000Z";
+
     const staffTicket = {
       id: "tkt-staff-409",
       ticketNo: "TKT-2026-000409",
+      title: "Mail Relay Failover",
       summary: "Email relay delayed in finance department",
       description: "Outbound SMTP messages queued for 20 minutes.",
       requestedPriority: "HIGH",
@@ -743,23 +748,65 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
         } as Response);
       }
       if (urlStr.includes("/api/v1/tickets/tkt-staff-409/actions-taken") && init?.method === "POST") {
+        postAttempt += 1;
+        const body = JSON.parse(String(init.body));
+        capturedTimestamps.push(body.expectedTicketUpdatedAt);
+
+        if (postAttempt === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 409,
+            json: async () => ({
+              success: false,
+              error: {
+                code: "STALE_UPDATE_CONFLICT",
+                message: "Ticket was modified by another user concurrently. Please refresh and try again.",
+              },
+            }),
+          } as Response);
+        }
+
         return Promise.resolve({
-          ok: false,
-          status: 409,
+          ok: true,
+          status: 201,
           json: async () => ({
-            success: false,
-            error: {
-              code: "STALE_UPDATE_CONFLICT",
-              message: "Ticket was modified by another user concurrently. Please refresh and try again.",
+            success: true,
+            data: {
+              id: "act-new-409",
+              ticketId: "tkt-staff-409",
+              actionDate: body.actionDate,
+              actionDescription: body.actionDescription,
+              result: body.result,
+              performedBy: activeStaffUser,
+              followUpRequired: false,
+              createdAt: "2026-09-02T12:01:00.000Z",
+              updatedAt: "2026-09-02T12:01:00.000Z",
             },
+            ticketUpdatedAt: "2026-09-02T12:01:00.000Z",
           }),
         } as Response);
       }
       if (urlStr.includes("/api/v1/staff/tickets/tkt-staff-409")) {
+        const returnedTicket = postAttempt > 0
+          ? { ...staffTicket, updatedAt: freshTicketUpdatedAt }
+          : staffTicket;
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () => ({ data: staffTicket }),
+          json: async () => ({ data: returnedTicket }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets/tkt-staff-409/actions-taken") && (!init?.method || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ticketId: "tkt-staff-409",
+              actionsTaken: [sampleActions[0]],
+            },
+          }),
         } as Response);
       }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
@@ -806,6 +853,273 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
     expect(
       (screen.getByLabelText(/Action Description/i) as HTMLTextAreaElement).value
     ).toBe("Flushed postfix queue on relay-01");
+    expect(capturedTimestamps[0]).toBe("2026-09-01T08:00:00.000Z");
+
+    // Click Refresh Ticket
+    fireEvent.click(screen.getByRole("button", { name: /Refresh Ticket/i }));
+
+    // Verify conflict banner clears and input remains preserved
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      (screen.getByLabelText(/Action Description/i) as HTMLTextAreaElement).value
+    ).toBe("Flushed postfix queue on relay-01");
+    expect(
+      (screen.getByLabelText(/^Result/i) as HTMLTextAreaElement).value
+    ).toBe("Queue size dropped to zero");
+
+    // Click Save Action Taken again -> sends fresh expectedTicketUpdatedAt and succeeds
+    fireEvent.click(screen.getByRole("button", { name: /Save Action Taken/i }));
+
+    await waitFor(() => {
+      expect(postAttempt).toBe(2);
+      expect(capturedTimestamps[1]).toBe(freshTicketUpdatedAt);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  // =========================================================================
+  // Create Mode HTTP 409 Conflict -> Refresh Ticket fails -> keeps conflict banner & blocks saving with stale timestamp
+  // =========================================================================
+  it("keeps conflict state and prevents saving with stale expectedTicketUpdatedAt when 'Refresh Ticket' fails in Create mode", async () => {
+    let postAttempt = 0;
+    let shouldTicketFail = false;
+
+    const staffTicket = {
+      id: "tkt-staff-fail-refresh",
+      ticketNo: "TKT-2026-000410",
+      title: "Mail Relay Failover",
+      description: "Mail relay server experiencing unexpected failovers.",
+      priority: "HIGH",
+      currentStatus: "IN_PROGRESS",
+      isRequesterResolved: false,
+      owner: activeStaffUser,
+      requester: { id: "usr-req-1", name: "Jane Requester", email: "jane@example.com" },
+      category: { id: 1, name: "Software" },
+      relatedSystem: { id: 1, name: "Email" },
+      createdAt: "2026-09-01T08:00:00.000Z",
+      updatedAt: "2026-09-01T08:00:00.000Z",
+      comments: [],
+      notes: [],
+      attachments: [],
+      actionsTaken: [sampleActions[0]],
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: activeStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/assignees")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: [activeStaffUser] }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets/tkt-staff-fail-refresh/actions-taken") && init?.method === "POST") {
+        postAttempt += 1;
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            success: false,
+            error: {
+              code: "STALE_UPDATE_CONFLICT",
+              message: "Ticket was modified by another user concurrently. Please refresh and try again.",
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets/tkt-staff-fail-refresh")) {
+        if (shouldTicketFail) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: async () => ({
+              success: false,
+              error: { message: "Internal server error while refreshing ticket." },
+            }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: staffTicket }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/queue/tkt-staff-fail-refresh"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/queue/:id" element={<StaffTicketDetail />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("TKT-2026-000410")).toBeInTheDocument();
+    });
+
+    // Open modal and trigger 409 conflict
+    fireEvent.click(screen.getByRole("button", { name: /\+ Add Action Taken/i }));
+    fireEvent.change(screen.getByLabelText(/Action Description/i), {
+      target: { value: "Flushed postfix queue on relay-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Result/i), {
+      target: { value: "Queue size dropped to zero" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Save Action Taken/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+    });
+    expect(postAttempt).toBe(1);
+
+    // Make ticket refresh fail
+    shouldTicketFail = true;
+    fireEvent.click(screen.getByRole("button", { name: /Refresh Ticket/i }));
+
+    // Verify conflict banner remains visible with error message
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Internal server error while refreshing ticket\./i)
+      ).toBeInTheDocument();
+    });
+
+    // Clicking Save Action Taken does NOT dispatch another POST request
+    fireEvent.click(screen.getByRole("button", { name: /Save Action Taken/i }));
+    expect(postAttempt).toBe(1);
+    expect(
+      screen.getByText(/Concurrency Conflict Detected \(HTTP 409\)/i)
+    ).toBeInTheDocument();
+  });
+
+  // =========================================================================
+  // Actions Taken loading error is separated from empty list state and supports retry
+  // =========================================================================
+  it("separates Actions Taken API loading error from empty list and allows retry", async () => {
+    let retryAttempt = 0;
+    const staffTicket = {
+      id: "tkt-staff-err",
+      ticketNo: "TKT-2026-000411",
+      title: "Network Switch Issue",
+      description: "Switch port down.",
+      priority: "HIGH",
+      currentStatus: "IN_PROGRESS",
+      isRequesterResolved: false,
+      owner: activeStaffUser,
+      requester: { id: "usr-req-1", name: "Jane Requester", email: "jane@example.com" },
+      category: { id: 1, name: "Hardware" },
+      relatedSystem: { id: 1, name: "Network" },
+      createdAt: "2026-09-01T08:00:00.000Z",
+      updatedAt: "2026-09-01T08:00:00.000Z",
+      comments: [],
+      notes: [],
+      attachments: [],
+      actionsTaken: undefined, // Force call to getActionsTaken
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: activeStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/assignees")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: [activeStaffUser] }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets/tkt-staff-err")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: staffTicket }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets/tkt-staff-err/actions-taken")) {
+        retryAttempt += 1;
+        if (retryAttempt === 1) {
+          // First attempt fails
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: async () => ({
+              success: false,
+              error: { message: "Database connection timeout while retrieving Actions Taken." },
+            }),
+          } as Response);
+        }
+        // Second attempt (after Retry) succeeds with empty list
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ticketId: "tkt-staff-err",
+              actionsTaken: [],
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/queue/tkt-staff-err"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/queue/:id" element={<StaffTicketDetail />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // Initial load: Actions Taken fails to load -> displays error banner with Retry button
+    await waitFor(() => {
+      expect(screen.getByTestId("actions-taken-error")).toBeInTheDocument();
+      expect(screen.getByTestId("actions-taken-error")).toHaveTextContent(
+        /Unable to load Actions Taken: Database connection timeout while retrieving Actions Taken\./i
+      );
+    });
+
+    // Crucial: Empty list message is NOT shown while in error state
+    expect(screen.queryByTestId("actions-taken-empty")).not.toBeInTheDocument();
+
+    // Click Retry
+    fireEvent.click(screen.getByTestId("retry-load-actions-btn"));
+
+    // After retry succeeds with empty actions list -> error clears and empty state is now displayed
+    await waitFor(() => {
+      expect(screen.queryByTestId("actions-taken-error")).not.toBeInTheDocument();
+      expect(screen.getByTestId("actions-taken-empty")).toBeInTheDocument();
+      expect(
+        screen.getByText(/No actions recorded yet\. Click 'Add Action Taken' to log work done on this ticket\./i)
+      ).toBeInTheDocument();
+    });
   });
 
   // =========================================================================

@@ -19,6 +19,8 @@ export interface ActionsTakenListProps {
   actions: ActionTaken[];
   currentUser: AuthUser | null;
   readOnly?: boolean;
+  actionsError?: string | null;
+  onRetryLoadActions?: () => void;
   onActionsChange?: (
     updatedActions: ActionTaken[],
     newTicketUpdatedAt?: string
@@ -30,7 +32,15 @@ export interface ActionsTakenListProps {
     actionId: string,
     payload: UpdateActionTakenPayload
   ) => Promise<{ action: ActionTaken; ticketUpdatedAt?: string } | ActionTaken | void>;
-  onRefreshTicket?: () => Promise<ActionTaken | void> | ActionTaken | void;
+  onRefreshTicket?: () =>
+    | Promise<
+        | { action?: ActionTaken; ticketUpdatedAt?: string }
+        | ActionTaken
+        | void
+      >
+    | { action?: ActionTaken; ticketUpdatedAt?: string }
+    | ActionTaken
+    | void;
 }
 
 export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
@@ -40,6 +50,8 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
   actions,
   currentUser,
   readOnly = false,
+  actionsError,
+  onRetryLoadActions,
   onActionsChange,
   onCreateAction,
   onUpdateAction,
@@ -313,8 +325,40 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
         </div>
       )}
 
-      {/* Empty State (ui-spec.md Section 4.2) */}
-      {sortedActions.length === 0 ? (
+      {/* Actions Loading Error State (Separated from Empty List) */}
+      {actionsError ? (
+        <div
+          role="alert"
+          data-testid="actions-taken-error"
+          className="p-3 rounded-3 small d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2"
+          style={{
+            backgroundColor: "#FEE4E2",
+            color: "#B42318",
+            border: "1px solid #FDA29B",
+          }}
+        >
+          <div>
+            <span className="fw-semibold">Unable to load Actions Taken:</span>{" "}
+            <span>{actionsError}</span>
+          </div>
+          {onRetryLoadActions && (
+            <button
+              type="button"
+              data-testid="retry-load-actions-btn"
+              className="btn btn-sm fw-semibold"
+              onClick={onRetryLoadActions}
+              style={{
+                backgroundColor: "#B42318",
+                color: "#FFFFFF",
+                minHeight: 36,
+                alignSelf: "flex-start",
+              }}
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      ) : sortedActions.length === 0 ? (
         <div
           data-testid="actions-taken-empty"
           className="p-4 rounded-3 text-center small"
@@ -731,8 +775,9 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
           onSubmitCreate={handleCreateSubmit}
           onSubmitEdit={handleEditSubmit}
           onRefreshTicket={async () => {
+            let parentResult: any = undefined;
             if (onRefreshTicket) {
-              await onRefreshTicket();
+              parentResult = await onRefreshTicket();
             }
 
             const latestActions = await getActionsTaken(ticketId);
@@ -741,10 +786,23 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
               throw new Error("Unable to refresh Actions Taken.");
             }
 
+            const refreshedTicketUpdatedAt =
+              parentResult?.ticketUpdatedAt ||
+              (typeof parentResult === "string" ? parentResult : undefined);
+
+            if (refreshedTicketUpdatedAt) {
+              setLocalTicketUpdatedAt(refreshedTicketUpdatedAt);
+            }
+
             if (modalMode !== "edit") {
               setLocalActions(latestActions);
-              onActionsChange?.(latestActions);
-              return undefined;
+              onActionsChange?.(latestActions, refreshedTicketUpdatedAt);
+              return {
+                ticketUpdatedAt:
+                  refreshedTicketUpdatedAt ||
+                  localTicketUpdatedAt ||
+                  ticketUpdatedAt,
+              };
             }
 
             const actionId = editingAction?.id;
@@ -767,9 +825,15 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
 
             setLocalActions(latestActions);
             setEditingAction(refreshedAction);
-            onActionsChange?.(latestActions);
+            onActionsChange?.(latestActions, refreshedTicketUpdatedAt);
 
-            return refreshedAction;
+            return {
+              action: refreshedAction,
+              ticketUpdatedAt:
+                refreshedTicketUpdatedAt ||
+                localTicketUpdatedAt ||
+                ticketUpdatedAt,
+            };
           }}
         />
       )}

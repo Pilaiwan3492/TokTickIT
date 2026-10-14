@@ -44,6 +44,7 @@ export const StaffTicketDetail: React.FC = () => {
   const [assignees, setAssignees] = useState<StaffAssignee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -63,7 +64,7 @@ export const StaffTicketDetail: React.FC = () => {
 
   // Fetch ticket details & assignees
   const fetchTicketData = useCallback(async (silent = false) => {
-    if (!id) return;
+    if (!id) return null;
 
     try {
       if (!silent) {
@@ -84,12 +85,20 @@ export const StaffTicketDetail: React.FC = () => {
       }
 
       const loadedTicket = ticketData.data;
-      if (loadedTicket && !Array.isArray(loadedTicket.actionsTaken)) {
-        try {
-          const fetchedActions = await getActionsTaken(id);
-          loadedTicket.actionsTaken = fetchedActions;
-        } catch {
-          loadedTicket.actionsTaken = [];
+      if (loadedTicket) {
+        if (Array.isArray(loadedTicket.actionsTaken)) {
+          setActionsError(null);
+        } else {
+          try {
+            const fetchedActions = await getActionsTaken(id);
+            loadedTicket.actionsTaken = fetchedActions;
+            setActionsError(null);
+          } catch (err: any) {
+            console.error("Failed to load staff ticket actions:", err);
+            const msg = err?.message || "Failed to load Actions Taken.";
+            setActionsError(msg);
+            loadedTicket.actionsTaken = undefined;
+          }
         }
       }
 
@@ -97,6 +106,7 @@ export const StaffTicketDetail: React.FC = () => {
       if (assigneesRes.ok && assigneesData.data) {
         setAssignees(assigneesData.data);
       }
+      return loadedTicket;
     } catch (err: any) {
       console.error("Failed to load staff ticket:", err);
       if (!silent) {
@@ -104,6 +114,7 @@ export const StaffTicketDetail: React.FC = () => {
       } else {
         throw err;
       }
+      return null;
     } finally {
       if (!silent) {
         setIsLoading(false);
@@ -530,8 +541,11 @@ export const StaffTicketDetail: React.FC = () => {
         ticketStatus={currentStatus}
         ticketUpdatedAt={ticket.updatedAt}
         actions={ticket.actionsTaken || []}
+        actionsError={actionsError}
+        onRetryLoadActions={() => fetchTicketData(false)}
         currentUser={user}
         onActionsChange={(updatedActions, newTicketUpdatedAt) => {
+          setActionsError(null);
           setTicket((prev) =>
             prev
               ? {
@@ -543,7 +557,10 @@ export const StaffTicketDetail: React.FC = () => {
           );
           showToast("Action Taken saved successfully.");
         }}
-        onRefreshTicket={() => fetchTicketData(true)}
+        onRefreshTicket={async () => {
+          const freshTicket = await fetchTicketData(true);
+          return { ticketUpdatedAt: freshTicket?.updatedAt };
+        }}
       />
 
       {/* Tabbed Communication & Attachments Section */}
