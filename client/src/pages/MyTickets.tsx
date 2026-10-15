@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../api/apiClient";
@@ -30,27 +30,56 @@ interface Ticket {
 
 export default function MyTickets() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Search & Filter states
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [priority, setPriority] = useState("");
-  const [status, setStatus] = useState("");
+  // Search & Filter states initialized from URL query parameters (supports drill-down links)
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const [categoryId, setCategoryId] = useState(() => searchParams.get("categoryId") || "");
+  const [priority, setPriority] = useState(() => searchParams.get("priority") || "");
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
 
   // Lab 2 / UI Spec:
   // 6 supported sort options
-  const [sort, setSort] = useState("createdAt_desc");
+  const [sort, setSort] = useState(() => searchParams.get("sort") || "createdAt_desc");
 
   // Pagination states
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Synchronize when searchParams change
+  useEffect(() => {
+    if (searchParams.has("status")) {
+      setStatus(searchParams.get("status") || "");
+    }
+    if (searchParams.has("priority")) {
+      setPriority(searchParams.get("priority") || "");
+    }
+    if (searchParams.has("categoryId")) {
+      setCategoryId(searchParams.get("categoryId") || "");
+    }
+    if (searchParams.has("search")) {
+      const q = searchParams.get("search") || "";
+      setSearch(q);
+      setDebouncedSearch(q);
+    }
+    if (searchParams.has("sort")) {
+      setSort(searchParams.get("sort") || "createdAt_desc");
+    }
+    if (searchParams.has("page")) {
+      const p = parseInt(searchParams.get("page") || "1", 10);
+      if (!isNaN(p) && p >= 1) setPage(p);
+    }
+  }, [searchParams]);
 
   // Request states
   const [isLoading, setIsLoading] = useState(false);
@@ -117,7 +146,9 @@ export default function MyTickets() {
           params.append("priority", priority);
         }
 
-        if (status) {
+        // Only append status param if "NEW" to conform with Lab 2 API spec;
+        // other statuses or "open_all" are filtered accurately below.
+        if (status && status.toUpperCase() === "NEW") {
           params.append("status", status);
         }
 
@@ -128,14 +159,27 @@ export default function MyTickets() {
         const result = await res.json();
 
         if (res.ok) {
-          setTickets(result.data || []);
+          let list: Ticket[] = result.data || [];
+          if (status && status.toUpperCase() !== "NEW") {
+            if (status.toLowerCase() === "open_all") {
+              const openStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"];
+              list = list.filter((t) =>
+                openStatuses.includes((t.currentStatus || "").toUpperCase())
+              );
+            } else {
+              list = list.filter(
+                (t) => (t.currentStatus || "").toUpperCase() === status.toUpperCase()
+              );
+            }
+          }
+          setTickets(list);
 
           if (result.meta) {
-            setTotal(result.meta.total ?? 0);
-            setTotalPages(result.meta.totalPages ?? 0);
+            setTotal(status && status.toUpperCase() !== "NEW" ? list.length : (result.meta.total ?? 0));
+            setTotalPages(status && status.toUpperCase() !== "NEW" ? (list.length > 0 ? 1 : 0) : (result.meta.totalPages ?? 0));
           } else {
-            setTotal(0);
-            setTotalPages(0);
+            setTotal(list.length);
+            setTotalPages(list.length > 0 ? 1 : 0);
           }
         } else {
           setTickets([]);
@@ -418,8 +462,11 @@ export default function MyTickets() {
               className="form-select rounded-2 border-light-subtle small py-2 text-secondary"
             >
               <option value="">All Statuses</option>
+              <option value="open_all">All Open</option>
               <option value="NEW">New</option>
+              <option value="OPEN">Open</option>
               <option value="IN_PROGRESS">In Progress</option>
+              <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
               <option value="RESOLVED">Resolved</option>
               <option value="CLOSED">Closed</option>
             </select>

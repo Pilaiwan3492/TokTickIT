@@ -1,22 +1,55 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/apiClient";
 import { useAuth } from "../context/AuthContext";
 import { StaffQueueTicket, QueuePagination, TicketPriority, TicketStatusType } from "../types/staff";
 
 export const StaffTicketQueue: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  // Query & Filter State
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [priorityFilter, setPriorityFilter] = useState<string>("");
-  const [ownershipFilter, setOwnershipFilter] = useState<"ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME">("ALL");
-  const [page, setPage] = useState(1);
+  const parseOwnershipParam = (param: string | null): "ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME" => {
+    if (!param) return "ALL";
+    const upper = param.toUpperCase();
+    if (upper === "ASSIGNED_TO_ME" || upper === "UNASSIGNED") return upper;
+    return "ALL";
+  };
+
+  // Query & Filter State initialized from URL query parameters (supports drill-down links)
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") || "");
+  const [priorityFilter, setPriorityFilter] = useState<string>(() => searchParams.get("priority") || "");
+  const [ownershipFilter, setOwnershipFilter] = useState<"ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME">(() =>
+    parseOwnershipParam(searchParams.get("ownership"))
+  );
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
   const [pageSize] = useState(10);
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState(() => searchParams.get("sortBy") || "createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    searchParams.get("sortOrder") === "asc" ? "asc" : "desc"
+  );
+
+  // Synchronize when searchParams change
+  useEffect(() => {
+    if (searchParams.has("status")) {
+      setStatusFilter(searchParams.get("status") || "");
+    }
+    if (searchParams.has("priority")) {
+      setPriorityFilter(searchParams.get("priority") || "");
+    }
+    if (searchParams.has("ownership")) {
+      setOwnershipFilter(parseOwnershipParam(searchParams.get("ownership")));
+    }
+    if (searchParams.has("search")) {
+      const q = searchParams.get("search") || "";
+      setSearch(q);
+      setDebouncedSearch(q);
+    }
+  }, [searchParams]);
 
   // Data State
   const [tickets, setTickets] = useState<StaffQueueTicket[]>([]);

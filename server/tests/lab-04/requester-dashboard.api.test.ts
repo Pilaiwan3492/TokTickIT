@@ -16,6 +16,8 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
   let otherUserId: string;
   let otherProfileId: number;
   let emptyUserId: string;
+  let testCategoryId: number;
+  let testRelatedSystemId: number;
 
   beforeAll(async () => {
     const defaultHash = bcrypt.hashSync("Password123!", 10);
@@ -26,12 +28,14 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
       update: { isActive: true },
       create: { name: "Hardware", isActive: true },
     });
+    testCategoryId = category.id;
 
     const relatedSystem = await prisma.relatedSystem.upsert({
       where: { name: "Email & Calendar" },
       update: { isActive: true },
       create: { name: "Email & Calendar", isActive: true },
     });
+    testRelatedSystemId = relatedSystem.id;
 
     // 1. Setup Requester Owner (has tickets across NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, 6 RESOLVED, 2 CLOSED)
     const ownerUser = await prisma.user.upsert({
@@ -426,5 +430,254 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+
+  // =========================================================================
+  // API-23-LEGACY: Legacy Ticket Support & Cross-Requester Isolation (BR-13)
+  // =========================================================================
+  it("API-23-LEGACY: seamlessly includes legacy tickets (userId: null, requesterId: profileId) while preventing data leakage from other legacy tickets", async () => {
+    const defaultHash = bcrypt.hashSync("Password123!", 10);
+
+    // Create legacy test user and linked profile
+    const legacyUser = await prisma.user.upsert({
+      where: { email: "dash.req.legacy@example.com" },
+      update: {
+        name: "Legacy Requester User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+      create: {
+        email: "dash.req.legacy@example.com",
+        name: "Legacy Requester User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+
+    const legacyProfile = await prisma.requesterUser.upsert({
+      where: { email: "dash.req.legacy@example.com" },
+      update: { userId: legacyUser.id, isActive: true, name: legacyUser.name },
+      create: {
+        email: "dash.req.legacy@example.com",
+        name: legacyUser.name,
+        userId: legacyUser.id,
+        isActive: true,
+      },
+    });
+
+    // Clean existing test tickets for legacy user
+    await prisma.ticket.deleteMany({
+      where: {
+        OR: [
+          { userId: legacyUser.id },
+          { requesterId: legacyProfile.id },
+          { ticketNo: { startsWith: "TKT-DASH-REQ-LEGACY-" } },
+        ],
+      },
+    });
+
+    // Seed:
+    // 1. Modern ticket owned by legacyUser (userId set)
+    // 2. Legacy unmigrated ticket owned by legacyUser's profile (userId: null, requesterId: legacyProfile.id) - WAITING_FOR_REQUESTER
+    // 3. Legacy resolved ticket (userId: null, requesterId: legacyProfile.id) - RESOLVED
+    // 4. Other user's legacy ticket (userId: null, requesterId: otherProfileId) - WAITING_FOR_REQUESTER (MUST NOT LEAK)
+    const tickets = [
+      {
+        ticketNo: "TKT-DASH-REQ-LEGACY-001",
+        summary: "Modern Active Ticket",
+        status: "OPEN" as const,
+        priority: "HIGH" as const,
+        userId: legacyUser.id,
+        requesterId: legacyProfile.id,
+        updatedAt: new Date("2026-09-10T10:00:00.000Z"),
+      },
+      {
+        ticketNo: "TKT-DASH-REQ-LEGACY-002",
+        summary: "Legacy Unmigrated Ticket Waiting",
+        status: "WAITING_FOR_REQUESTER" as const,
+        priority: "MEDIUM" as const,
+        userId: null,
+        requesterId: legacyProfile.id,
+        updatedAt: new Date("2026-09-10T11:00:00.000Z"),
+      },
+      {
+        ticketNo: "TKT-DASH-REQ-LEGACY-003",
+        summary: "Legacy Resolved Ticket",
+        status: "RESOLVED" as const,
+        priority: "LOW" as const,
+        userId: null,
+        requesterId: legacyProfile.id,
+        updatedAt: new Date("2026-09-10T12:00:00.000Z"),
+      },
+      {
+        ticketNo: "TKT-DASH-REQ-LEGACY-OTHER-001",
+        summary: "Other User Legacy Ticket",
+        status: "WAITING_FOR_REQUESTER" as const,
+        priority: "HIGH" as const,
+        userId: null,
+        requesterId: otherProfileId,
+        updatedAt: new Date("2026-09-10T13:00:00.000Z"),
+      },
+    ];
+
+    for (const t of tickets) {
+      await prisma.ticket.create({
+        data: {
+          ticketNo: t.ticketNo,
+          requesterId: t.requesterId,
+          userId: t.userId,
+          categoryId: testCategoryId,
+          relatedSystemId: testRelatedSystemId,
+          summary: t.summary,
+          description: `Description for ${t.summary}`,
+          requestedPriority: t.priority,
+          itPriority: t.priority,
+          status: t.status,
+          currentStatus: t.status,
+          updatedAt: t.updatedAt,
+        },
+      });
+    }
+
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dash.req.legacy@example.com", password: "Password123!" });
+    const legacyToken = loginRes.body.data.token;
+
+    const res = await request(app)
+      .get("/api/v1/dashboard/requester")
+      .set("Authorization", `Bearer ${legacyToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // 1 OPEN (modern) + 1 WAITING_FOR_REQUESTER (legacy) = 2 openTickets
+    // waitingForRequester = 1 (legacy ticket only)
+    // resolved = 1 (legacy resolved ticket only)
+    expect(res.body.data.metrics).toEqual({
+      openTickets: 2,
+      waitingForRequester: 1,
+      resolved: 1,
+      closed: 0,
+    });
+
+    const recentTicketNumbers = res.body.data.recentTickets.map((t: any) => t.ticketNumber);
+    expect(recentTicketNumbers).toContain("TKT-DASH-REQ-LEGACY-001");
+    expect(recentTicketNumbers).toContain("TKT-DASH-REQ-LEGACY-002");
+    expect(recentTicketNumbers).not.toContain("TKT-DASH-REQ-LEGACY-OTHER-001");
+
+    const resolvedTicketNumbers = res.body.data.recentlyResolvedTickets.map((t: any) => t.ticketNumber);
+    expect(resolvedTicketNumbers).toEqual(["TKT-DASH-REQ-LEGACY-003"]);
+  });
+
+  // =========================================================================
+  // API-23-SECURITY: Prevents Profile Hijacking / Rogue Fallback Adoption
+  // =========================================================================
+  it("API-23-SECURITY: prevents profile hijacking — requester cannot claim legacy tickets if profile is bound to another user", async () => {
+    const defaultHash = bcrypt.hashSync("Password123!", 10);
+
+    // Setup an Attacker user
+    const attackerUser = await prisma.user.upsert({
+      where: { email: "dash.req.attacker@example.com" },
+      update: {
+        name: "Attacker User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+      create: {
+        email: "dash.req.attacker@example.com",
+        name: "Attacker User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+
+    // Setup a Victim user and profile (profile is firmly bound to victim user)
+    const victimUser = await prisma.user.upsert({
+      where: { email: "dash.req.victim@example.com" },
+      update: {
+        name: "Victim User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+      create: {
+        email: "dash.req.victim@example.com",
+        name: "Victim User",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+
+    const victimProfile = await prisma.requesterUser.upsert({
+      where: { email: "dash.req.victim@example.com" },
+      update: { userId: victimUser.id, isActive: true, name: victimUser.name },
+      create: {
+        email: "dash.req.victim@example.com",
+        name: victimUser.name,
+        userId: victimUser.id,
+        isActive: true,
+      },
+    });
+
+    // Clean any prior victim/attacker test tickets
+    await prisma.ticket.deleteMany({
+      where: {
+        OR: [
+          { userId: attackerUser.id },
+          { ticketNo: { startsWith: "TKT-DASH-REQ-VICTIM-" } },
+        ],
+      },
+    });
+
+    // Seed a legacy ticket associated with victimProfile where userId is null
+    await prisma.ticket.create({
+      data: {
+        ticketNo: "TKT-DASH-REQ-VICTIM-001",
+        requesterId: victimProfile.id,
+        userId: null,
+        categoryId: testCategoryId,
+        relatedSystemId: testRelatedSystemId,
+        summary: "Victim Unmigrated Secret Ticket",
+        description: "Confidential victim orphaned ticket.",
+        requestedPriority: "HIGH",
+        itPriority: "HIGH",
+        status: "WAITING_FOR_REQUESTER",
+        currentStatus: "WAITING_FOR_REQUESTER",
+        updatedAt: new Date("2026-09-12T10:00:00.000Z"),
+      },
+    });
+
+    const loginAttacker = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dash.req.attacker@example.com", password: "Password123!" });
+    const attackerToken = loginAttacker.body.data.token;
+
+    // Attacker queries their dashboard; must have 0 tickets and zero access to victim's unmigrated ticket
+    const res = await request(app)
+      .get("/api/v1/dashboard/requester")
+      .set("Authorization", `Bearer ${attackerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.metrics).toEqual({
+      openTickets: 0,
+      waitingForRequester: 0,
+      resolved: 0,
+      closed: 0,
+    });
+    expect(res.body.data.recentTickets).toEqual([]);
+    expect(res.body.data.recentlyResolvedTickets).toEqual([]);
   });
 });
