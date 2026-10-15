@@ -146,9 +146,7 @@ export default function MyTickets() {
           params.append("priority", priority);
         }
 
-        // Only append status param if "NEW" to conform with Lab 2 API spec;
-        // other statuses or "open_all" are filtered accurately below.
-        if (status && status.toUpperCase() === "NEW") {
+        if (status) {
           params.append("status", status);
         }
 
@@ -159,27 +157,14 @@ export default function MyTickets() {
         const result = await res.json();
 
         if (res.ok) {
-          let list: Ticket[] = result.data || [];
-          if (status && status.toUpperCase() !== "NEW") {
-            if (status.toLowerCase() === "open_all") {
-              const openStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"];
-              list = list.filter((t) =>
-                openStatuses.includes((t.currentStatus || "").toUpperCase())
-              );
-            } else {
-              list = list.filter(
-                (t) => (t.currentStatus || "").toUpperCase() === status.toUpperCase()
-              );
-            }
-          }
-          setTickets(list);
+          setTickets(result.data || []);
 
           if (result.meta) {
-            setTotal(status && status.toUpperCase() !== "NEW" ? list.length : (result.meta.total ?? 0));
-            setTotalPages(status && status.toUpperCase() !== "NEW" ? (list.length > 0 ? 1 : 0) : (result.meta.totalPages ?? 0));
+            setTotal(result.meta.total ?? 0);
+            setTotalPages(result.meta.totalPages ?? 0);
           } else {
-            setTotal(list.length);
-            setTotalPages(list.length > 0 ? 1 : 0);
+            setTotal(0);
+            setTotalPages(0);
           }
         } else {
           setTickets([]);

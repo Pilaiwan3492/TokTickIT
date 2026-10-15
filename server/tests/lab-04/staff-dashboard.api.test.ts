@@ -534,4 +534,32 @@ describe("IT Staff & Administrator Dashboard API Tests (Lab 4 — Issue 36: API-
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("SESSION_INVALID");
   });
+
+  // =========================================================================
+  // DRILLDOWN-STAFF: IT Staff Queue Drill-Down Filter Endpoints
+  // =========================================================================
+  it("DRILLDOWN-STAFF-01: Staff opens ownership=unassigned — returns only unassigned tickets", async () => {
+    const res = await request(app)
+      .get("/api/v1/staff/tickets?ownership=unassigned")
+      .set("Authorization", `Bearer ${tokenStaffPrimary}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    for (const ticket of res.body.data) {
+      expect(ticket.owner).toBeNull();
+    }
+  });
+
+  it("DRILLDOWN-STAFF-02: Staff opens priority=URGENT — returns only URGENT priority tickets", async () => {
+    const res = await request(app)
+      .get("/api/v1/staff/tickets?priority=URGENT")
+      .set("Authorization", `Bearer ${tokenStaffPrimary}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    for (const ticket of res.body.data) {
+      const effectivePriority = ticket.itPriority || ticket.requestedPriority;
+      expect(effectivePriority).toBe("URGENT");
+    }
+  });
 });

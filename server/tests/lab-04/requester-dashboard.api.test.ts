@@ -522,6 +522,15 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
         requesterId: otherProfileId,
         updatedAt: new Date("2026-09-10T13:00:00.000Z"),
       },
+      {
+        ticketNo: "TKT-DASH-REQ-LEGACY-OTHER-MODERN-001",
+        summary: "Other User Modern Ticket",
+        status: "WAITING_FOR_REQUESTER" as const,
+        priority: "URGENT" as const,
+        userId: otherUserId,
+        requesterId: otherProfileId,
+        updatedAt: new Date("2026-09-10T14:00:00.000Z"),
+      },
     ];
 
     for (const t of tickets) {
@@ -534,7 +543,7 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
           relatedSystemId: testRelatedSystemId,
           summary: t.summary,
           description: `Description for ${t.summary}`,
-          requestedPriority: t.priority,
+          requestedPriority: t.priority === "URGENT" ? "HIGH" : t.priority,
           itPriority: t.priority,
           status: t.status,
           currentStatus: t.status,
@@ -556,7 +565,7 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
     expect(res.body.success).toBe(true);
 
     // 1 OPEN (modern) + 1 WAITING_FOR_REQUESTER (legacy) = 2 openTickets
-    // waitingForRequester = 1 (legacy ticket only)
+    // waitingForRequester = 1 (legacy ticket only, other modern/legacy tickets excluded)
     // resolved = 1 (legacy resolved ticket only)
     expect(res.body.data.metrics).toEqual({
       openTickets: 2,
@@ -569,6 +578,7 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
     expect(recentTicketNumbers).toContain("TKT-DASH-REQ-LEGACY-001");
     expect(recentTicketNumbers).toContain("TKT-DASH-REQ-LEGACY-002");
     expect(recentTicketNumbers).not.toContain("TKT-DASH-REQ-LEGACY-OTHER-001");
+    expect(recentTicketNumbers).not.toContain("TKT-DASH-REQ-LEGACY-OTHER-MODERN-001");
 
     const resolvedTicketNumbers = res.body.data.recentlyResolvedTickets.map((t: any) => t.ticketNumber);
     expect(resolvedTicketNumbers).toEqual(["TKT-DASH-REQ-LEGACY-003"]);
@@ -679,5 +689,93 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
     });
     expect(res.body.data.recentTickets).toEqual([]);
     expect(res.body.data.recentlyResolvedTickets).toEqual([]);
+  });
+
+  // =========================================================================
+  // DRILL-DOWN TESTS: Authoritative Backend Filtering & Pagination
+  // =========================================================================
+  it("DRILLDOWN-01: Requester opens status=RESOLVED — returns only RESOLVED tickets with authoritative database pagination", async () => {
+    // Requester Owner has 6 RESOLVED tickets
+    const res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=1&limit=10")
+      .set("Authorization", `Bearer ${tokenRequesterOwner}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta.total).toBe(6);
+    expect(res.body.meta.totalPages).toBe(1);
+    expect(res.body.data).toHaveLength(6);
+    for (const ticket of res.body.data) {
+      expect(ticket.currentStatus).toBe("RESOLVED");
+    }
+
+    // Verify pagination splitting (limit=5)
+    const page1Res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=1&limit=10")
+      .set("Authorization", `Bearer ${tokenRequesterOwner}`);
+    expect(page1Res.status).toBe(200);
+    expect(page1Res.body.meta.total).toBe(6);
+
+    // Limit=10 or 20 (supported limits per API spec: 10, 20, 50)
+    const page2Res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=2&limit=10")
+      .set("Authorization", `Bearer ${tokenRequesterOwner}`);
+    expect(page2Res.status).toBe(200);
+    expect(page2Res.body.data).toHaveLength(0); // 6 total items, page 2 has 0
+  });
+
+  it("DRILLDOWN-02: Requester opens status=open_all — returns tickets matching all 4 open statuses (NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER) and excludes RESOLVED/CLOSED", async () => {
+    // Requester Owner has 5 open tickets (1 NEW, 1 OPEN, 1 IN_PROGRESS, 2 WAITING_FOR_REQUESTER)
+    const res = await request(app)
+      .get("/api/v1/tickets?status=open_all&limit=10")
+      .set("Authorization", `Bearer ${tokenRequesterOwner}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta.total).toBe(5);
+    expect(res.body.data).toHaveLength(5);
+
+    const allowedOpenStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"];
+    for (const ticket of res.body.data) {
+      expect(allowedOpenStatuses).toContain(ticket.currentStatus);
+      expect(ticket.currentStatus).not.toBe("RESOLVED");
+      expect(ticket.currentStatus).not.toBe("CLOSED");
+    }
+  });
+
+  it("DRILLDOWN-03: Requester opens status=CLOSED — returns only CLOSED tickets", async () => {
+    // Requester Owner has 2 CLOSED tickets
+    const res = await request(app)
+      .get("/api/v1/tickets?status=CLOSED&limit=10")
+      .set("Authorization", `Bearer ${tokenRequesterOwner}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta.total).toBe(2);
+    expect(res.body.data).toHaveLength(2);
+    for (const ticket of res.body.data) {
+      expect(ticket.currentStatus).toBe("CLOSED");
+    }
+  });
+
+  it("DRILLDOWN-04: Requester A views tickets list (GET /api/v1/tickets) — sees own modern and legacy tickets, zero data leakage from Requester B", async () => {
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dash.req.legacy@example.com", password: "Password123!" });
+    const legacyToken = loginRes.body.data.token;
+
+    const res = await request(app)
+      .get("/api/v1/tickets?limit=50")
+      .set("Authorization", `Bearer ${legacyToken}`);
+
+    expect(res.status).toBe(200);
+    const ticketNumbers = res.body.data.map((t: any) => t.ticketNo);
+
+    // LegacyUser's modern and unmigrated tickets MUST be present
+    expect(ticketNumbers).toContain("TKT-DASH-REQ-LEGACY-001");
+    expect(ticketNumbers).toContain("TKT-DASH-REQ-LEGACY-002");
+    expect(ticketNumbers).toContain("TKT-DASH-REQ-LEGACY-003");
+
+    // Other user's tickets (modern and legacy) MUST NEVER be present
+    expect(ticketNumbers).not.toContain("TKT-DASH-REQ-LEGACY-OTHER-001");
+    expect(ticketNumbers).not.toContain("TKT-DASH-REQ-OTHER-001");
+    expect(ticketNumbers).not.toContain("TKT-DASH-REQ-VICTIM-001");
   });
 });
