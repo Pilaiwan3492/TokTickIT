@@ -778,4 +778,261 @@ describe("Requester Dashboard API Tests (Lab 4 — Issue 36: API-23..API-26)", (
     expect(ticketNumbers).not.toContain("TKT-DASH-REQ-OTHER-001");
     expect(ticketNumbers).not.toContain("TKT-DASH-REQ-VICTIM-001");
   });
+
+  // =========================================================================
+  // DRILLDOWN-PAGING: Multi-page Pagination (> 10 items) for Filtered Statuses
+  // =========================================================================
+  it("DRILLDOWN-PAGING-01: Multi-page Pagination for status=RESOLVED (> 10 items) — verifies total, totalPages, page boundaries, and zero duplicates across pages", async () => {
+    const defaultHash = bcrypt.hashSync("Password123!", 10);
+
+    // Dedicated pagination test requester
+    const pagingUser = await prisma.user.upsert({
+      where: { email: "dash.req.paging@example.com" },
+      update: {
+        name: "Paging Requester",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+      create: {
+        email: "dash.req.paging@example.com",
+        name: "Paging Requester",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: defaultHash,
+      },
+    });
+
+    const pagingProfile = await prisma.requesterUser.upsert({
+      where: { email: "dash.req.paging@example.com" },
+      update: { userId: pagingUser.id, isActive: true, name: pagingUser.name },
+      create: {
+        email: "dash.req.paging@example.com",
+        name: pagingUser.name,
+        userId: pagingUser.id,
+        isActive: true,
+      },
+    });
+
+    // Clean any prior tickets for this test user
+    await prisma.ticket.deleteMany({
+      where: {
+        OR: [
+          { userId: pagingUser.id },
+          { ticketNo: { startsWith: "TKT-DASH-REQ-PAGING-" } },
+        ],
+      },
+    });
+
+    // Seed 15 RESOLVED tickets + 2 CLOSED tickets + 1 OPEN ticket
+    const resolvedData = Array.from({ length: 15 }, (_, i) => ({
+      ticketNo: `TKT-DASH-REQ-PAGING-RES-${String(i + 1).padStart(2, "0")}`,
+      userId: pagingUser.id,
+      requesterId: pagingProfile.id,
+      categoryId: testCategoryId,
+      relatedSystemId: testRelatedSystemId,
+      summary: `Paging Resolved Ticket ${i + 1}`,
+      description: `Testing pagination of resolved tickets ${i + 1}`,
+      requestedPriority: "MEDIUM" as const,
+      itPriority: "MEDIUM" as const,
+      status: "RESOLVED" as const,
+      currentStatus: "RESOLVED" as const,
+      updatedAt: new Date(Date.now() - (15 - i) * 60000), // Distinct timestamps
+    }));
+
+    const otherData = [
+      {
+        ticketNo: "TKT-DASH-REQ-PAGING-CLS-01",
+        userId: pagingUser.id,
+        requesterId: pagingProfile.id,
+        categoryId: testCategoryId,
+        relatedSystemId: testRelatedSystemId,
+        summary: "Paging Closed Ticket 1",
+        description: "Testing non-resolved exclusion",
+        requestedPriority: "LOW" as const,
+        itPriority: "LOW" as const,
+        status: "CLOSED" as const,
+        currentStatus: "CLOSED" as const,
+        updatedAt: new Date(),
+      },
+      {
+        ticketNo: "TKT-DASH-REQ-PAGING-CLS-02",
+        userId: pagingUser.id,
+        requesterId: pagingProfile.id,
+        categoryId: testCategoryId,
+        relatedSystemId: testRelatedSystemId,
+        summary: "Paging Closed Ticket 2",
+        description: "Testing non-resolved exclusion",
+        requestedPriority: "LOW" as const,
+        itPriority: "LOW" as const,
+        status: "CLOSED" as const,
+        currentStatus: "CLOSED" as const,
+        updatedAt: new Date(),
+      },
+      {
+        ticketNo: "TKT-DASH-REQ-PAGING-OPN-01",
+        userId: pagingUser.id,
+        requesterId: pagingProfile.id,
+        categoryId: testCategoryId,
+        relatedSystemId: testRelatedSystemId,
+        summary: "Paging Open Ticket 1",
+        description: "Testing non-resolved exclusion",
+        requestedPriority: "HIGH" as const,
+        itPriority: "HIGH" as const,
+        status: "OPEN" as const,
+        currentStatus: "OPEN" as const,
+        updatedAt: new Date(),
+      },
+    ];
+
+    await prisma.ticket.createMany({
+      data: [...resolvedData, ...otherData],
+    });
+
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dash.req.paging@example.com", password: "Password123!" });
+    const pagingToken = loginRes.body.data.token;
+
+    // 1. Fetch Page 1 (limit=10)
+    const page1Res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=1&limit=10")
+      .set("Authorization", `Bearer ${pagingToken}`);
+
+    expect(page1Res.status).toBe(200);
+    expect(page1Res.body.meta.total).toBe(15);
+    expect(page1Res.body.meta.page).toBe(1);
+    expect(page1Res.body.meta.limit).toBe(10);
+    expect(page1Res.body.meta.totalPages).toBe(2);
+    expect(page1Res.body.data).toHaveLength(10);
+
+    const page1TicketNos: string[] = page1Res.body.data.map((t: any) => t.ticketNo);
+    for (const ticket of page1Res.body.data) {
+      expect(ticket.currentStatus).toBe("RESOLVED");
+    }
+
+    // 2. Fetch Page 2 (limit=10)
+    const page2Res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=2&limit=10")
+      .set("Authorization", `Bearer ${pagingToken}`);
+
+    expect(page2Res.status).toBe(200);
+    expect(page2Res.body.meta.total).toBe(15);
+    expect(page2Res.body.meta.page).toBe(2);
+    expect(page2Res.body.meta.limit).toBe(10);
+    expect(page2Res.body.meta.totalPages).toBe(2);
+    expect(page2Res.body.data).toHaveLength(5);
+
+    const page2TicketNos: string[] = page2Res.body.data.map((t: any) => t.ticketNo);
+    for (const ticket of page2Res.body.data) {
+      expect(ticket.currentStatus).toBe("RESOLVED");
+    }
+
+    // 3. Verify zero duplicates between pages (Disjoint sets)
+    const duplicates = page1TicketNos.filter((t) => page2TicketNos.includes(t));
+    expect(duplicates).toHaveLength(0);
+
+    // 4. Verify all 15 tickets are accounted for across pages
+    const allRetrieved = new Set([...page1TicketNos, ...page2TicketNos]);
+    expect(allRetrieved.size).toBe(15);
+
+    // 5. Verify non-resolved tickets are completely excluded
+    expect(allRetrieved.has("TKT-DASH-REQ-PAGING-CLS-01")).toBe(false);
+    expect(allRetrieved.has("TKT-DASH-REQ-PAGING-CLS-02")).toBe(false);
+    expect(allRetrieved.has("TKT-DASH-REQ-PAGING-OPN-01")).toBe(false);
+
+    // 6. Fetch Page 3 (beyond last page -> returns empty data, total remains 15)
+    const page3Res = await request(app)
+      .get("/api/v1/tickets?status=RESOLVED&page=3&limit=10")
+      .set("Authorization", `Bearer ${pagingToken}`);
+
+    expect(page3Res.status).toBe(200);
+    expect(page3Res.body.meta.total).toBe(15);
+    expect(page3Res.body.meta.page).toBe(3);
+    expect(page3Res.body.meta.totalPages).toBe(2);
+    expect(page3Res.body.data).toHaveLength(0);
+  });
+
+  it("DRILLDOWN-PAGING-02: Multi-page Pagination for status=open_all (> 10 items) — verifies total, totalPages, and page distribution across all 4 open statuses", async () => {
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "dash.req.paging@example.com", password: "Password123!" });
+    const pagingToken = loginRes.body.data.token;
+
+    const pagingUser = await prisma.user.findUnique({
+      where: { email: "dash.req.paging@example.com" },
+    });
+    const pagingProfile = await prisma.requesterUser.findUnique({
+      where: { email: "dash.req.paging@example.com" },
+    });
+
+    // Seed 12 additional open tickets across NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER
+    // (Paging user already has 1 open ticket from previous test => total will be 13)
+    const openStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"] as const;
+    const moreOpenTickets = Array.from({ length: 12 }, (_, i) => ({
+      ticketNo: `TKT-DASH-REQ-PAGING-OPN-${String(i + 2).padStart(2, "0")}`,
+      userId: pagingUser!.id,
+      requesterId: pagingProfile!.id,
+      categoryId: testCategoryId,
+      relatedSystemId: testRelatedSystemId,
+      summary: `Paging Open Ticket ${i + 2}`,
+      description: `Testing open_all multi-page pagination ${i + 2}`,
+      requestedPriority: "HIGH" as const,
+      itPriority: "HIGH" as const,
+      status: openStatuses[i % openStatuses.length],
+      currentStatus: openStatuses[i % openStatuses.length],
+      updatedAt: new Date(Date.now() - (12 - i) * 60000),
+    }));
+
+    await prisma.ticket.createMany({
+      data: moreOpenTickets,
+    });
+
+    // 13 open tickets total: page 1 has 10, page 2 has 3
+    const page1Res = await request(app)
+      .get("/api/v1/tickets?status=open_all&page=1&limit=10")
+      .set("Authorization", `Bearer ${pagingToken}`);
+
+    expect(page1Res.status).toBe(200);
+    expect(page1Res.body.meta.total).toBe(13);
+    expect(page1Res.body.meta.totalPages).toBe(2);
+    expect(page1Res.body.data).toHaveLength(10);
+
+    const page1TicketNos: string[] = page1Res.body.data.map((t: any) => t.ticketNo);
+    for (const ticket of page1Res.body.data) {
+      expect(["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"]).toContain(ticket.currentStatus);
+      expect(ticket.currentStatus).not.toBe("RESOLVED");
+      expect(ticket.currentStatus).not.toBe("CLOSED");
+    }
+
+    const page2Res = await request(app)
+      .get("/api/v1/tickets?status=open_all&page=2&limit=10")
+      .set("Authorization", `Bearer ${pagingToken}`);
+
+    expect(page2Res.status).toBe(200);
+    expect(page2Res.body.meta.total).toBe(13);
+    expect(page2Res.body.meta.totalPages).toBe(2);
+    expect(page2Res.body.data).toHaveLength(3);
+
+    const page2TicketNos: string[] = page2Res.body.data.map((t: any) => t.ticketNo);
+    for (const ticket of page2Res.body.data) {
+      expect(["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"]).toContain(ticket.currentStatus);
+    }
+
+    // Zero duplicates between page 1 and page 2
+    const duplicates = page1TicketNos.filter((t) => page2TicketNos.includes(t));
+    expect(duplicates).toHaveLength(0);
+
+    // All 13 accounted for
+    const allOpenRetrieved = new Set([...page1TicketNos, ...page2TicketNos]);
+    expect(allOpenRetrieved.size).toBe(13);
+
+    // None of the 15 RESOLVED or 2 CLOSED tickets are included
+    for (const t of page1Res.body.data.concat(page2Res.body.data)) {
+      expect(t.currentStatus).not.toBe("RESOLVED");
+      expect(t.currentStatus).not.toBe("CLOSED");
+    }
+  });
 });
