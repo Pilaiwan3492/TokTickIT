@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthProvider } from "../../src/context/AuthContext";
 import { TOKEN_STORAGE_KEY } from "../../src/api/auth.api";
 import StaffTicketQueue from "../../src/pages/StaffTicketQueue";
@@ -332,6 +332,88 @@ describe("IT Staff Ticket Queue UI Tests (Lab 3 — Issue 26: UI-13..UI-18)", ()
 
     await waitFor(() => {
       expect(screen.getByText(/No tickets currently in the queue/i)).toBeInTheDocument();
+    });
+  });
+
+  // --- UI-18b: Query parameters removed from URL -> filters reset to defaults ---
+  it("UI-18b: resets filters to defaults and reloads queue when query parameters are removed from URL", async () => {
+    let capturedUrls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        capturedUrls.push(urlStr);
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: mockTickets,
+            pagination: mockPagination,
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    const NavigationTester: React.FC = () => {
+      const navigate = useNavigate();
+      return (
+        <div>
+          <button onClick={() => navigate("/queue")}>Clear URL Params</button>
+          <StaffTicketQueue />
+        </div>
+      );
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/queue?priority=URGENT&status=OPEN&ownership=UNASSIGNED&search=router"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/queue" element={<NavigationTester />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // Initial state with query parameters
+    await waitFor(() => {
+      expect(capturedUrls.some((u) => u.includes("priority=URGENT") && u.includes("status=OPEN"))).toBe(true);
+    });
+
+    const prioritySelect = screen.getByLabelText(/filter by priority/i) as HTMLSelectElement;
+    expect(prioritySelect.value).toBe("URGENT");
+
+    const statusSelect = screen.getByLabelText(/filter by status/i) as HTMLSelectElement;
+    expect(statusSelect.value).toBe("OPEN");
+
+    const searchInput = screen.getByLabelText(/search tickets/i) as HTMLInputElement;
+    expect(searchInput.value).toBe("router");
+
+    // Clear URL parameters by navigating to /queue
+    capturedUrls = [];
+    fireEvent.click(screen.getByText("Clear URL Params"));
+
+    // Verify filter UI controls reset to defaults
+    await waitFor(() => {
+      expect(prioritySelect.value).toBe("");
+      expect(statusSelect.value).toBe("");
+      expect(searchInput.value).toBe("");
+    });
+
+    // Verify tickets are reloaded without old filters
+    await waitFor(() => {
+      const lastUrl = capturedUrls[capturedUrls.length - 1];
+      expect(lastUrl).toBeDefined();
+      expect(lastUrl).not.toContain("priority=URGENT");
+      expect(lastUrl).not.toContain("status=OPEN");
+      expect(lastUrl).not.toContain("ownership=UNASSIGNED");
+      expect(lastUrl).not.toContain("search=router");
     });
   });
 });

@@ -33,22 +33,21 @@ export const StaffTicketQueue: React.FC = () => {
     searchParams.get("sortOrder") === "asc" ? "asc" : "desc"
   );
 
-  // Synchronize when searchParams change
+  // Synchronize when searchParams change (resetting to defaults when parameters are removed from URL)
   useEffect(() => {
-    if (searchParams.has("status")) {
-      setStatusFilter(searchParams.get("status") || "");
-    }
-    if (searchParams.has("priority")) {
-      setPriorityFilter(searchParams.get("priority") || "");
-    }
-    if (searchParams.has("ownership")) {
-      setOwnershipFilter(parseOwnershipParam(searchParams.get("ownership")));
-    }
-    if (searchParams.has("search")) {
-      const q = searchParams.get("search") || "";
-      setSearch(q);
-      setDebouncedSearch(q);
-    }
+    const q = searchParams.get("search") || "";
+    setSearch(q);
+    setDebouncedSearch(q);
+
+    setStatusFilter(searchParams.get("status") || "");
+    setPriorityFilter(searchParams.get("priority") || "");
+    setOwnershipFilter(parseOwnershipParam(searchParams.get("ownership")));
+
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    setPage(isNaN(p) || p < 1 ? 1 : p);
+
+    setSortBy(searchParams.get("sortBy") || "createdAt");
+    setSortOrder(searchParams.get("sortOrder") === "asc" ? "asc" : "desc");
   }, [searchParams]);
 
   // Data State
@@ -66,12 +65,13 @@ export const StaffTicketQueue: React.FC = () => {
 
   // Debounce search input (300ms)
   useEffect(() => {
+    if (search === debouncedSearch) return;
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch Tickets
   const fetchQueueTickets = useCallback(async () => {

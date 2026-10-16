@@ -56,29 +56,20 @@ export default function MyTickets() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Synchronize when searchParams change
+  // Synchronize when searchParams change (resetting to defaults when parameters are removed from URL)
   useEffect(() => {
-    if (searchParams.has("status")) {
-      setStatus(searchParams.get("status") || "");
-    }
-    if (searchParams.has("priority")) {
-      setPriority(searchParams.get("priority") || "");
-    }
-    if (searchParams.has("categoryId")) {
-      setCategoryId(searchParams.get("categoryId") || "");
-    }
-    if (searchParams.has("search")) {
-      const q = searchParams.get("search") || "";
-      setSearch(q);
-      setDebouncedSearch(q);
-    }
-    if (searchParams.has("sort")) {
-      setSort(searchParams.get("sort") || "createdAt_desc");
-    }
-    if (searchParams.has("page")) {
-      const p = parseInt(searchParams.get("page") || "1", 10);
-      if (!isNaN(p) && p >= 1) setPage(p);
-    }
+    setStatus(searchParams.get("status") || "");
+    setPriority(searchParams.get("priority") || "");
+    setCategoryId(searchParams.get("categoryId") || "");
+
+    const q = searchParams.get("search") || "";
+    setSearch(q);
+    setDebouncedSearch(q);
+
+    setSort(searchParams.get("sort") || "createdAt_desc");
+
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    setPage(isNaN(p) || p < 1 ? 1 : p);
   }, [searchParams]);
 
   // Request states
@@ -92,13 +83,14 @@ export default function MyTickets() {
 
   // Debounce search input
   useEffect(() => {
+    if (search === debouncedSearch) return;
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch active categories for the Category filter
   useEffect(() => {

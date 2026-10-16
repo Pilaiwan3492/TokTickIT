@@ -550,16 +550,72 @@ describe("IT Staff & Administrator Dashboard API Tests (Lab 4 — Issue 36: API-
     }
   });
 
-  it("DRILLDOWN-STAFF-02: Staff opens priority=URGENT — returns only URGENT priority tickets", async () => {
+  it("DRILLDOWN-STAFF-02: Staff opens priority=URGENT — returns only tickets where itPriority is URGENT (direct itPriority comparison)", async () => {
     const res = await request(app)
       .get("/api/v1/staff/tickets?priority=URGENT")
       .set("Authorization", `Bearer ${tokenStaffPrimary}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
     for (const ticket of res.body.data) {
-      const effectivePriority = ticket.itPriority || ticket.requestedPriority;
-      expect(effectivePriority).toBe("URGENT");
+      // Must directly match itPriority without fallback to requestedPriority
+      expect(ticket.itPriority).toBe("URGENT");
+    }
+
+    // Verify a ticket whose requestedPriority is HIGH but itPriority is URGENT (TKT-DASH-STF-001) is returned
+    const bgpTicket = res.body.data.find((t: any) => t.ticketNo === "TKT-DASH-STF-001");
+    expect(bgpTicket).toBeDefined();
+    expect(bgpTicket.itPriority).toBe("URGENT");
+    expect(bgpTicket.requestedPriority).toBe("HIGH");
+  });
+
+  it("DRILLDOWN-STAFF-03: Staff Queue priority filter isolates itPriority strictly and does not match requestedPriority when itPriority differs", async () => {
+    const category = await prisma.category.findFirst({ where: { isActive: true } });
+    const relatedSystem = await prisma.relatedSystem.findFirst({ where: { isActive: true } });
+
+    // Seed a ticket where requester asked for URGENT, but IT staff set itPriority to LOW
+    const ticketMismatch = await prisma.ticket.create({
+      data: {
+        ticketNo: `TKT-DASH-STF-MISMATCH-${Date.now()}`,
+        requesterId: requesterProfileId,
+        userId: requesterUserId,
+        ownerId: staffPrimaryId,
+        categoryId: category!.id,
+        relatedSystemId: relatedSystem!.id,
+        summary: "Display brightness mismatch test",
+        description: "Requester requested URGENT, but staff set itPriority to LOW",
+        requestedPriority: "URGENT",
+        itPriority: "LOW",
+        status: "OPEN",
+        currentStatus: "OPEN",
+      },
+    });
+
+    try {
+      // 1. Fetch priority=URGENT: This ticket MUST NOT be in the results
+      const resUrgent = await request(app)
+        .get("/api/v1/staff/tickets?priority=URGENT")
+        .set("Authorization", `Bearer ${tokenStaffPrimary}`);
+
+      expect(resUrgent.status).toBe(200);
+      const foundInUrgent = resUrgent.body.data.some((t: any) => t.id === ticketMismatch.id);
+      expect(foundInUrgent).toBe(false);
+
+      // 2. Fetch priority=LOW: This ticket MUST be in the results with itPriority === 'LOW'
+      const resLow = await request(app)
+        .get("/api/v1/staff/tickets?priority=LOW")
+        .set("Authorization", `Bearer ${tokenStaffPrimary}`);
+
+      expect(resLow.status).toBe(200);
+      const foundInLow = resLow.body.data.find((t: any) => t.id === ticketMismatch.id);
+      expect(foundInLow).toBeDefined();
+      expect(foundInLow.itPriority).toBe("LOW");
+      expect(foundInLow.requestedPriority).toBe("URGENT");
+    } finally {
+      await prisma.ticket.delete({
+        where: { id: ticketMismatch.id },
+      });
     }
   });
 });
