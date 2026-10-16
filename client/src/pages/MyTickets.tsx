@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../api/apiClient";
@@ -30,27 +30,47 @@ interface Ticket {
 
 export default function MyTickets() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Search & Filter states
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [priority, setPriority] = useState("");
-  const [status, setStatus] = useState("");
+  // Search & Filter states initialized from URL query parameters (supports drill-down links)
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const [categoryId, setCategoryId] = useState(() => searchParams.get("categoryId") || "");
+  const [priority, setPriority] = useState(() => searchParams.get("priority") || "");
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
 
   // Lab 2 / UI Spec:
   // 6 supported sort options
-  const [sort, setSort] = useState("createdAt_desc");
+  const [sort, setSort] = useState(() => searchParams.get("sort") || "createdAt_desc");
 
   // Pagination states
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Synchronize when searchParams change (resetting to defaults when parameters are removed from URL)
+  useEffect(() => {
+    setStatus(searchParams.get("status") || "");
+    setPriority(searchParams.get("priority") || "");
+    setCategoryId(searchParams.get("categoryId") || "");
+
+    const q = searchParams.get("search") || "";
+    setSearch(q);
+    setDebouncedSearch(q);
+
+    setSort(searchParams.get("sort") || "createdAt_desc");
+
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    setPage(isNaN(p) || p < 1 ? 1 : p);
+  }, [searchParams]);
 
   // Request states
   const [isLoading, setIsLoading] = useState(false);
@@ -63,13 +83,14 @@ export default function MyTickets() {
 
   // Debounce search input
   useEffect(() => {
+    if (search === debouncedSearch) return;
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch active categories for the Category filter
   useEffect(() => {
@@ -418,8 +439,11 @@ export default function MyTickets() {
               className="form-select rounded-2 border-light-subtle small py-2 text-secondary"
             >
               <option value="">All Statuses</option>
+              <option value="open_all">All Open</option>
               <option value="NEW">New</option>
+              <option value="OPEN">Open</option>
               <option value="IN_PROGRESS">In Progress</option>
+              <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
               <option value="RESOLVED">Resolved</option>
               <option value="CLOSED">Closed</option>
             </select>

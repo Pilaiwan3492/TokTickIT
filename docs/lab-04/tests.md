@@ -50,7 +50,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **UNIT-01** | Unit | BR-05 | Validation function for `followUpRequired` and `followUpNote` combinations | Rejects empty or whitespace notes when `followUpRequired = true`; allows null/omitted when `false` | `server/tests/lab-04/actions-taken.unit.test.ts` | `Passing` |
 | **UNIT-02** | Unit | BR-08, BR-09, BR-11 | State machine status transition matrix helper validating all 18 permitted transitions | Returns `true` for all 18 valid transitions; returns `false` for all disallowed or terminal transitions | `server/tests/lab-04/ticket-workflow.unit.test.ts` | `Passing` |
-| **UNIT-03** | Unit | BR-13, BR-14, BR-16 | Dashboard SQL aggregation query builders for Requester and Staff metrics | Generates correct Prisma `where` / `groupBy` clauses matching status, ownership, and role rules | `server/tests/lab-04/dashboard-metrics.unit.test.ts` | `Planned` |
+| **UNIT-03** | Unit | BR-13, BR-14, BR-16 | Dashboard SQL aggregation query builders for Requester and Staff metrics | Generates correct Prisma `where` / `groupBy` clauses matching status, ownership, and role rules | `server/tests/lab-04/dashboard-metrics.unit.test.ts` | `Passing` |
 | **UNIT-04** | Unit | BR-17 | Concurrency timestamp comparator and strict ISO 8601 DateTime/timezone offset validator (`isConcurrencyStale`, `isValidIsoDateTime`) | Accurately detects timestamp mismatch and enforces strict calendar dates and timezone offset bounds (`00–23` hours, `00–59` minutes) | `server/tests/lab-04/actions-taken.unit.test.ts` | `Passing` |
 
 ---
@@ -104,23 +104,23 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **API-23** | API | AC-15, BR-13, BR-16 | Requester Dashboard returns authoritative counts (`openTickets`, `waitingForRequester`, `resolved`, `closed`) scoped to caller | HTTP 200 OK; accurate counts matching database records | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Planned` |
-| **API-24** | API | AC-16, BR-13 | Requester Dashboard for user with zero tickets | HTTP 200 OK; returns counts = 0, `recentTickets: []`, `recentlyResolvedTickets: []` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Planned` |
-| **API-25** | API | BR-13 | Requester Dashboard recently resolved list limited to max 5 records | HTTP 200 OK; returns at most 5 records ordered by `updatedAt DESC` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Planned` |
-| **API-26** | API | AC-22 | Unauthenticated caller requests Requester Dashboard | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Planned` |
+| **API-23** | API | AC-15, BR-13, BR-16 | Requester Dashboard returns authoritative counts (`openTickets`, `waitingForRequester`, `resolved`, `closed`) scoped to caller | HTTP 200 OK; accurate counts matching database records | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Passing` |
+| **API-24** | API | AC-16, BR-13 | Requester Dashboard for user with zero tickets | HTTP 200 OK; returns counts = 0, `recentTickets: []`, `recentlyResolvedTickets: []` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Passing` |
+| **API-25** | API | BR-13 | Requester Dashboard recently resolved list limited to max 5 records | HTTP 200 OK; returns at most 5 records ordered by `updatedAt DESC` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Passing` |
+| **API-26** | API | AC-22 | Unauthenticated caller requests Requester Dashboard | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-04/requester-dashboard.api.test.ts` | `Passing` |
 
 #### IT Staff & Administrator Dashboards (`server/tests/lab-04/staff-dashboard.api.test.ts`)
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **API-27** | API | AC-17, BR-14, BR-16 | Staff Dashboard returns 6 primary operational metrics (`newCount`, `openCount`, `inProgressCount`, `waitingForRequesterCount`, `myAssignedCount`, `unassignedCount`) | HTTP 200 OK; counts match database aggregations | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-28** | API | AC-17, BR-14 | Staff Dashboard returns priority attention counts (`urgentCount`, `highCount`) | HTTP 200 OK; accurate active counts matching priority filter | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-29** | API | BR-14 | Staff Dashboard returns current-user Actions Taken (`myActionsCount`, `myRecentActions` max 5) | HTTP 200 OK; returns actions where `performedById = callerId`, limited to 5 | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-29b** | API | AC-17, BR-14 | Staff Dashboard with zero matching operational records | HTTP 200 OK; all metric counts return 0, `myRecentActions = []`, `recentQueueTickets = []` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-30** | API | AC-20, BR-14, BR-07 | Requester attempts to access Staff Dashboard (`GET /api/v1/dashboard/staff`) | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-31** | API | AC-18, BR-15 | Administrator retrieves Staff Dashboard | HTTP 200 OK; includes staff metrics plus `userMetrics` (`activeUsers`, `activeStaff`, `activeAdmins`) | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-32** | API | BR-14, BR-15 | IT Staff retrieves Staff Dashboard | HTTP 200 OK; `userMetrics` is null or omitted from response | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
-| **API-33** | API | AC-22 | Unauthenticated caller requests Staff Dashboard | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Planned` |
+| **API-27** | API | AC-17, BR-14, BR-16 | Staff Dashboard returns 6 primary operational metrics (`newCount`, `openCount`, `inProgressCount`, `waitingForRequesterCount`, `myAssignedCount`, `unassignedCount`) | HTTP 200 OK; counts match database aggregations | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-28** | API | AC-17, BR-14 | Staff Dashboard returns priority attention counts (`urgentCount`, `highCount`) | HTTP 200 OK; accurate active counts matching priority filter | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-29** | API | BR-14 | Staff Dashboard returns current-user Actions Taken (`myActionsCount`, `myRecentActions` max 5) | HTTP 200 OK; returns actions where `performedById = callerId`, limited to 5 | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-29b** | API | AC-17, BR-14 | Staff Dashboard with zero matching operational records | HTTP 200 OK; all metric counts return 0, `myRecentActions = []`, `recentTickets = []` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-30** | API | AC-20, BR-14, BR-07 | Requester attempts to access Staff Dashboard (`GET /api/v1/dashboard/staff`) | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-31** | API | AC-18, BR-15 | Administrator retrieves Staff Dashboard | HTTP 200 OK; includes staff metrics plus `userStats` (`activeUsers`, `activeStaff`, `activeAdmins`) | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-32** | API | BR-14, BR-15 | IT Staff retrieves Staff Dashboard | HTTP 200 OK; `userStats` is null | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
+| **API-33** | API | AC-22 | Unauthenticated caller requests Staff Dashboard | HTTP 401 Unauthorized with code `SESSION_INVALID` | `server/tests/lab-04/staff-dashboard.api.test.ts` | `Passing` |
 
 ---
 
@@ -131,8 +131,8 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response times under representative seed dataset | Requester Dashboard latency $< 300\text{ms}$; Staff Dashboard latency $< 300\text{ms}$ (project-defined smoke thresholds) with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
-| **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ (project-defined smoke thresholds) | `server/tests/lab-04/performance-smoke.test.ts` | `Planned` |
+| **PERF-01** | Performance-Smoke | BR-13, BR-14, BR-16 | Requester and Staff Dashboard response times under representative seed dataset | Requester Dashboard latency $< 300\text{ms}$; Staff Dashboard latency $< 300\text{ms}$ (project-defined smoke thresholds) with zero SQL query errors | `server/tests/lab-04/performance-smoke.test.ts` | `Passing` |
+| **PERF-02** | Performance-Smoke | BR-01, BR-06 | Actions Taken list query and create response latency under representative dataset | List retrieval $< 150\text{ms}$; creation $< 200\text{ms}$ (project-defined smoke thresholds) | `server/tests/lab-04/performance-smoke.test.ts` | `Passing` |
 
 ---
 

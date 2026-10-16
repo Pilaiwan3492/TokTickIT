@@ -155,6 +155,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/my-tickets"
+          element={
+            <ProtectedRoute allowedRoles={["REQUESTER"]}>
+              <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/create-ticket"
           element={
             <ProtectedRoute allowedRoles={["REQUESTER"]}>
@@ -178,6 +186,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/my-tickets/:id"
+          element={
+            <ProtectedRoute allowedRoles={["REQUESTER", "IT_STAFF", "ADMIN"]}>
+              <TicketDetailDispatcher />
+            </ProtectedRoute>
+          }
+        />
 
         {/* IT Staff & Admin Queue & Detail */}
         <Route
@@ -189,7 +205,23 @@ function AppContent() {
           }
         />
         <Route
+          path="/staff/tickets"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffTicketQueue />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/queue/:id"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffTicketDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/tickets/:id"
           element={
             <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
               <StaffTicketDetail />
