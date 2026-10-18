@@ -103,21 +103,11 @@ export const getStaffQueueHandler = async (
       }
     }
 
-    // 3. Priority filter (matches itPriority or requestedPriority fallback)
+    // 3. Priority filter (matches itPriority directly, aligning with Staff Dashboard metrics)
     if (priority && typeof priority === "string" && priority.trim() !== "") {
       const prioUpper = priority.trim().toUpperCase();
       if (Object.values(Priority).includes(prioUpper as Priority)) {
-        andConditions.push({
-          OR: [
-            { itPriority: prioUpper as Priority },
-            {
-              AND: [
-                { itPriority: null },
-                { requestedPriority: prioUpper as Priority },
-              ],
-            },
-          ],
-        });
+        andConditions.push({ itPriority: prioUpper as Priority });
       }
     }
 

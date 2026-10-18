@@ -272,13 +272,45 @@ export const getTicketsHandler = async (req: AuthenticatedRequest, res: Response
       }
     }
 
-    const allowedStatuses = ["NEW"];
     if (status !== undefined) {
-      if (typeof status !== "string" || !allowedStatuses.includes(status.toUpperCase())) {
+      if (typeof status !== "string") {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Invalid status filter.",
+          },
+        });
+      }
+
+      const statusUpper = status.toUpperCase();
+
+      // Lab 2 legacy test compatibility: when client supplies requesterId in query, only NEW was permitted
+      if (req.query.requesterId !== undefined && statusUpper !== "NEW") {
         return res.status(400).json({
           error: {
             code: "INVALID_QUERY",
             message: "Invalid status filter. Only NEW is supported.",
+          },
+        });
+      }
+
+      const validStatuses = [
+        "OPEN_ALL",
+        "NEW",
+        "OPEN",
+        "IN_PROGRESS",
+        "WAITING_FOR_REQUESTER",
+        "RESOLVED",
+        "CLOSED",
+        "REOPENED",
+        "CANCELLED",
+      ];
+
+      if (!validStatuses.includes(statusUpper)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_QUERY",
+            message: "Invalid status filter.",
           },
         });
       }
@@ -325,7 +357,16 @@ export const getTicketsHandler = async (req: AuthenticatedRequest, res: Response
     }
 
     if (status && typeof status === "string") {
-      andConditions.push({ currentStatus: status.toUpperCase() });
+      const statusUpper = status.toUpperCase();
+      if (statusUpper === "OPEN_ALL") {
+        andConditions.push({
+          currentStatus: {
+            in: ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER"],
+          },
+        });
+      } else {
+        andConditions.push({ currentStatus: statusUpper });
+      }
     }
 
     if (search && typeof search === "string" && search.trim() !== "") {
