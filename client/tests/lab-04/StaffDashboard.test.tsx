@@ -411,13 +411,16 @@ describe("IT Staff & Admin Dashboard UI Tests (Lab 4 — Issue 37: UI-18..UI-20,
   });
 
   // --- Quick Actions ---
-  it("renders Quick Actions controls (Create Ticket, Search Tickets, My Assigned Queue)", async () => {
+  it("renders valid Staff Quick Actions controls (Unassigned Queue, Search Tickets, My Assigned Queue) and excludes Create Ticket", async () => {
     setupFetch(mockStaffUser, mockStaffDashboardData);
     renderDashboard();
 
     expect(await screen.findByText("Quick Actions")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Create Ticket/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Unassigned Queue/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Search Tickets/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /My Assigned Queue/i })).toBeInTheDocument();
+
+    // In accordance with TokTickIT RBAC invariants, IT Staff/Admin cannot create tickets
+    expect(screen.queryByRole("link", { name: /Create Ticket/i })).not.toBeInTheDocument();
   });
 });
