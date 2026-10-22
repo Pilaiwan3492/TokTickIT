@@ -169,21 +169,21 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UI-16** | UI | AC-15, BR-13 | Requester Dashboard renders 4 primary metric cards | Displays `My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed` | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Planned` |
-| **UI-17** | UI | AC-16, BR-13 | Requester Dashboard empty state when ticket count is 0 | Renders 0 count cards, accessible empty state message, and "+ Create Ticket" CTA | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Planned` |
-| **UI-21** | UI | AC-19, BR-13 | Clicking Requester metric card navigates to filtered My Tickets | Card click routes to `/my-tickets?status=...` with corresponding filter | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Planned` |
+| **UI-16** | UI | AC-15, BR-13 | Requester Dashboard renders 4 primary metric cards | Displays `My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed` | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Passed` |
+| **UI-17** | UI | AC-16, BR-13 | Requester Dashboard empty state when ticket count is 0 | Renders 0 count cards, accessible empty state message, and "+ Create Ticket" CTA | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Passed` |
+| **UI-21** | UI | AC-19, BR-13 | Clicking Requester metric card navigates to filtered My Tickets | Card click routes to `/my-tickets?status=...` with corresponding filter | `client/tests/lab-04/RequesterDashboard.test.tsx` | `Passed` |
 
 #### IT Staff & Administrator Dashboards (`client/tests/lab-04/StaffDashboard.test.tsx`)
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UI-18** | UI | AC-17, BR-14 | Staff Dashboard renders 6 primary operational metric cards | Displays `New`, `Open`, `In Progress`, `Waiting Req`, `My Assigned`, `Unassigned` | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-19** | UI | AC-17, BR-14 | Staff Dashboard renders Priority Attention strip and My Recent Actions | Displays `Urgent` and `High` count badges; renders current user's recent actions table | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-20** | UI | AC-18, BR-15 | Admin view renders System User Metrics panel | Displays `Active Users`, `Active Staff`, `Active Admins` cards for Admin role | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-22** | UI | AC-19, BR-14 | Clicking Staff metric card navigates to filtered Ticket Queue | Card click routes to `/staff/tickets?status=...` or `?ownership=...` | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-23** | UI | AC-20, BR-14, BR-07 | Non-staff user attempting to access `/dashboard` as staff | Redirects or displays 403 Forbidden screen | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-24** | UI | AC-22 | Unauthenticated user accessing `/dashboard` | Redirects to `/login` with redirect parameter | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
-| **UI-25** | UI | AC-24, BR-18 | Network error banner renders on dashboard fetch failure | Displays retry button without unhandled crash | `client/tests/lab-04/StaffDashboard.test.tsx` | `Planned` |
+| **UI-18** | UI | AC-17, BR-14 | Staff Dashboard renders 6 primary operational metric cards | Displays `New`, `Open`, `In Progress`, `Waiting Req`, `My Assigned`, `Unassigned` | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-19** | UI | AC-17, BR-14 | Staff Dashboard renders Priority Attention strip and My Recent Actions | Displays `Urgent` and `High` count badges; renders current user's recent actions table | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-20** | UI | AC-18, BR-15 | Admin view renders System User Metrics panel | Displays `Active Users`, `Active Staff`, `Active Admins` cards for Admin role | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-22** | UI | AC-19, BR-14 | Clicking Staff metric card navigates to filtered Ticket Queue | Card click routes to `/staff/tickets?status=...` or `?ownership=...` | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-23** | UI | AC-20, BR-14, BR-07 | Non-staff user attempting to access `/dashboard` as staff | Redirects or displays 403 Forbidden screen | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-24** | UI | AC-22 | Unauthenticated user accessing `/dashboard` | Redirects to `/login` with redirect parameter | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
+| **UI-25** | UI | AC-24, BR-18 | Network error banner renders on dashboard fetch failure | Displays retry button without unhandled crash | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
 | **UI-26** | UI | AC-25, BR-19 | Double-click prevention on Action Taken submission and status change | Submit button disables and displays spinner while request is in-flight | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
 
 ---
@@ -209,9 +209,9 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | Requirement Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **VIS-01** | Style | Section 9, Zen Green | Zen Green token fidelity across dashboard cards, header, and buttons | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#D5DDD8` | `client/tests/lab-04/ui-style.test.tsx` | `Planned` |
-| **VIS-02** | Style | Section 9, Badges | Status and Priority badge color tokens and Follow-up pill styling | Follow-up pill renders Amber (`#D97706` / `#FEF3C7`); badges conform to spec | `client/tests/lab-04/ui-style.test.tsx` | `Planned` |
-| **VIS-03** | Style | Section 9, A11y | Keyboard focus outlines and active indicators on all dashboard cards and modal inputs | Visible `#0B7A46` focus ring ($2\text{px}$ offset) on keyboard tab focus | `client/tests/lab-04/accessibility.test.tsx` | `Planned` |
+| **VIS-01** | Style | Section 9, Zen Green | Zen Green token fidelity across dashboard cards, header, and buttons | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#D5DDD8` | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
+| **VIS-02** | Style | Section 9, Badges | Status and Priority badge color tokens and Follow-up pill styling | Follow-up pill renders Amber (`#D97706` / `#FEF3C7`); badges conform to spec | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
+| **VIS-03** | Style | Section 9, A11y | Keyboard focus outlines and active indicators on all dashboard cards and modal inputs | Visible `#0B7A46` focus ring ($2\text{px}$ offset) on keyboard tab focus | `client/tests/lab-04/accessibility.test.tsx` | `Passed` |
 | **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/helpers/visual-check.ts` | `Planned` |
 
 ---
@@ -220,10 +220,10 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | Viewport Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column grid on Dashboards (3-col / 6-col cards) and side-by-side Ticket Detail | Layout renders cleanly with multi-column alignment and zero wrapping defects | `e2e/lab-04/responsive.spec.ts` | `Planned` |
-| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column metric cards grid, condensed action rows, sticky headers | Cards adapt cleanly to 2 columns; table horizontal scroll contained | `e2e/lab-04/responsive.spec.ts` | `Planned` |
-| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | 1-column stacked cards, full-width modals, touch targets $\ge 44 \times 44\text{px}$ | Stacked layout renders cleanly; buttons and form controls meet $44\text{px}$ touch target | `e2e/lab-04/responsive.spec.ts` | `Planned` |
-| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true on all views | `e2e/lab-04/responsive.spec.ts` | `Planned` |
+| **RESP-01** | Responsive | Desktop ($\ge 1280\text{px}$) | Multi-column grid on Dashboards (3-col / 6-col cards) and side-by-side Ticket Detail | Layout renders cleanly with multi-column alignment and zero wrapping defects | `e2e/lab-04/responsive.spec.ts` | `Passed` |
+| **RESP-02** | Responsive | Tablet ($768\text{px} - 1024\text{px}$) | 2-column metric cards grid, condensed action rows, sticky headers | Cards adapt cleanly to 2 columns; table horizontal scroll contained | `e2e/lab-04/responsive.spec.ts` | `Passed` |
+| **RESP-03** | Responsive | Mobile ($375\text{px} - 480\text{px}$) | 1-column stacked cards, full-width modals, touch targets $\ge 44 \times 44\text{px}$ | Stacked layout renders cleanly; buttons and form controls meet $44\text{px}$ touch target | `e2e/lab-04/responsive.spec.ts` | `Passed` |
+| **RESP-04** | Responsive | Mobile & Tablet | Zero unintended horizontal scrolling / page overflow | `document.documentElement.scrollWidth <= window.innerWidth` asserts true on all views | `e2e/lab-04/responsive.spec.ts` | `Passed` |
 
 ---
 
@@ -436,10 +436,10 @@ All screenshots will be captured during automated Playwright E2E execution and s
 
 ### 5.2 Responsive Visual Inspection Checklist
 
-- [ ] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($820\text{px}$), and Mobile ($375\text{px}$).
-- [ ] **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)**: Buttons, modal close triggers, and form inputs meet or exceed $44 \times 44\text{px}$ hit areas.
-- [ ] **Brand Token Fidelity (`VIS-01`)**: Header, metric card accents, and primary action buttons conform to `#006B3C` (Zen Green).
-- [ ] **Follow-up Pill Visual Distinction (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates Actions Taken requiring follow-up.
-- [ ] **Visible Focus Rings (`VIS-03`)**: High-contrast keyboard focus indicators (`#0B7A46`, $2\text{px}$ ring) visible on all interactive elements.
+- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($820\text{px}$), and Mobile ($375\text{px}$).
+- [x] **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)**: Buttons, modal close triggers, and form inputs meet or exceed $44 \times 44\text{px}$ hit areas.
+- [x] **Brand Token Fidelity (`VIS-01`)**: Header, metric card accents, and primary action buttons conform to `#006B3C` (Zen Green).
+- [x] **Follow-up Pill Visual Distinction (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates Actions Taken requiring follow-up.
+- [x] **Visible Focus Rings (`VIS-03`)**: High-contrast keyboard focus indicators (`#0B7A46`, $2\text{px}$ ring) visible on all interactive elements.
 - [ ] **Form State Preservation (`BR-18`, `UI-03`)**: Form inputs retain user input after validation errors or HTTP 409 stale-update conflicts.
 - [ ] **Double-Click Protection (`BR-19`, `UI-26`)**: In-flight requests disable submit buttons to prevent duplicate database entries.

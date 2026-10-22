@@ -149,7 +149,8 @@ export const RequesterDashboard: React.FC = () => {
     metrics.waitingForRequester === 0 &&
     metrics.resolved === 0 &&
     metrics.closed === 0 &&
-    recentTickets.length === 0;
+    recentTickets.length === 0 &&
+    recentlyResolvedTickets.length === 0;
 
   return (
     <div className="container py-4" style={{ maxWidth: 1200 }}>

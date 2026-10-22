@@ -6,6 +6,7 @@ import { AuthProvider } from "../../src/context/AuthContext";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
 import { TOKEN_STORAGE_KEY } from "../../src/api/auth.api";
 import StaffDashboard from "../../src/pages/StaffDashboard";
+import { StaffTicketQueue } from "../../src/pages/StaffTicketQueue";
 
 const mockStaffUser = {
   id: "usr-staff-1",
@@ -104,6 +105,34 @@ const mockAdminDashboardData = {
     activeUsers: 42,
     activeStaff: 8,
     activeAdmins: 2,
+  },
+};
+
+const mockQueueTicketsResponse = {
+  data: [
+    {
+      id: "tkt-new-001",
+      ticketNo: "TKT-2026-0001",
+      summary: "Core router disconnected in server room",
+      category: { id: 1, name: "Network" },
+      requestedPriority: "URGENT" as const,
+      itPriority: "URGENT" as const,
+      status: "NEW" as const,
+      currentStatus: "NEW" as const,
+      isRequesterResolved: false,
+      requester: { id: "req-1", name: "Rachel Requester", email: "rachel@example.com" },
+      owner: null,
+      createdAt: "2026-10-12T07:15:00.000Z",
+      updatedAt: "2026-10-12T07:15:00.000Z",
+    },
+  ],
+  pagination: {
+    page: 1,
+    pageSize: 10,
+    totalItems: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
   },
 };
 
@@ -283,6 +312,183 @@ describe("IT Staff & Admin Dashboard UI Tests (Lab 4 — Issue 37: UI-18..UI-20,
     expect(urgentLink).toHaveAttribute("href", "/staff/tickets?priority=URGENT");
     fireEvent.click(urgentLink);
     expect(screen.getByTestId("location-display")).toHaveTextContent("/staff/tickets?priority=URGENT");
+  });
+
+  // --- UI-22-INT: End-to-end drill-down integration into StaffTicketQueue ---
+  it("UI-22-INT: clicking Staff metric card drill-down navigates to StaffTicketQueue and pre-applies status filter", async () => {
+    let capturedQueueUrl = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: mockStaffDashboardData,
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        capturedQueueUrl = urlStr;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockQueueTicketsResponse,
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // Verify Dashboard rendered
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+
+    // Click "New" drill-down link
+    const newTicketsLink = screen.getByRole("link", { name: /View all new tickets/i });
+    fireEvent.click(newTicketsLink);
+
+    // Destination page loaded and triggered API with status=NEW
+    await waitFor(() => {
+      expect(capturedQueueUrl).toContain("status=NEW");
+    });
+
+    // The status select dropdown on StaffTicketQueue should be pre-set to "NEW"
+    const statusSelect = (await screen.findByLabelText("Filter by status")) as HTMLSelectElement;
+    expect(statusSelect.value).toBe("NEW");
+
+    // The filtered ticket should be rendered on the destination queue table/cards
+    expect(screen.getAllByText("TKT-2026-0001")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Core router disconnected in server room")[0]).toBeInTheDocument();
+  });
+
+  it("UI-22-INT-priority: clicking Urgent drill-down routes to StaffTicketQueue with priority=URGENT pre-applied", async () => {
+    let capturedQueueUrl = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: mockStaffDashboardData,
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        capturedQueueUrl = urlStr;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockQueueTicketsResponse,
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+
+    const urgentLink = screen.getByRole("link", { name: /View urgent priority tickets/i });
+    fireEvent.click(urgentLink);
+
+    await waitFor(() => {
+      expect(capturedQueueUrl).toContain("priority=URGENT");
+    });
+
+    const prioritySelect = (await screen.findByLabelText("Filter by priority")) as HTMLSelectElement;
+    expect(prioritySelect.value).toBe("URGENT");
+  });
+
+  it("UI-22-INT-ownership: clicking My Assigned drill-down routes to StaffTicketQueue with ownership=ASSIGNED_TO_ME pre-applied", async () => {
+    let capturedQueueUrl = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockStaffUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: mockStaffDashboardData,
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        capturedQueueUrl = urlStr;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockQueueTicketsResponse,
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+
+    const myAssignedLink = screen.getByRole("link", { name: /View my assigned tickets/i });
+    fireEvent.click(myAssignedLink);
+
+    await waitFor(() => {
+      expect(capturedQueueUrl).toContain("ownership=ASSIGNED_TO_ME");
+    });
+
+    const assignedButton = await screen.findByRole("button", { name: "Assigned to Me" });
+    expect(assignedButton.className).toContain("btn-success");
   });
 
   // --- UI-23: Non-staff user attempting to access /dashboard as staff ---

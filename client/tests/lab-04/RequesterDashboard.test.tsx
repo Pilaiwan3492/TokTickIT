@@ -1,10 +1,11 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "../../src/context/AuthContext";
 import { TOKEN_STORAGE_KEY } from "../../src/api/auth.api";
 import RequesterDashboard from "../../src/pages/RequesterDashboard";
+import MyTickets from "../../src/pages/MyTickets";
 
 const mockRequesterUser = {
   id: "usr-requester-1",
@@ -77,6 +78,29 @@ const mockEmptyDashboardData = {
   },
 };
 
+const mockTicketsResponse = {
+  data: [
+    {
+      id: "tkt-1",
+      ticketNo: "TKT-2026-0001",
+      summary: "Broken laptop display",
+      description: "Screen flicker issues",
+      requestedPriority: "HIGH",
+      currentStatus: "OPEN",
+      category: { id: 1, name: "Hardware" },
+      relatedSystem: { id: 1, name: "Workstations" },
+      createdAt: "2026-10-10T08:30:00.000Z",
+      updatedAt: "2026-10-10T08:30:00.000Z",
+    },
+  ],
+  meta: {
+    total: 1,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  },
+};
+
 function LocationDisplay() {
   const location = useLocation();
   return <div data-testid="location-display">{location.pathname + location.search}</div>;
@@ -97,6 +121,23 @@ describe("Requester Dashboard UI Tests (Lab 4 — Issue 37: UI-16, UI-17, UI-21)
           ok: true,
           status: 200,
           json: async () => ({ data: mockRequesterUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/categories")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [
+            { id: 1, name: "Hardware" },
+            { id: 2, name: "Software" },
+          ],
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockTicketsResponse,
         } as Response);
       }
       if (urlStr.includes("/api/v1/dashboard/requester")) {
@@ -184,6 +225,83 @@ describe("Requester Dashboard UI Tests (Lab 4 — Issue 37: UI-16, UI-17, UI-21)
     expect(ctaButton).toHaveAttribute("href", "/create-ticket");
   });
 
+  // --- Empty State Conditions when Recent and Recently Resolved differ ---
+  it("renders main dashboard view when requester has open tickets but 0 recently resolved tickets", async () => {
+    const dataWithOnlyOpenTickets = {
+      requesterName: "Jennifer Requester",
+      metrics: {
+        openTickets: 2,
+        waitingForRequester: 0,
+        resolved: 0,
+        closed: 0,
+      },
+      recentTickets: [
+        {
+          id: "tkt-1",
+          ticketNumber: "TKT-2026-0001",
+          title: "Broken laptop display",
+          status: "OPEN",
+          priority: "HIGH",
+          updatedAt: "2026-10-10T08:30:00.000Z",
+        },
+      ],
+      recentlyResolvedTickets: [],
+      drillDownPaths: mockPopulatedDashboardData.drillDownPaths,
+    };
+
+    setupFetch(dataWithOnlyOpenTickets);
+    renderDashboard();
+
+    // Must NOT render full-page empty state
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+    expect(screen.queryByText("You haven't submitted any tickets yet")).not.toBeInTheDocument();
+
+    // My Recent Tickets renders the ticket row
+    expect(screen.getByText("TKT-2026-0001")).toBeInTheDocument();
+    expect(screen.getByText("Broken laptop display")).toBeInTheDocument();
+
+    // Recently Resolved Tickets section renders the specific empty message
+    expect(screen.getByText("No recently resolved tickets")).toBeInTheDocument();
+  });
+
+  it("renders main dashboard view when requester has recently resolved tickets but 0 open tickets", async () => {
+    const dataWithOnlyResolvedTickets = {
+      requesterName: "Jennifer Requester",
+      metrics: {
+        openTickets: 0,
+        waitingForRequester: 0,
+        resolved: 2,
+        closed: 0,
+      },
+      recentTickets: [],
+      recentlyResolvedTickets: [
+        {
+          id: "tkt-3",
+          ticketNumber: "TKT-2026-0003",
+          title: "Password reset for email",
+          status: "RESOLVED",
+          priority: "LOW",
+          updatedAt: "2026-10-09T14:20:00.000Z",
+        },
+      ],
+      drillDownPaths: mockPopulatedDashboardData.drillDownPaths,
+    };
+
+    setupFetch(dataWithOnlyResolvedTickets);
+    renderDashboard();
+
+    // Must NOT render full-page empty state
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+    expect(screen.queryByText("You haven't submitted any tickets yet")).not.toBeInTheDocument();
+
+    // My Recent Tickets renders the specific empty message
+    expect(screen.getByText("No recent tickets.")).toBeInTheDocument();
+
+    // Recently Resolved Tickets section renders the ticket row
+    expect(screen.getByText("TKT-2026-0003")).toBeInTheDocument();
+    expect(screen.getByText("Password reset for email")).toBeInTheDocument();
+  });
+
   // --- UI-21: Clicking Requester metric card navigates to filtered My Tickets ---
   it("UI-21: clicking Requester metric card drill-down links routes to /my-tickets with pre-applied status filters", async () => {
     setupFetch(mockPopulatedDashboardData);
@@ -214,6 +332,81 @@ describe("Requester Dashboard UI Tests (Lab 4 — Issue 37: UI-16, UI-17, UI-21)
     expect(closedLink).toHaveAttribute("href", "/my-tickets?status=CLOSED");
     fireEvent.click(closedLink);
     expect(screen.getByTestId("location-display")).toHaveTextContent("/my-tickets?status=CLOSED");
+  });
+
+  // --- Drill-down End-to-End Integration with MyTickets ---
+  it("UI-21-INT: clicking My Open Tickets navigates to MyTickets, applies status filter 'open_all', calls API, and renders filtered tickets", async () => {
+    let capturedTicketsUrl = "";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ data: mockRequesterUser }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/requester")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: mockPopulatedDashboardData,
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/categories")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [
+            { id: 1, name: "Hardware" },
+            { id: 2, name: "Software" },
+          ],
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets")) {
+        capturedTicketsUrl = urlStr;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => mockTicketsResponse,
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<RequesterDashboard />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // Verify Dashboard rendered
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+
+    // Click My Open Tickets drill-down link
+    const openTicketsLink = screen.getByRole("link", { name: /View all open tickets/i });
+    fireEvent.click(openTicketsLink);
+
+    // Verify MyTickets destination page is rendered with filter applied
+    await waitFor(() => {
+      expect(capturedTicketsUrl).toContain("status=open_all");
+    });
+
+    // The status select dropdown on MyTickets should be pre-set to "open_all"
+    const statusSelect = (await screen.findByDisplayValue("All Open")) as HTMLSelectElement;
+    expect(statusSelect.value).toBe("open_all");
+
+    // The filtered ticket should be rendered on the destination page
+    expect(screen.getByText("TKT-2026-0001")).toBeInTheDocument();
   });
 
   // --- Recent Tickets & Recently Resolved Tickets Tables ---
