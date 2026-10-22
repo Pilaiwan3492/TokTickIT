@@ -169,4 +169,64 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await page.waitForURL(/\/admin\/users/);
     await expect(page.locator("h1")).toContainText("User Management");
   });
+
+  // --- Accessibility: Keyboard Navigation & Visible Focus Rings (VIS-03, FR-20) ---
+  test("VIS-03 & A11Y: Keyboard navigation via Tab displays visible focus ring (#0B7A46) on interactive elements", async ({
+    page,
+  }) => {
+    // 1. Log in as Requester Bob Smith
+    await page.goto("/login");
+    await page.fill("#login-email", "bob@example.com");
+    await page.fill("#login-password", "Password123!");
+    await page.click('button[type="submit"]');
+
+    // 2. Navigate to Requester Dashboard
+    await page.waitForLoadState("networkidle");
+    await page.goto("/dashboard");
+    await page.waitForSelector("h1:has-text('Welcome')");
+
+    // 3. Tab through interactive elements and verify focus state
+    // Press Tab multiple times to move focus through header and dashboard
+    let reachedInteractiveElement = false;
+    for (let i = 0; i < 15; i++) {
+      await page.keyboard.press("Tab");
+      const activeInfo = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el || el === document.body) return null;
+        return {
+          tagName: el.tagName,
+          ariaLabel: el.getAttribute("aria-label"),
+          text: el.textContent?.trim().slice(0, 30),
+        };
+      });
+      if (activeInfo && (activeInfo.tagName === "A" || activeInfo.tagName === "BUTTON")) {
+        reachedInteractiveElement = true;
+        break;
+      }
+    }
+    expect(reachedInteractiveElement).toBe(true);
+
+    // 4. Specifically target and focus the "View all open tickets" link via keyboard Tab
+    const openTicketsLink = page.locator('a[aria-label="View all open tickets"]');
+    await openTicketsLink.focus();
+    await expect(openTicketsLink).toBeFocused();
+
+    // Verify visible focus outline properties on the focused element
+    const outlineInfo = await openTicketsLink.evaluate((el) => {
+      const s = window.getComputedStyle(el);
+      return {
+        outlineStyle: s.outlineStyle,
+        outlineColor: s.outlineColor,
+        outlineWidth: s.outlineWidth,
+      };
+    });
+    expect(outlineInfo.outlineStyle).toBe("solid");
+    expect(outlineInfo.outlineColor).toBe("rgb(11, 122, 70)"); // #0B7A46
+    expect(outlineInfo.outlineWidth).toBe("2px");
+
+    // 5. Navigate via Enter key on the focused link
+    await page.keyboard.press("Enter");
+    await page.waitForURL(/\/my-tickets\?status=open_all/);
+    await expect(page.locator("h1")).toContainText("My Tickets");
+  });
 });
