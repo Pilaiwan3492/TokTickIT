@@ -302,6 +302,40 @@ describe("Requester Dashboard UI Tests (Lab 4 — Issue 37: UI-16, UI-17, UI-21)
     expect(screen.getByText("Password reset for email")).toBeInTheDocument();
   });
 
+  it("renders main dashboard view (not full empty state) when recent ticket lists are empty but metrics categories have counts", async () => {
+    const dataWithOnlyClosedMetrics = {
+      requesterName: "Jennifer Requester",
+      metrics: {
+        openTickets: 0,
+        waitingForRequester: 0,
+        resolved: 0,
+        closed: 5,
+      },
+      recentTickets: [],
+      recentlyResolvedTickets: [],
+      drillDownPaths: {
+        openTickets: "/my-tickets?status=open_all",
+        waitingForRequester: "/my-tickets?status=WAITING_FOR_REQUESTER",
+        resolved: "/my-tickets?status=RESOLVED",
+        closed: "/my-tickets?status=CLOSED",
+      },
+    };
+
+    setupFetch(dataWithOnlyClosedMetrics);
+    renderDashboard();
+
+    // Must NOT render full-page empty state because closed metric has count 5
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+    expect(screen.queryByText("You haven't submitted any tickets yet")).not.toBeInTheDocument();
+
+    // Closed card shows 5
+    expect(screen.getByText("5")).toBeInTheDocument();
+
+    // Both recent lists show clean inline empty messages
+    expect(screen.getByText("No recent tickets.")).toBeInTheDocument();
+    expect(screen.getByText("No recently resolved tickets")).toBeInTheDocument();
+  });
+
   // --- UI-21: Clicking Requester metric card navigates to filtered My Tickets ---
   it("UI-21: clicking Requester metric card drill-down links routes to /my-tickets with pre-applied status filters", async () => {
     setupFetch(mockPopulatedDashboardData);
