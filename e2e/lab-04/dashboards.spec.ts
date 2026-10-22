@@ -185,33 +185,27 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await page.goto("/dashboard");
     await page.waitForSelector("h1:has-text('Welcome')");
 
-    // 3. Tab through interactive elements and verify focus state
-    // Press Tab multiple times to move focus through header and dashboard
-    let reachedInteractiveElement = false;
-    for (let i = 0; i < 15; i++) {
+    // 3. Tab continuously through the page without calling .focus() directly
+    // until we reach the target "View all open tickets" link
+    const openTicketsLink = page.locator('a[aria-label="View all open tickets"]');
+    let reachedTargetViaTab = false;
+
+    for (let i = 0; i < 30; i++) {
       await page.keyboard.press("Tab");
-      const activeInfo = await page.evaluate(() => {
+      const isTarget = await page.evaluate(() => {
         const el = document.activeElement;
-        if (!el || el === document.body) return null;
-        return {
-          tagName: el.tagName,
-          ariaLabel: el.getAttribute("aria-label"),
-          text: el.textContent?.trim().slice(0, 30),
-        };
+        return el?.getAttribute("aria-label") === "View all open tickets";
       });
-      if (activeInfo && (activeInfo.tagName === "A" || activeInfo.tagName === "BUTTON")) {
-        reachedInteractiveElement = true;
+      if (isTarget) {
+        reachedTargetViaTab = true;
         break;
       }
     }
-    expect(reachedInteractiveElement).toBe(true);
 
-    // 4. Specifically target and focus the "View all open tickets" link via keyboard Tab
-    const openTicketsLink = page.locator('a[aria-label="View all open tickets"]');
-    await openTicketsLink.focus();
+    expect(reachedTargetViaTab).toBe(true);
     await expect(openTicketsLink).toBeFocused();
 
-    // Verify visible focus outline properties on the focused element
+    // 4. Verify visible focus outline properties on the focused element (:focus-visible)
     const outlineInfo = await openTicketsLink.evaluate((el) => {
       const s = window.getComputedStyle(el);
       return {
