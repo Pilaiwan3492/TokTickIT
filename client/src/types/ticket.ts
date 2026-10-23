@@ -28,6 +28,48 @@ export interface Attachment {
   isRemoved?: boolean;
 }
 
+export interface ActionTakenPerformer {
+  id: string;
+  name: string;
+  email?: string;
+  role: UserRole;
+}
+
+export interface ActionTaken {
+  id: string;
+  ticketId: string;
+  actionDate: string;
+  actionDescription: string;
+  result: string;
+  performedById: string;
+  performedBy?: ActionTakenPerformer;
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+export interface CreateActionTakenPayload {
+  actionDate?: string;
+  actionDescription: string;
+  result: string;
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+  expectedTicketUpdatedAt: string;
+}
+
+export interface UpdateActionTakenPayload {
+  actionDate?: string;
+  actionDescription?: string;
+  result?: string;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+  expectedUpdatedAt: string;
+}
+
 export interface Ticket {
   id: string;
   ticketNo: string;
@@ -62,4 +104,5 @@ export interface Ticket {
   };
   attachments?: Attachment[];
   comments?: TicketComment[];
+  actionsTaken?: ActionTaken[];
 }

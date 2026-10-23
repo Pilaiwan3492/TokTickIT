@@ -301,7 +301,7 @@ export const createActionTakenHandler = async (
       });
 
       // Update parent ticket updatedAt to advance concurrency timestamp
-      await tx.ticket.update({
+      const updatedTicket = await tx.ticket.update({
         where: { id },
         data: { updatedAt: new Date() },
       });
@@ -311,6 +311,7 @@ export const createActionTakenHandler = async (
         body: {
           success: true,
           data: createdAction,
+          ticketUpdatedAt: updatedTicket.updatedAt.toISOString(),
           message: "Action Taken successfully recorded",
         },
       };
@@ -562,7 +563,7 @@ export const updateActionTakenHandler = async (
       });
 
       // Advance parent ticket updatedAt
-      await tx.ticket.update({
+      const updatedTicket = await tx.ticket.update({
         where: { id },
         data: { updatedAt: new Date() },
       });
@@ -572,6 +573,7 @@ export const updateActionTakenHandler = async (
         body: {
           success: true,
           data: updatedAction,
+          ticketUpdatedAt: updatedTicket.updatedAt.toISOString(),
           message: "Action Taken successfully updated",
         },
       };

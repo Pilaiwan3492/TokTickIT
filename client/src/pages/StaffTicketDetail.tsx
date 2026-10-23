@@ -8,6 +8,8 @@ import {
   TicketPriority,
   TicketStatusType,
 } from "../types/staff";
+import { getActionsTaken } from "../api/actionsTaken.api";
+import { ActionsTakenList } from "../components/ticket/ActionsTakenList";
 
 // BR-16: Status Transition Matrix definition
 const STATUS_TRANSITIONS: Record<TicketStatusType, TicketStatusType[]> = {
@@ -42,6 +44,7 @@ export const StaffTicketDetail: React.FC = () => {
   const [assignees, setAssignees] = useState<StaffAssignee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -60,11 +63,13 @@ export const StaffTicketDetail: React.FC = () => {
   const [isPostingNote, setIsPostingNote] = useState(false);
 
   // Fetch ticket details & assignees
-  const fetchTicketData = useCallback(async () => {
-    if (!id) return;
+  const fetchTicketData = useCallback(async (silent = false) => {
+    if (!id) return null;
 
     try {
-      setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const [ticketRes, assigneesRes] = await Promise.all([
@@ -79,15 +84,41 @@ export const StaffTicketDetail: React.FC = () => {
         throw new Error(ticketData.error?.message || "Failed to load ticket details.");
       }
 
-      setTicket(ticketData.data);
+      const loadedTicket = ticketData.data;
+      if (loadedTicket) {
+        if (Array.isArray(loadedTicket.actionsTaken)) {
+          setActionsError(null);
+        } else {
+          try {
+            const fetchedActions = await getActionsTaken(id);
+            loadedTicket.actionsTaken = fetchedActions;
+            setActionsError(null);
+          } catch (err: any) {
+            console.error("Failed to load staff ticket actions:", err);
+            const msg = err?.message || "Failed to load Actions Taken.";
+            setActionsError(msg);
+            loadedTicket.actionsTaken = undefined;
+          }
+        }
+      }
+
+      setTicket(loadedTicket);
       if (assigneesRes.ok && assigneesData.data) {
         setAssignees(assigneesData.data);
       }
+      return loadedTicket;
     } catch (err: any) {
       console.error("Failed to load staff ticket:", err);
-      setError(err.message || "An unexpected error occurred.");
+      if (!silent) {
+        setError(err.message || "An unexpected error occurred.");
+      } else {
+        throw err;
+      }
+      return null;
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [id]);
 
@@ -503,6 +534,34 @@ export const StaffTicketDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Actions Taken Section (Lab 4 — Issue 35) */}
+      <ActionsTakenList
+        ticketId={ticket.id}
+        ticketStatus={currentStatus}
+        ticketUpdatedAt={ticket.updatedAt}
+        actions={ticket.actionsTaken || []}
+        actionsError={actionsError}
+        onRetryLoadActions={() => fetchTicketData(false)}
+        currentUser={user}
+        onActionsChange={(updatedActions, newTicketUpdatedAt) => {
+          setActionsError(null);
+          setTicket((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  actionsTaken: updatedActions,
+                  updatedAt: newTicketUpdatedAt || prev.updatedAt,
+                }
+              : prev
+          );
+          showToast("Action Taken saved successfully.");
+        }}
+        onRefreshTicket={async () => {
+          const freshTicket = await fetchTicketData(true);
+          return { ticketUpdatedAt: freshTicket?.updatedAt };
+        }}
+      />
 
       {/* Tabbed Communication & Attachments Section */}
       <div className="card shadow-sm border-0 p-3" style={{ backgroundColor: "#FFFFFF" }}>

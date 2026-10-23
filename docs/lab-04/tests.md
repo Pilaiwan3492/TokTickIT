@@ -142,16 +142,16 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UI-01** | UI | AC-01, FR-01 | Render "Add Action Taken" button on Ticket Detail for IT Staff | Button is visible and enabled for IT Staff and Admin | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-01b** | UI | FR-05, BR-04 | Add Action Taken button disabled if actor is inactive | Button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-01c** | UI | FR-05, BR-04 | Edit Action Taken button disabled if actor is inactive | Edit button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-02** | UI | AC-02, BR-05 | Create Action Taken form validates mandatory follow-up note when checkbox checked | Submit disabled or error rendered if `followUpRequired = true` and note is empty | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-03** | UI | AC-24, BR-18 | Form values preserved upon submission validation or network error | Input fields retain entered description, result, and notes; no data loss | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-04** | UI | AC-01, BR-03 | Modal displays authenticated user as Performer (read-only) | Performer field automatically displays current user's name | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-05** | UI | AC-05, BR-06 | Actions Taken list renders entries chronologically with badges | Renders date, description, result, contributor badge, and follow-up pill | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-06** | UI | AC-03, AC-04, BR-07 | Actions Taken section rendered for Requester on owned ticket | Actions list renders read-only; "Add Action Taken" and edit buttons are hidden | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-07** | UI | AC-06, BR-03 | Edit Action Taken modal pre-populates existing data and submits | Opens modal with populated fields; submits PATCH request successfully | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
-| **UI-08** | UI | AC-07, BR-12 | Actions Taken creation disabled on `CLOSED` or `CANCELLED` tickets | "Add Action Taken" button hidden or disabled with "Ticket is closed" message | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
+| **UI-01** | UI | AC-01, FR-01 | Render "Add Action Taken" button on Ticket Detail for IT Staff | Button is visible and enabled for IT Staff and Admin | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-01b** | UI | FR-05, BR-04 | Add Action Taken button disabled if actor is inactive | Button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-01c** | UI | FR-05, BR-04 | Edit Action Taken button disabled if actor is inactive | Edit button disabled with safety tooltip indicating inactive account | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-02** | UI | AC-02, BR-05 | Create Action Taken form validates mandatory follow-up note when checkbox checked | Submit disabled or error rendered if `followUpRequired = true` and note is empty | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-03** | UI | AC-24, BR-18 | Form values preserved upon submission validation or network error | Input fields retain entered description, result, and notes; no data loss | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-04** | UI | AC-01, BR-03 | Modal displays authenticated user as Performer (read-only) | Performer field automatically displays current user's name | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-05** | UI | AC-05, BR-06 | Actions Taken list renders entries chronologically with badges | Renders date, description, result, contributor badge, and follow-up pill | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-06** | UI | AC-03, AC-04, BR-07 | Actions Taken section rendered for Requester on owned ticket | Actions list renders read-only; "Add Action Taken" and edit buttons are hidden | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-07** | UI | AC-06, BR-03 | Edit Action Taken modal pre-populates existing data and submits | Opens modal with populated fields; submits PATCH request successfully | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
+| **UI-08** | UI | AC-07, BR-12 | Actions Taken creation disabled on `CLOSED` or `CANCELLED` tickets | "Add Action Taken" button hidden or disabled with "Ticket is closed" message | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 
 #### Ticket Lifecycle & Resolution Gate (`client/tests/lab-04/TicketResolution.test.tsx`)
 
@@ -184,7 +184,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **UI-23** | UI | AC-20, BR-14, BR-07 | Non-staff user attempting to access `/dashboard` as staff | Redirects or displays 403 Forbidden screen | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
 | **UI-24** | UI | AC-22 | Unauthenticated user accessing `/dashboard` | Redirects to `/login` with redirect parameter | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
 | **UI-25** | UI | AC-24, BR-18 | Network error banner renders on dashboard fetch failure | Displays retry button without unhandled crash | `client/tests/lab-04/StaffDashboard.test.tsx` | `Passed` |
-| **UI-26** | UI | AC-25, BR-19 | Double-click prevention on Action Taken submission and status change | Submit button disables and displays spinner while request is in-flight | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Planned` |
+| **UI-26** | UI | AC-25, BR-19 | Double-click prevention on Action Taken submission and status change | Submit button disables and displays spinner while request is in-flight | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 
 ---
 
