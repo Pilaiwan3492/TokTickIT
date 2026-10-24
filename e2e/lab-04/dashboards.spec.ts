@@ -1,16 +1,26 @@
 import { test, expect } from "@playwright/test";
 import { resetDatabaseState } from "../helpers/db-reset";
-import { assertNoHorizontalOverflow } from "../helpers/visual-check";
+import {
+  assertNoHorizontalOverflow,
+  assertMinimumTouchTargets,
+  captureLab4Screenshot,
+} from "../helpers/visual-check";
 
 test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)", () => {
   test.beforeEach(async () => {
     await resetDatabaseState();
   });
 
+  test.afterAll(async () => {
+    await resetDatabaseState();
+  });
+
   // --- E2E-07: Requester Dashboard Journey & Status Filter Drill-down ---
   test("E2E-07: Requester Dashboard metric cards, drill-down to My Tickets, and live browser filter manipulation", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const proj = testInfo.project.name.toLowerCase();
+
     // 1. Log in as Requester Bob Smith
     await page.goto("/login");
     await page.fill("#login-email", "bob@example.com");
@@ -30,6 +40,14 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
 
     // Verify My Recent Tickets table shows Bob's open ticket
     await expect(page.locator("text=TKT-2026-000002")).toBeVisible();
+
+    // Responsive checks & visual evidence capture
+    await assertNoHorizontalOverflow(page);
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+    await captureLab4Screenshot(page, `02-requester-dashboard-${proj}.png`);
+    await captureLab4Screenshot(page, `requester-dashboard/${proj}.png`);
 
     // Extract and verify exact counts from metric cards before drill-down
     const openCardLocator = page.locator('.card').filter({ hasText: "My Open Tickets" });
@@ -80,7 +98,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
   // --- E2E-08: IT Staff Dashboard Journey, Operational Cards, Priority & Ownership Drill-down ---
   test("E2E-08: IT Staff Dashboard operational metrics, priority attention strip, and Queue filter drill-downs", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const proj = testInfo.project.name.toLowerCase();
+
     // 1. Log in as IT Staff Michael Brown
     await page.goto("/login");
     await page.fill("#login-email", "michael.brown@toktickit.com");
@@ -102,6 +122,14 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
 
     // Verify Priority Attention Strip
     await expect(page.locator("text=Attention Required:")).toBeVisible();
+
+    // Responsive checks & visual evidence capture
+    await assertNoHorizontalOverflow(page);
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+    await captureLab4Screenshot(page, `01-staff-dashboard-${proj}.png`);
+    await captureLab4Screenshot(page, `staff-dashboard/${proj}.png`);
 
     // Extract and verify exact counts from metric cards
     const newCardCountText = (await page.locator('.card').filter({ hasText: "New" }).locator(".h2").first().innerText()).trim();
@@ -180,7 +208,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
   // --- E2E-09: Administrator Dashboard Journey ---
   test("E2E-09: Administrator Dashboard renders operational metrics plus System User accounts summary panel", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const proj = testInfo.project.name.toLowerCase();
+
     // 1. Log in as Administrator Sarah Johnson
     await page.goto("/login");
     await page.fill("#login-email", "admin@toktickit.com");
@@ -197,6 +227,14 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await expect(page.locator("text=Active Users:")).toBeVisible();
     await expect(page.locator("text=Active Staff:")).toBeVisible();
     await expect(page.locator("text=Active Admins:")).toBeVisible();
+
+    // Responsive checks & visual evidence capture
+    await assertNoHorizontalOverflow(page);
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+    await captureLab4Screenshot(page, `08-admin-dashboard-${proj}.png`);
+    await captureLab4Screenshot(page, `admin-dashboard/${proj}.png`);
 
     // 4. Verify Manage Users navigation link works
     const manageUsersLink = page.locator('a:has-text("Manage Users >")');

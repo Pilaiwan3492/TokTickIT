@@ -70,7 +70,42 @@ export async function resetDatabaseState() {
     "TKT-2026-000007",
     "TKT-2026-000008",
     "TKT-2026-000009",
+    "TKT-2026-000010",
   ];
+
+  const canonicalActionIds = [
+    "act-seed-001",
+    "act-seed-002",
+    "act-seed-003",
+    "act-seed-004",
+    "act-seed-005",
+    "act-seed-006",
+    "act-seed-007",
+    "act-seed-008",
+    "act-seed-009",
+    "act-seed-010",
+  ];
+
+  await db.actionTaken.deleteMany({
+    where: {
+      OR: [
+        { id: { notIn: canonicalActionIds } },
+        { ticket: { ticketNo: { notIn: canonicalTicketNos } } },
+      ],
+    },
+  });
+
+  // Reset canonical seed action act-seed-001 in case it was edited
+  await db.actionTaken.updateMany({
+    where: { id: "act-seed-001" },
+    data: {
+      actionDescription: "Verified gateway routing table and pinged remote branch subnet.",
+      result: "Subnet reachable; packet loss observed on external peer hop.",
+      followUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+  });
 
   await db.comment.deleteMany({
     where: { ticket: { ticketNo: { notIn: canonicalTicketNos } } },
@@ -110,6 +145,7 @@ export async function resetDatabaseState() {
     await db.revokedToken.deleteMany({ where: { userId: { in: nonCanonicalUserIds } } });
     await db.internalNote.deleteMany({ where: { authorId: { in: nonCanonicalUserIds } } });
     await db.comment.deleteMany({ where: { authorId: { in: nonCanonicalUserIds } } });
+    await db.actionTaken.deleteMany({ where: { performedById: { in: nonCanonicalUserIds } } });
     await db.ticket.deleteMany({
       where: {
         OR: [
@@ -129,7 +165,7 @@ export async function resetDatabaseState() {
     await db.user.deleteMany({ where: { id: { in: nonCanonicalUserIds } } });
   }
 
-  // 6. Reset TKT-2026-000001 (E2E-05, E2E-06)
+  // 6. Reset canonical tickets back to seed statuses
   await db.ticket.updateMany({
     where: { ticketNo: "TKT-2026-000001" },
     data: {
@@ -137,6 +173,60 @@ export async function resetDatabaseState() {
       currentStatus: "NEW",
       ownerId: null,
       itPriority: "MEDIUM",
+      isRequesterResolved: false,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000002" },
+    data: {
+      status: "OPEN",
+      currentStatus: "OPEN",
+      isRequesterResolved: false,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000003" },
+    data: {
+      status: "IN_PROGRESS",
+      currentStatus: "IN_PROGRESS",
+      isRequesterResolved: false,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000004" },
+    data: {
+      status: "WAITING_FOR_REQUESTER",
+      currentStatus: "WAITING_FOR_REQUESTER",
+      isRequesterResolved: false,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000005" },
+    data: {
+      status: "RESOLVED",
+      currentStatus: "RESOLVED",
+      isRequesterResolved: true,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000006" },
+    data: {
+      status: "CLOSED",
+      currentStatus: "CLOSED",
+      isRequesterResolved: true,
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000007" },
+    data: {
+      status: "REOPENED",
+      currentStatus: "REOPENED",
       isRequesterResolved: false,
     },
   });

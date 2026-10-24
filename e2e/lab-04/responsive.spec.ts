@@ -3,7 +3,7 @@ import { resetDatabaseState } from "../helpers/db-reset";
 import {
   assertNoHorizontalOverflow,
   assertMinimumTouchTargets,
-  captureScreenshot,
+  captureLab4Screenshot,
 } from "../helpers/visual-check";
 
 test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-04)", () => {
@@ -11,9 +11,15 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
     await resetDatabaseState();
   });
 
+  test.afterAll(async () => {
+    await resetDatabaseState();
+  });
+
   test("RESP-01..RESP-04: Requester Dashboard renders responsively across Desktop, Tablet, and Mobile with zero overflow", async ({
     page,
   }, testInfo) => {
+    const proj = testInfo.project.name.toLowerCase();
+
     // 1. Log in as Requester
     await page.goto("/login");
     await page.fill("#login-email", "bob@example.com");
@@ -33,9 +39,9 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
       await assertMinimumTouchTargets(page);
     }
 
-    // 4. Capture screenshot artifact
-    const screenshotName = `lab-04/requester-dashboard-${testInfo.project.name.toLowerCase()}.png`;
-    await captureScreenshot(page, screenshotName);
+    // 4. Capture screenshot artifact (both canonical naming and subfolder)
+    await captureLab4Screenshot(page, `02-requester-dashboard-${proj}.png`);
+    await captureLab4Screenshot(page, `requester-dashboard/${proj}.png`);
 
     // 5. Verify metric cards and drill-down link exist
     const openTicketsLink = page.locator('a[aria-label="View all open tickets"]');
@@ -50,6 +56,8 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
   test("RESP-01..RESP-04: IT Staff Dashboard renders responsively with operational grid and touch target compliance", async ({
     page,
   }, testInfo) => {
+    const proj = testInfo.project.name.toLowerCase();
+
     // 1. Log in as IT Staff
     await page.goto("/login");
     await page.fill("#login-email", "michael.brown@toktickit.com");
@@ -68,9 +76,9 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
       await assertMinimumTouchTargets(page);
     }
 
-    // 4. Capture screenshot artifact
-    const screenshotName = `lab-04/staff-dashboard-${testInfo.project.name.toLowerCase()}.png`;
-    await captureScreenshot(page, screenshotName);
+    // 4. Capture screenshot artifact (both canonical naming and subfolder)
+    await captureLab4Screenshot(page, `01-staff-dashboard-${proj}.png`);
+    await captureLab4Screenshot(page, `staff-dashboard/${proj}.png`);
 
     // 5. Verify Staff operational cards and drill-down
     const newTicketsLink = page.locator('a[aria-label="View all new tickets"]');

@@ -1,5 +1,6 @@
 import { Page, expect } from "@playwright/test";
 import path from "path";
+import fs from "fs";
 
 /**
  * Asserts that the document has zero horizontal scrollbar / page overflow.
@@ -59,6 +60,25 @@ export async function assertMinimumTouchTargets(page: Page) {
  */
 export async function captureScreenshot(page: Page, relativePath: string) {
   const fullPath = path.resolve(process.cwd(), "artifacts/lab-03/screenshots", relativePath);
+  const dir = path.dirname(fullPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  await page.waitForLoadState("networkidle");
+  // Brief delay to ensure CSS transitions/animations settle
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: fullPath, fullPage: false });
+}
+
+/**
+ * Captures a screenshot to the canonical Lab 4 screenshot directory.
+ */
+export async function captureLab4Screenshot(page: Page, relativePath: string) {
+  const fullPath = path.resolve(process.cwd(), "artifacts/lab-04/screenshots", relativePath);
+  const dir = path.dirname(fullPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   await page.waitForLoadState("networkidle");
   // Brief delay to ensure CSS transitions/animations settle
   await page.waitForTimeout(300);

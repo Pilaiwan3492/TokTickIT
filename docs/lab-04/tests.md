@@ -192,12 +192,12 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **E2E-01** | E2E | AC-01, AC-05, AC-06, BR-02, BR-03, BR-19 | IT Staff creates and edits Action Taken on open ticket; double-click guard | Entry appears chronologically; contributor name auto-attributed; edit updates row | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-02** | E2E | AC-02, BR-05 | IT Staff checks "Follow-up Required" in modal without entering note | Validation error displayed; submission blocked until note is entered | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-03** | E2E | AC-03, AC-04, BR-07 | Requester views owned ticket with multiple Actions Taken | Entries displayed clearly in read-only mode; write buttons strictly absent | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-04** | E2E | AC-08, AC-09, AC-10, AC-11, BR-09, BR-10, BR-11 | Full Resolution Gate flow: Requester advisory signal $\rightarrow$ IT Staff review $\rightarrow$ formal resolution | Requester indicates resolution; IT Staff reviews advisory badge and resolves ticket | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
-| **E2E-05** | E2E | AC-07, AC-13, AC-14, BR-12 | Ticket closure and reopen cycle; action logging lock on closed ticket | Staff closes resolved ticket; further actions locked; staff reopens ticket | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
-| **E2E-06** | E2E | AC-12, BR-17 | Concurrent edit collision simulation (stale `updatedAt`) | Second actor receives 409 conflict dialog; can refresh and preserve state | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
+| **E2E-01** | E2E | AC-01, AC-05, AC-06, BR-02, BR-03, BR-19 | IT Staff creates and edits Action Taken on open ticket; double-click guard | Entry appears chronologically; contributor name auto-attributed; edit updates row | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-02** | E2E | AC-02, BR-05 | IT Staff checks "Follow-up Required" in modal without entering note | Validation error displayed; submission blocked until note is entered | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-03** | E2E | AC-03, AC-04, BR-07 | Requester views owned ticket with multiple Actions Taken | Entries displayed clearly in read-only mode; write buttons strictly absent | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-04** | E2E | AC-08, AC-09, AC-10, AC-11, BR-09, BR-10, BR-11 | Full Resolution Gate flow: Requester advisory signal $\rightarrow$ IT Staff review $\rightarrow$ formal resolution | Requester indicates resolution; IT Staff reviews advisory badge and resolves ticket | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
+| **E2E-05** | E2E | AC-07, AC-13, AC-14, BR-12 | Ticket closure and reopen cycle; action logging lock on closed ticket | Staff closes resolved ticket; further actions locked; staff reopens ticket | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
+| **E2E-06** | E2E | AC-12, BR-17 | Concurrent edit collision simulation (stale `updatedAt`) | Second actor receives 409 conflict dialog; can refresh and preserve state | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
 | **E2E-07** | E2E | AC-15, AC-16, AC-19, AC-20, BR-13 | Requester Dashboard journey: metric cards, recent tickets, drill-down | Cards show correct counts; clicking card filters My Tickets; zero-count empty state | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-08** | E2E | AC-17, AC-19, BR-14 | IT Staff Dashboard journey: 6 metric cards, priority strip, my actions, drill-down | Displays queue counts; clicking card filters staff queue; my actions drill down | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
@@ -212,7 +212,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **VIS-01** | Style | Section 9, Zen Green | Zen Green token fidelity across dashboard cards, header, and buttons | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#D5DDD8` | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-02** | Style | Section 9, Badges | Status and Priority badge color tokens and Follow-up pill styling | Follow-up pill renders Amber (`#D97706` / `#FEF3C7`); badges conform to spec | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-03** | Style | Section 9, A11y | Keyboard focus outlines and active indicators on all dashboard cards and modal inputs | Visible `#0B7A46` focus ring ($2\text{px}$ offset) on keyboard tab focus | `client/tests/lab-04/accessibility.test.tsx` | `Passed` |
-| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/helpers/visual-check.ts` | `Planned` |
+| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/helpers/visual-check.ts` | `Passed` |
 
 ---
 
