@@ -81,11 +81,20 @@ test.describe("Lab 4 Ticket Resolution & Workflow Suite (E2E-04..E2E-06)", () =>
     await statusSelect.selectOption("IN_PROGRESS");
     await expect(page.locator("span.badge:has-text('In Progress')").first()).toBeVisible();
 
-    // Capture visual evidence: Resolution Gate controls before transition to RESOLVED
+    // Transition IN_PROGRESS -> RESOLVED via Resolution Gate
+    await statusSelect.selectOption("RESOLVED");
+
+    // Verify Resolution Gate confirmation modal opens (BR-11, UI-09)
+    const resolveModal = page.locator('[data-testid="resolution-gate-modal"]');
+    await expect(resolveModal).toBeVisible();
+    await expect(page.locator("text=Confirm Ticket Resolution")).toBeVisible();
+
+    // Capture visual evidence: Resolution Gate controls and confirmation modal
     await captureLab4Screenshot(page, `05-ticket-resolution-gate-${proj}.png`);
 
-    // Transition IN_PROGRESS -> RESOLVED
-    await statusSelect.selectOption("RESOLVED");
+    // Confirm resolution
+    await page.click('[data-testid="confirm-resolve-btn"]');
+    await expect(resolveModal).not.toBeVisible();
 
     // 6. Verify status successfully transitions to Resolved
     await expect(page.locator("span.badge:has-text('Resolved')").first()).toBeVisible();

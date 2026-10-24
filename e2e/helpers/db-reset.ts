@@ -120,6 +120,19 @@ export async function resetDatabaseState() {
     where: { ticketNo: { notIn: canonicalTicketNos } },
   });
 
+  // Reset canonical tickets to deterministic seed baseline
+  const davidStaff = await db.user.findUnique({ where: { email: "david.lee@toktickit.com" } });
+  if (davidStaff) {
+    await db.ticket.updateMany({
+      where: { ticketNo: "TKT-2026-000008" },
+      data: { ownerId: davidStaff.id, status: "CANCELLED", currentStatus: "CANCELLED" },
+    });
+  }
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000001" },
+    data: { ownerId: null, status: "NEW", currentStatus: "NEW" },
+  });
+
   // 5. Remove any dynamically created test/non-canonical users
   const canonicalUserEmails = [
     "alice@example.com",

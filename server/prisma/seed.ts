@@ -362,7 +362,7 @@ export async function seedDatabase() {
       ticketNo: "TKT-2026-000008",
       requesterId: aliceReqId,
       userId: aliceUserId,
-      ownerId: null,
+      ownerId: davidStaffId,
       categoryId: hwCatId,
       relatedSystemId: laptopSysId,
       summary: "Keyboard replacement requested by mistake",

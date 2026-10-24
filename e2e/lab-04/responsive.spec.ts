@@ -166,8 +166,9 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
     await manageUsersLink.click();
     await page.waitForURL(/\/admin\/users/);
 
-    // Assert zero overflow and minimum touch targets on User Management
+    // Assert zero overflow, no text clipping, and minimum touch targets on User Management
     await assertNoHorizontalOverflow(page);
+    await assertNoTextClippingOrOverlap(page);
     if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
       await assertMinimumTouchTargets(page);
     }
@@ -192,16 +193,33 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
     const statusSelect = page.locator("#status-select");
     await expect(statusSelect).toBeVisible();
     await statusSelect.selectOption("IN_PROGRESS");
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(300);
 
+    // Selecting RESOLVED opens the Resolution Gate confirmation modal
     await statusSelect.selectOption("RESOLVED");
-    await page.waitForTimeout(400);
 
-    // 3. Assert zero horizontal overflow and no text clipping on resolution gate view
+    // 3. Assert confirmation modal appears with required content and action buttons
+    const resolveModal = page.locator('[data-testid="resolution-gate-modal"]');
+    await expect(resolveModal).toBeVisible();
+    await expect(page.locator("text=Confirm Ticket Resolution")).toBeVisible();
+    const cancelBtn = page.locator('[data-testid="cancel-resolve-btn"]');
+    const confirmBtn = page.locator('[data-testid="confirm-resolve-btn"]');
+    await expect(cancelBtn).toBeVisible();
+    await expect(confirmBtn).toBeVisible();
+
+    // 4. Assert zero horizontal overflow and no text clipping/overlap within modal and page
     await assertNoHorizontalOverflow(page);
+    await assertNoTextClippingOrOverlap(page, '[data-testid="resolution-gate-modal"]');
     await assertNoTextClippingOrOverlap(page);
+
+    // 5. Assert touch target compliance for modal controls on touch viewports
     if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
       await assertMinimumTouchTargets(page);
     }
+
+    // 6. Confirm resolution and assert ticket transitions to Resolved
+    await confirmBtn.click();
+    await expect(resolveModal).not.toBeVisible();
+    await expect(page.locator("span.badge:has-text('Resolved')").first()).toBeVisible();
   });
 });

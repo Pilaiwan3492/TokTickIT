@@ -198,7 +198,7 @@ export const RequesterDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.openTickets}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#006B3C" }}
+              style={{ color: "#006B3C", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View all open tickets"
             >
               View all &gt;
@@ -216,7 +216,7 @@ export const RequesterDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.waitingForRequester}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#B45309" }}
+              style={{ color: "#B45309", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View tickets waiting for requester"
             >
               View all &gt;
@@ -234,7 +234,7 @@ export const RequesterDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.resolved}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#15803D" }}
+              style={{ color: "#15803D", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View resolved tickets"
             >
               View all &gt;
@@ -252,7 +252,7 @@ export const RequesterDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.closed}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#475569" }}
+              style={{ color: "#475569", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View closed tickets"
             >
               View all &gt;
@@ -287,7 +287,7 @@ export const RequesterDashboard: React.FC = () => {
             <Link
               to="/create-ticket"
               className="btn btn-sm text-white fw-semibold px-3 py-2"
-              style={{ backgroundColor: "#006B3C" }}
+              style={{ backgroundColor: "#006B3C", minHeight: 44, display: "inline-flex", alignItems: "center" }}
             >
               + Create Ticket
             </Link>
@@ -305,7 +305,7 @@ export const RequesterDashboard: React.FC = () => {
                 <Link
                   to="/my-tickets"
                   className="small text-decoration-none fw-semibold"
-                  style={{ color: "#006B3C" }}
+                  style={{ color: "#006B3C", minHeight: 44, display: "inline-flex", alignItems: "center" }}
                 >
                   View all
                 </Link>
