@@ -443,6 +443,165 @@ describe("Requester Dashboard UI Tests (Lab 4 — Issue 37: UI-16, UI-17, UI-21)
     expect(screen.getByText("TKT-2026-0001")).toBeInTheDocument();
   });
 
+  // --- UI-21-INT-COUNTS: Data consistency - metric card count equals filtered ticket count in MyTickets ---
+  it("UI-21-INT-count-status: verifies Open Tickets metric count on card strictly equals filtered tickets in MyTickets", async () => {
+    const expectedOpenCount = 3;
+    const dummyOpenTickets = Array.from({ length: expectedOpenCount }, (_, i) => ({
+      id: `tkt-open-${i + 1}`,
+      ticketNo: `TKT-2026-OP0${i + 1}`,
+      summary: `Open requester issue #${i + 1}`,
+      description: `Description for open ticket #${i + 1}`,
+      requestedPriority: "HIGH",
+      currentStatus: "OPEN",
+      category: { id: 1, name: "Hardware" },
+      relatedSystem: { id: 1, name: "Workstations" },
+      createdAt: "2026-10-10T08:30:00.000Z",
+      updatedAt: "2026-10-10T08:30:00.000Z",
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: mockRequesterUser }) } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/requester")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockPopulatedDashboardData,
+              metrics: { ...mockPopulatedDashboardData.metrics, openTickets: expectedOpenCount },
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/categories")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => [{ id: 1, name: "Hardware" }] } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: dummyOpenTickets,
+            meta: {
+              total: expectedOpenCount,
+              page: 1,
+              limit: 10,
+              totalPages: 1,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<RequesterDashboard />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+    const openCard = screen.getByRole("link", { name: /View all open tickets/i }).closest(".card")! as HTMLElement;
+    const cardCount = Number(within(openCard).getByText(String(expectedOpenCount)).textContent);
+    expect(cardCount).toBe(expectedOpenCount);
+
+    fireEvent.click(screen.getByRole("link", { name: /View all open tickets/i }));
+
+    expect(await screen.findByText("TKT-2026-OP01")).toBeInTheDocument();
+    const tableRows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(tableRows.length - 1).toBe(cardCount);
+    const paginationDiv = screen.getByText(/Previous/i).closest(".justify-content-between")?.firstElementChild;
+    expect(paginationDiv?.textContent).toMatch(new RegExp(`Showing 1 to ${cardCount} of ${cardCount} tickets`));
+  });
+
+  it("UI-21-INT-count-resolved: verifies Resolved metric count on card strictly equals filtered tickets in MyTickets", async () => {
+    const expectedResolvedCount = 2;
+    const dummyResolvedTickets = Array.from({ length: expectedResolvedCount }, (_, i) => ({
+      id: `tkt-res-${i + 1}`,
+      ticketNo: `TKT-2026-RS0${i + 1}`,
+      summary: `Resolved requester ticket #${i + 1}`,
+      description: `Description for resolved ticket #${i + 1}`,
+      requestedPriority: "LOW",
+      currentStatus: "RESOLVED",
+      category: { id: 2, name: "Software" },
+      relatedSystem: { id: 2, name: "Email" },
+      createdAt: "2026-10-09T08:30:00.000Z",
+      updatedAt: "2026-10-09T08:30:00.000Z",
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: mockRequesterUser }) } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/requester")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockPopulatedDashboardData,
+              metrics: { ...mockPopulatedDashboardData.metrics, resolved: expectedResolvedCount },
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/categories")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => [{ id: 2, name: "Software" }] } as Response);
+      }
+      if (urlStr.includes("/api/v1/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: dummyResolvedTickets,
+            meta: {
+              total: expectedResolvedCount,
+              page: 1,
+              limit: 10,
+              totalPages: 1,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<RequesterDashboard />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome, Jennifer Requester!/i)).toBeInTheDocument();
+    const resolvedCard = screen.getByRole("link", { name: /View resolved tickets/i }).closest(".card")! as HTMLElement;
+    const cardCount = Number(within(resolvedCard).getByText(String(expectedResolvedCount)).textContent);
+    expect(cardCount).toBe(expectedResolvedCount);
+
+    fireEvent.click(screen.getByRole("link", { name: /View resolved tickets/i }));
+
+    expect(await screen.findByText("TKT-2026-RS01")).toBeInTheDocument();
+    const tableRows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(tableRows.length - 1).toBe(cardCount);
+    const paginationDiv = screen.getByText(/Previous/i).closest(".justify-content-between")?.firstElementChild;
+    expect(paginationDiv?.textContent).toMatch(new RegExp(`Showing 1 to ${cardCount} of ${cardCount} tickets`));
+  });
+
   // --- Recent Tickets & Recently Resolved Tickets Tables ---
   it("renders My Recent Tickets and Recently Resolved Tickets tables with status badges and links", async () => {
     setupFetch(mockPopulatedDashboardData);

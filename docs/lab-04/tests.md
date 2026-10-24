@@ -441,5 +441,5 @@ All screenshots will be captured during automated Playwright E2E execution and s
 - [x] **Brand Token Fidelity (`VIS-01`)**: Header, metric card accents, and primary action buttons conform to `#006B3C` (Zen Green).
 - [x] **Follow-up Pill Visual Distinction (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates Actions Taken requiring follow-up.
 - [x] **Visible Focus Rings (`VIS-03`)**: High-contrast keyboard focus indicators (`#0B7A46`, $2\text{px}$ ring) visible on all interactive elements.
-- [ ] **Form State Preservation (`BR-18`, `UI-03`)**: Form inputs retain user input after validation errors or HTTP 409 stale-update conflicts.
-- [ ] **Double-Click Protection (`BR-19`, `UI-26`)**: In-flight requests disable submit buttons to prevent duplicate database entries.
+- [x] **Form State Preservation (`BR-18`, `UI-03`)**: Form inputs retain user input after validation errors or HTTP 409 stale-update conflicts.
+- [x] **Double-Click Protection (`BR-19`, `UI-26`)**: In-flight requests disable submit buttons to prevent duplicate database entries.

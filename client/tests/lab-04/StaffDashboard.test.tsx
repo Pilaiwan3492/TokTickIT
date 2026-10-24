@@ -491,6 +491,247 @@ describe("IT Staff & Admin Dashboard UI Tests (Lab 4 — Issue 37: UI-18..UI-20,
     expect(assignedButton.className).toContain("btn-success");
   });
 
+  // --- UI-22-INT-COUNTS: Data consistency - metric card count equals filtered ticket count in Queue ---
+  it("UI-22-INT-count-status: verifies Status metric count on card strictly equals filtered tickets in Queue", async () => {
+    const expectedCount = 4;
+    const dummyNewTickets = Array.from({ length: expectedCount }, (_, i) => ({
+      id: `tkt-new-${i + 1}`,
+      ticketNo: `TKT-2026-N00${i + 1}`,
+      summary: `Network outage incident #${i + 1}`,
+      category: { id: 1, name: "Network" },
+      requestedPriority: "MEDIUM" as const,
+      itPriority: "MEDIUM" as const,
+      status: "NEW" as const,
+      currentStatus: "NEW" as const,
+      isRequesterResolved: false,
+      requester: { id: `req-${i + 1}`, name: `Requester ${i + 1}`, email: `user${i + 1}@example.com` },
+      owner: null,
+      createdAt: "2026-10-12T07:15:00.000Z",
+      updatedAt: "2026-10-12T07:15:00.000Z",
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: mockStaffUser }) } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockStaffDashboardData,
+              metrics: { ...mockStaffDashboardData.metrics, newCount: expectedCount },
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: dummyNewTickets,
+            pagination: {
+              page: 1,
+              pageSize: 10,
+              totalItems: expectedCount,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // 1. Locate metric card on Dashboard and extract its count
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+    const newCard = screen.getByRole("link", { name: /View all new tickets/i }).closest(".card")! as HTMLElement;
+    const cardCount = Number(within(newCard).getByText(String(expectedCount)).textContent);
+    expect(cardCount).toBe(expectedCount);
+
+    // 2. Click drill-down
+    fireEvent.click(screen.getByRole("link", { name: /View all new tickets/i }));
+
+    // 3. Verify destination Queue displays matching total count and rows
+    expect(await screen.findByText(new RegExp(`Showing 1 to ${expectedCount} of ${expectedCount} tickets`, "i"))).toBeInTheDocument();
+    const tableRows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(tableRows.length - 1).toBe(cardCount);
+  });
+
+  it("UI-22-INT-count-assigned: verifies My Assigned metric count on card strictly equals filtered tickets in Queue", async () => {
+    const expectedAssignedCount = 3;
+    const dummyAssignedTickets = Array.from({ length: expectedAssignedCount }, (_, i) => ({
+      id: `tkt-assigned-${i + 1}`,
+      ticketNo: `TKT-2026-A00${i + 1}`,
+      summary: `Assigned task #${i + 1}`,
+      category: { id: 2, name: "Hardware" },
+      requestedPriority: "HIGH" as const,
+      itPriority: "HIGH" as const,
+      status: "IN_PROGRESS" as const,
+      currentStatus: "IN_PROGRESS" as const,
+      isRequesterResolved: false,
+      requester: { id: "req-1", name: "Rachel Requester", email: "rachel@example.com" },
+      owner: { id: mockStaffUser.id, name: mockStaffUser.name },
+      createdAt: "2026-10-12T07:15:00.000Z",
+      updatedAt: "2026-10-12T07:15:00.000Z",
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: mockStaffUser }) } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockStaffDashboardData,
+              metrics: { ...mockStaffDashboardData.metrics, myAssignedCount: expectedAssignedCount },
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: dummyAssignedTickets,
+            pagination: {
+              page: 1,
+              pageSize: 10,
+              totalItems: expectedAssignedCount,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+    const assignedCard = screen.getByRole("link", { name: /View my assigned tickets/i }).closest(".card")! as HTMLElement;
+    const cardCount = Number(within(assignedCard).getByText(String(expectedAssignedCount)).textContent);
+    expect(cardCount).toBe(expectedAssignedCount);
+
+    fireEvent.click(screen.getByRole("link", { name: /View my assigned tickets/i }));
+
+    expect(await screen.findByText(new RegExp(`Showing 1 to ${expectedAssignedCount} of ${expectedAssignedCount} tickets`, "i"))).toBeInTheDocument();
+    const tableRows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(tableRows.length - 1).toBe(cardCount);
+  });
+
+  it("UI-22-INT-count-unassigned: verifies Unassigned metric count on card strictly equals filtered tickets in Queue", async () => {
+    const expectedUnassignedCount = 2;
+    const dummyUnassignedTickets = Array.from({ length: expectedUnassignedCount }, (_, i) => ({
+      id: `tkt-unassigned-${i + 1}`,
+      ticketNo: `TKT-2026-U00${i + 1}`,
+      summary: `Unassigned backlog #${i + 1}`,
+      category: { id: 3, name: "Access" },
+      requestedPriority: "LOW" as const,
+      itPriority: "LOW" as const,
+      status: "OPEN" as const,
+      currentStatus: "OPEN" as const,
+      isRequesterResolved: false,
+      requester: { id: "req-1", name: "Rachel Requester", email: "rachel@example.com" },
+      owner: null,
+      createdAt: "2026-10-12T07:15:00.000Z",
+      updatedAt: "2026-10-12T07:15:00.000Z",
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/v1/auth/me")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: mockStaffUser }) } as Response);
+      }
+      if (urlStr.includes("/api/v1/dashboard/staff")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              ...mockStaffDashboardData,
+              metrics: { ...mockStaffDashboardData.metrics, unassignedCount: expectedUnassignedCount },
+            },
+          }),
+        } as Response);
+      }
+      if (urlStr.includes("/api/v1/staff/tickets")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: dummyUnassignedTickets,
+            pagination: {
+              page: 1,
+              pageSize: 10,
+              totalItems: expectedUnassignedCount,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Welcome back, Michael Staff!/i)).toBeInTheDocument();
+    const unassignedCard = screen.getByRole("link", { name: /View unassigned tickets/i }).closest(".card")! as HTMLElement;
+    const cardCount = Number(within(unassignedCard).getByText(String(expectedUnassignedCount)).textContent);
+    expect(cardCount).toBe(expectedUnassignedCount);
+
+    fireEvent.click(screen.getByRole("link", { name: /View unassigned tickets/i }));
+
+    expect(await screen.findByText(new RegExp(`Showing 1 to ${expectedUnassignedCount} of ${expectedUnassignedCount} tickets`, "i"))).toBeInTheDocument();
+    const tableRows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(tableRows.length - 1).toBe(cardCount);
+  });
+
   // --- UI-23: Non-staff user attempting to access /dashboard as staff ---
   it("UI-23: renders 403 Forbidden alert when a Requester attempts to access StaffDashboard", async () => {
     const requesterUser = {

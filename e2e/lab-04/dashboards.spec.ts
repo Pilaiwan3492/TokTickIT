@@ -31,25 +31,39 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     // Verify My Recent Tickets table shows Bob's open ticket
     await expect(page.locator("text=TKT-2026-000002")).toBeVisible();
 
+    // Extract and verify exact counts from metric cards before drill-down
+    const openCardLocator = page.locator('.card').filter({ hasText: "My Open Tickets" });
+    const openCardCountText = (await openCardLocator.locator(".display-6").innerText()).trim();
+    const openCardCount = Number(openCardCountText);
+    expect(openCardCount).toBe(1);
+
+    const resolvedCardLocator = page.locator('.card').filter({ hasText: "Resolved" });
+    const resolvedCardCountText = (await resolvedCardLocator.locator(".display-6").innerText()).trim();
+    const resolvedCardCount = Number(resolvedCardCountText);
+    expect(resolvedCardCount).toBe(1);
+
     // 3. Drill-down: Click "My Open Tickets" link
     const openTicketsLink = page.locator('a[aria-label="View all open tickets"]');
     await openTicketsLink.click();
     await page.waitForURL(/\/my-tickets\?status=open_all/);
 
-    // 4. Verify My Tickets destination page reflects the filter
+    // 4. Verify My Tickets destination page reflects the filter and matches metric card count
     const statusSelect = page.locator("select").filter({ hasText: "All Statuses" });
     await expect(statusSelect).toHaveValue("open_all");
 
-    // Open ticket TKT-2026-000002 should be visible; resolved ticket TKT-2026-000005 should be excluded
+    // Total tickets count matches metric card count
+    await expect(page.locator(`text=of ${openCardCount} tickets`)).toBeVisible();
+
+    // Open ticket for Bob is visible; resolved ticket is excluded
     await expect(page.locator("text=TKT-2026-000002")).toBeVisible();
     await expect(page.locator("text=TKT-2026-000005")).not.toBeVisible();
 
     // 5. Query parameters & Filter manipulation: Change filter to "RESOLVED"
     await statusSelect.selectOption("RESOLVED");
     await page.waitForTimeout(500); // allow client fetch
+    await expect(page.locator(`text=of ${resolvedCardCount} tickets`)).toBeVisible();
     await expect(page.locator("text=TKT-2026-000005")).toBeVisible();
     await expect(page.locator("text=TKT-2026-000002")).not.toBeVisible();
-
     // Reset to "All Statuses"
     await statusSelect.selectOption("");
     await page.waitForTimeout(500);
@@ -89,6 +103,23 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     // Verify Priority Attention Strip
     await expect(page.locator("text=Attention Required:")).toBeVisible();
 
+    // Extract and verify exact counts from metric cards
+    const newCardCountText = (await page.locator('.card').filter({ hasText: "New" }).locator(".h2").first().innerText()).trim();
+    const newCardCount = Number(newCardCountText);
+    expect(newCardCount).toBe(1);
+
+    const urgentBadgeCountText = (await page.locator('a[aria-label="View urgent priority tickets"]').innerText()).match(/\d+/)?.[0] ?? "1";
+    const urgentCardCount = Number(urgentBadgeCountText);
+    expect(urgentCardCount).toBe(1);
+
+    const myAssignedCountText = (await page.locator('.card').filter({ hasText: "My Assigned" }).locator(".h2").first().innerText()).trim();
+    const myAssignedCount = Number(myAssignedCountText);
+    expect(myAssignedCount).toBe(2);
+
+    const unassignedCountText = (await page.locator('.card').filter({ hasText: "Unassigned" }).locator(".h2").first().innerText()).trim();
+    const unassignedCount = Number(unassignedCountText);
+    expect(unassignedCount).toBe(1);
+
     // --- Scenario A: Status Drill-down (Click "New") ---
     const newTicketsLink = page.locator('a[aria-label="View all new tickets"]');
     await newTicketsLink.click();
@@ -98,7 +129,8 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     const queueStatusSelect = page.locator('select[aria-label="Filter by status"]');
     await expect(queueStatusSelect).toHaveValue("NEW");
 
-    // Verify TKT-2026-000001 (status NEW) is present in the table or responsive card
+    // Verify queue displays matching total count and filtered ticket
+    await expect(page.locator(`text=of ${newCardCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
 
     // --- Scenario B: Priority Drill-down (Click "Urgent") ---
@@ -112,7 +144,8 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     const queuePrioritySelect = page.locator('select[aria-label="Filter by priority"]');
     await expect(queuePrioritySelect).toHaveValue("URGENT");
 
-    // Verify TKT-2026-000003 (URGENT priority) is present
+    // Verify queue displays matching total count and filtered ticket
+    await expect(page.locator(`text=of ${urgentCardCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).toBeVisible();
 
     // --- Scenario C: Ownership Drill-down (Click "My Assigned") ---
@@ -123,20 +156,24 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await myAssignedLink.click();
     await page.waitForURL(/\/staff\/tickets\?ownership=assigned_to_me/);
 
-    // Verify "Assigned to Me" ownership toggle is active
+    // Verify "Assigned to Me" ownership toggle is active and total count matches metric card
     const assignedToMeBtn = page.locator('button:has-text("Assigned to Me")');
     await expect(assignedToMeBtn).toHaveClass(/btn-success/);
-
-    // Verify Michael's assigned ticket TKT-2026-000002 is present
+    await expect(page.locator(`text=of ${myAssignedCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000005" })).toBeVisible();
 
-    // --- Scenario D: Filter manipulation on Staff Queue ---
-    // Toggle to "Unassigned"
+    // --- Scenario D: Ownership Drill-down (Click "Unassigned") ---
+    await page.goto("/dashboard");
+    await page.waitForSelector("h1:has-text('Welcome back')");
+
+    const unassignedLink = page.locator('a[aria-label="View unassigned tickets"]');
+    await unassignedLink.click();
+    await page.waitForURL(/\/staff\/tickets\?ownership=unassigned/);
+
     const unassignedBtn = page.locator('button:has-text("Unassigned")');
-    await unassignedBtn.click();
-    await page.waitForTimeout(500);
-
     await expect(unassignedBtn).toHaveClass(/btn-success/);
+    // Verify TKT-2026-000001 (active unassigned ticket) is present in queue
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
   });
 
