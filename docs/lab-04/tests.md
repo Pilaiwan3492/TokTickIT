@@ -410,33 +410,33 @@ All screenshots will be captured during automated Playwright E2E execution and s
 | Category | Filename | Viewport / Dimensions | Description | Verification Criteria |
 | :--- | :--- | :--- | :--- | :--- |
 | **IT Staff Dashboard** | `01-staff-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Full IT Staff Dashboard with 6 metric cards | Zen Green layout, 6 primary metric cards, Priority strip, My Actions table |
-| **IT Staff Dashboard** | `01-staff-dashboard-tablet.png` | Tablet ($820 \times 1180$) | IT Staff Dashboard on tablet viewport | 2-column cards layout, responsive actions table |
+| **IT Staff Dashboard** | `01-staff-dashboard-tablet.png` | Tablet ($768 \times 1024$) | IT Staff Dashboard on tablet viewport | 2-column cards layout, responsive actions table |
 | **IT Staff Dashboard** | `01-staff-dashboard-mobile.png` | Mobile ($375 \times 667$) | IT Staff Dashboard mobile stacked view | 1-column stacked cards, touch targets $\ge 44\text{px}$, zero overflow |
 | **Requester Dashboard** | `02-requester-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Requester Dashboard with 4 metric cards | 4 primary metric cards, Recent Tickets, Recently Resolved tickets |
-| **Requester Dashboard** | `02-requester-dashboard-tablet.png` | Tablet ($820 \times 1180$) | Requester Dashboard on tablet viewport | 2-column cards, accessible filter links |
+| **Requester Dashboard** | `02-requester-dashboard-tablet.png` | Tablet ($768 \times 1024$) | Requester Dashboard on tablet viewport | 2-column cards, accessible filter links |
 | **Requester Dashboard** | `02-requester-dashboard-mobile.png` | Mobile ($375 \times 667$) | Requester Dashboard mobile stacked view | 1-column cards, touch-friendly CTA buttons |
 | **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-desktop.png` | Desktop ($1280 \times 800$) | Actions Taken section on Ticket Detail | Chronological actions list, Performer badge, Follow-up indicator, Add button |
-| **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-tablet.png` | Tablet ($820 \times 1180$) | Actions Taken on tablet viewport | Responsive layout, visible badges, accessible edit trigger |
+| **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-tablet.png` | Tablet ($768 \times 1024$) | Actions Taken on tablet viewport | Responsive layout, visible badges, accessible edit trigger |
 | **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-mobile.png` | Mobile ($375 \times 667$) | Actions Taken on mobile viewport | Stacked action items, touch targets $\ge 44\text{px}$, zero horizontal overflow |
 | **Actions Taken Modal** | `04-action-taken-modal-desktop.png` | Desktop ($1280 \times 800$) | Create/Edit Action Taken modal | Modal overlay, Performer display, follow-up checklist & note input |
-| **Actions Taken Modal** | `04-action-taken-modal-tablet.png` | Tablet ($820 \times 1180$) | Action Taken modal on tablet | Centered modal, form fields properly padded |
+| **Actions Taken Modal** | `04-action-taken-modal-tablet.png` | Tablet ($768 \times 1024$) | Action Taken modal on tablet | Centered modal, form fields properly padded |
 | **Actions Taken Modal** | `04-action-taken-modal-mobile.png` | Mobile ($375 \times 667$) | Action Taken modal on mobile | Full-width modal sheet, touch-friendly submit button |
 | **Resolution Gate** | `05-ticket-resolution-gate-desktop.png` | Desktop ($1280 \times 800$) | Status transition dropdown with Resolution Gate | Only permitted next statuses shown; resolution confirmation dialog |
-| **Resolution Gate** | `05-ticket-resolution-gate-tablet.png` | Tablet ($820 \times 1180$) | Resolution Gate controls on tablet | Accessible dropdown select, clear warning cues |
+| **Resolution Gate** | `05-ticket-resolution-gate-tablet.png` | Tablet ($768 \times 1024$) | Resolution Gate controls on tablet | Accessible dropdown select, clear warning cues |
 | **Resolution Gate** | `05-ticket-resolution-gate-mobile.png` | Mobile ($375 \times 667$) | Resolution Gate controls and modal on mobile | Full-width modal sheet, touch targets $\ge 44\text{px}$, zero overflow |
 | **Advisory Resolution** | `06-requester-resolve-indicator-desktop.png` | Desktop ($1280 \times 800$) | Requester advisory "Problem Appears Resolved" | Advisory banner displayed; formal status remains unchanged |
-| **Advisory Resolution** | `06-requester-resolve-indicator-tablet.png` | Tablet ($820 \times 1180$) | Advisory resolution banner on tablet | Responsive layout, visible advisory confirmation cues |
+| **Advisory Resolution** | `06-requester-resolve-indicator-tablet.png` | Tablet ($768 \times 1024$) | Advisory resolution banner on tablet | Responsive layout, visible advisory confirmation cues |
 | **Advisory Resolution** | `06-requester-resolve-indicator-mobile.png` | Mobile ($375 \times 667$) | Advisory resolution button and banner on mobile | Touch-friendly action button $\ge 44\text{px}$, clear advisory text |
 | **Concurrency Conflict**| `07-concurrency-conflict-banner-desktop.png` | Desktop ($1280 \times 800$) | Stale update HTTP 409 conflict banner | Non-destructive conflict banner with "Refresh" CTA; user input preserved |
-| **Concurrency Conflict**| `07-concurrency-conflict-banner-tablet.png` | Tablet ($820 \times 1180$) | Stale update conflict banner on tablet | Accessible conflict notification and "Refresh" trigger without text truncation |
+| **Concurrency Conflict**| `07-concurrency-conflict-banner-tablet.png` | Tablet ($768 \times 1024$) | Stale update conflict banner on tablet | Accessible conflict notification and "Refresh" trigger without text truncation |
 | **Concurrency Conflict**| `07-concurrency-conflict-banner-mobile.png` | Mobile ($375 \times 667$) | Stale update conflict banner on mobile | Full-width warning banner, preserved form fields, touch-friendly refresh CTA |
 | **Admin Dashboard** | `08-admin-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Administrator Dashboard with User Metrics | Staff operational metrics plus System User accounts summary panel |
-| **Admin Dashboard** | `08-admin-dashboard-tablet.png` | Tablet ($820 \times 1180$) | Administrator Dashboard on tablet viewport | 2-column cards layout for staff metrics and system user summary |
+| **Admin Dashboard** | `08-admin-dashboard-tablet.png` | Tablet ($768 \times 1024$) | Administrator Dashboard on tablet viewport | 2-column cards layout for staff metrics and system user summary |
 | **Admin Dashboard** | `08-admin-dashboard-mobile.png` | Mobile ($375 \times 667$) | Administrator Dashboard on mobile viewport | 1-column stacked cards, legible user counters, zero horizontal scroll |
 
 ### 5.2 Responsive Visual Inspection Checklist
 
-- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($820\text{px}$), and Mobile ($375\text{px}$).
+- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($768\text{px}$), and Mobile ($375\text{px}$).
 - [x] **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)**: Buttons, modal close triggers, and form inputs meet or exceed $44 \times 44\text{px}$ hit areas.
 - [x] **Brand Token Fidelity (`VIS-01`)**: Header, metric card accents, and primary action buttons conform to `#006B3C` (Zen Green).
 - [x] **Follow-up Pill Visual Distinction (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates Actions Taken requiring follow-up.

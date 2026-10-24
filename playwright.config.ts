@@ -30,7 +30,7 @@ export default defineConfig({
       name: "Tablet",
       use: {
         browserName: "chromium",
-        viewport: { width: 820, height: 1180 },
+        viewport: { width: 768, height: 1024 },
       },
     },
     {
