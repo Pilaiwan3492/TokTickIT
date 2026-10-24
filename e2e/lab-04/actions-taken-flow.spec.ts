@@ -69,16 +69,40 @@ test.describe("Lab 4 Actions Taken E2E Flow Suite (E2E-01..E2E-03)", () => {
     await page.fill("#action-description-input", actionDesc);
     await page.fill("#action-result-input", actionResult);
 
-    // 5. Submit form & verify double-click protection (BR-19, UI-26)
+    // 5. Submit form & verify double-click protection (BR-19, UI-26, AC-25)
+    let postActionsCount = 0;
+    await page.route("**/api/v1/tickets/*/actions-taken", async (route) => {
+      if (route.request().method() === "POST") {
+        postActionsCount++;
+        // Introduce controlled delay to hold the request in-flight
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await route.continue();
+      } else {
+        await route.continue();
+      }
+    });
+
     const saveBtn = page.locator('[data-testid="save-action-taken-btn"]');
     await expect(saveBtn).toBeEnabled();
+
+    // Trigger initial click and immediately attempt second click while in-flight
     await saveBtn.click();
+    // Verify button enters disabled state with spinner
+    await expect(saveBtn).toBeDisabled();
+    await saveBtn.click({ force: true }).catch(() => {});
 
     // Modal closes upon successful save
     await expect(modal).not.toBeVisible();
 
-    // 6. Verify newly created action entry appears chronologically
-    await expect(page.locator(`text=${actionDesc}`)).toBeVisible();
+    // Strict single-dispatch assertion: exactly 1 network POST was dispatched
+    expect(postActionsCount).toBe(1);
+
+    // Remove route interception for subsequent operations
+    await page.unroute("**/api/v1/tickets/*/actions-taken");
+
+    // 6. Verify newly created action entry appears chronologically (exactly 1 instance)
+    const createdActionDesc = page.locator(`text=${actionDesc}`);
+    await expect(createdActionDesc).toHaveCount(1);
     await expect(page.locator(`text=${actionResult}`)).toBeVisible();
 
     // 7. Edit existing Action Taken (AC-06, UI-07)

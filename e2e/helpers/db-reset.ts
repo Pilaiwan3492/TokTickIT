@@ -250,3 +250,28 @@ export async function resetDatabaseState() {
     });
   }
 }
+
+/**
+ * Ensures an active Requester with 0 submitted tickets exists for empty state testing.
+ */
+export async function createEmptyRequesterUser() {
+  const db = getE2EPrisma();
+  const passwordHash = bcrypt.hashSync("Password123!", 10);
+  return db.user.upsert({
+    where: { email: "empty.requester@example.com" },
+    update: {
+      isActive: true,
+      mustChangePassword: false,
+      passwordHash,
+      role: "REQUESTER",
+    },
+    create: {
+      email: "empty.requester@example.com",
+      name: "Empty Requester",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+      passwordHash,
+    },
+  });
+}

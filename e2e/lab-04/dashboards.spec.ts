@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { resetDatabaseState } from "../helpers/db-reset";
+import { resetDatabaseState, createEmptyRequesterUser } from "../helpers/db-reset";
 import {
   assertNoHorizontalOverflow,
   assertMinimumTouchTargets,
@@ -93,6 +93,32 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await page.waitForLoadState("networkidle");
     // ProtectedRoute blocks non-staff users
     await expect(page).not.toHaveURL(/\/staff\/tickets/);
+
+    // 7. Empty State verification for zero-ticket Requester (AC-20, BR-13)
+    await createEmptyRequesterUser();
+    await page.evaluate(() => localStorage.clear());
+    await page.goto("/login");
+    await page.fill("#login-email", "empty.requester@example.com");
+    await page.fill("#login-password", "Password123!");
+    await page.click('button[type="submit"]');
+
+    await page.waitForLoadState("networkidle");
+    await page.goto("/dashboard");
+    await page.waitForSelector("h1:has-text('Welcome, Empty Requester!')");
+
+    // Verify all 4 metric cards show 0
+    const zeroMetrics = page.locator(".display-6");
+    await expect(zeroMetrics.nth(0)).toHaveText("0");
+    await expect(zeroMetrics.nth(1)).toHaveText("0");
+    await expect(zeroMetrics.nth(2)).toHaveText("0");
+    await expect(zeroMetrics.nth(3)).toHaveText("0");
+
+    // Verify Zero Ticket Empty State container renders with CTA button
+    await expect(page.locator("text=You haven't submitted any tickets yet")).toBeVisible();
+    await expect(page.locator("text=Need assistance with hardware, software, or network access?")).toBeVisible();
+    const createBtn = page.locator('a:has-text("+ Create Ticket")');
+    await expect(createBtn).toBeVisible();
+    await expect(createBtn).toHaveAttribute("href", "/create-ticket");
   });
 
   // --- E2E-08: IT Staff Dashboard Journey, Operational Cards, Priority & Ownership Drill-down ---
@@ -160,6 +186,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     // Verify queue displays matching total count and filtered ticket
     await expect(page.locator(`text=of ${newCardCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
+    // Negative assertion: non-new tickets must not appear
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).not.toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).not.toBeVisible();
 
     // --- Scenario B: Priority Drill-down (Click "Urgent") ---
     await page.goto("/dashboard");
@@ -175,6 +204,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     // Verify queue displays matching total count and filtered ticket
     await expect(page.locator(`text=of ${urgentCardCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).toBeVisible();
+    // Negative assertion: non-urgent tickets must not appear
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).not.toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).not.toBeVisible();
 
     // --- Scenario C: Ownership Drill-down (Click "My Assigned") ---
     await page.goto("/dashboard");
@@ -190,6 +222,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await expect(page.locator(`text=of ${myAssignedCount} tickets`)).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000005" })).toBeVisible();
+    // Negative assertion: unassigned or other staff tickets must not appear
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).not.toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).not.toBeVisible();
 
     // --- Scenario D: Ownership Drill-down (Click "Unassigned") ---
     await page.goto("/dashboard");
@@ -201,8 +236,13 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
 
     const unassignedBtn = page.locator('button:has-text("Unassigned")');
     await expect(unassignedBtn).toHaveClass(/btn-success/);
+    // Verify total count shows all unassigned tickets in queue (2 unassigned tickets in seed data)
+    await expect(page.locator("text=of 2 tickets")).toBeVisible();
     // Verify TKT-2026-000001 (active unassigned ticket) is present in queue
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
+    // Negative assertion: assigned tickets must not appear
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).not.toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).not.toBeVisible();
   });
 
   // --- E2E-09: Administrator Dashboard Journey ---

@@ -212,7 +212,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **VIS-01** | Style | Section 9, Zen Green | Zen Green token fidelity across dashboard cards, header, and buttons | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#D5DDD8` | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-02** | Style | Section 9, Badges | Status and Priority badge color tokens and Follow-up pill styling | Follow-up pill renders Amber (`#D97706` / `#FEF3C7`); badges conform to spec | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-03** | Style | Section 9, A11y | Keyboard focus outlines and active indicators on all dashboard cards and modal inputs | Visible `#0B7A46` focus ring ($2\text{px}$ offset) on keyboard tab focus | `client/tests/lab-04/accessibility.test.tsx` | `Passed` |
-| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/helpers/visual-check.ts` | `Passed` |
+| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/lab-04/responsive.spec.ts` | `Passed` |
 
 ---
 

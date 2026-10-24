@@ -395,7 +395,7 @@ export const StaffTicketDetail: React.FC = () => {
           <Link
             to="/queue"
             className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
-            style={{ minHeight: 38 }}
+            style={{ minHeight: 44 }}
           >
             &larr; Back to Queue
           </Link>
@@ -410,7 +410,7 @@ export const StaffTicketDetail: React.FC = () => {
           <button
             type="button"
             className="btn btn-success btn-sm text-white fw-semibold d-flex align-items-center gap-1"
-            style={{ backgroundColor: "#006B3C", borderColor: "#006B3C", minHeight: 38 }}
+            style={{ backgroundColor: "#006B3C", borderColor: "#006B3C", minHeight: 44 }}
             disabled={isUpdatingOwner}
             onClick={() => handleAssignOwner("me")}
           >
@@ -669,7 +669,7 @@ export const StaffTicketDetail: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-sm text-white fw-semibold"
-                  style={{ backgroundColor: "#006B3C", minHeight: 38 }}
+                  style={{ backgroundColor: "#006B3C", minHeight: 44 }}
                   disabled={!newComment.trim() || isPostingComment}
                 >
                   {isPostingComment ? "Posting..." : "Post Comment"}
@@ -764,7 +764,7 @@ export const StaffTicketDetail: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-sm fw-semibold text-white"
-                  style={{ backgroundColor: "#854D0E", minHeight: 38 }}
+                  style={{ backgroundColor: "#854D0E", minHeight: 44 }}
                   disabled={!newNote.trim() || isPostingNote}
                 >
                   {isPostingNote ? "Saving Note..." : "Add Internal Note"}
