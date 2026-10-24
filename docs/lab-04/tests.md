@@ -203,6 +203,9 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Planned` |
 
+> [!NOTE]
+> **E2E-10 Scope & Issue Tracking**: Full regression testing across Labs 1–3 (`E2E-10`) is tracked under **Issue #39** (Final Regression & Polish) and has not yet been verified by PR #90 (Issue #38). PR #90 strictly verifies Lab 4 feature flows (`E2E-01`..`E2E-09`), Multi-Device Responsive layouts (`RESP-01`..`RESP-04`), and Visual/Accessibility inspections (`VIS-01`..`VIS-04`).
+
 ---
 
 ### 2.6 UI Style & Visual Invariant Tests (`VIS-01` to `VIS-04`)

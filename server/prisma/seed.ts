@@ -357,7 +357,7 @@ export async function seedDatabase() {
       currentStatus: "REOPENED" as const,
       isRequesterResolved: false,
     },
-    // Ticket 8: CANCELLED, Unassigned, LOW priority
+    // Ticket 8: CANCELLED, Assigned to IT Staff (David Lee), LOW priority
     {
       ticketNo: "TKT-2026-000008",
       requesterId: aliceReqId,
