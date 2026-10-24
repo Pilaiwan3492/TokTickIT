@@ -74,8 +74,8 @@ test.describe("Lab 4 Actions Taken E2E Flow Suite (E2E-01..E2E-03)", () => {
     await page.route("**/api/v1/tickets/*/actions-taken", async (route) => {
       if (route.request().method() === "POST") {
         postActionsCount++;
-        // Introduce controlled delay to hold the request in-flight
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Introduce controlled delay to hold the request in-flight for double-click simulation
+        await new Promise((resolve) => setTimeout(resolve, 600));
         await route.continue();
       } else {
         await route.continue();
@@ -85,22 +85,27 @@ test.describe("Lab 4 Actions Taken E2E Flow Suite (E2E-01..E2E-03)", () => {
     const saveBtn = page.locator('[data-testid="save-action-taken-btn"]');
     await expect(saveBtn).toBeEnabled();
 
-    // Trigger initial click and immediately attempt second click while in-flight
+    // Trigger initial submission
     await saveBtn.click();
-    // Verify button enters disabled state with spinner
+
+    // Verify button immediately transitions to disabled state with loading spinner
     await expect(saveBtn).toBeDisabled();
-    await saveBtn.click({ force: true }).catch(() => {});
+    await expect(page.locator('[data-testid="save-action-taken-btn"] .spinner-border')).toBeVisible();
+
+    // Simulate immediate rapid double-click while the request is in-flight
+    await saveBtn.dispatchEvent("click");
+    await saveBtn.dispatchEvent("click");
 
     // Modal closes upon successful save
     await expect(modal).not.toBeVisible();
 
-    // Strict single-dispatch assertion: exactly 1 network POST was dispatched
+    // Verification 1: Exactly 1 POST API request dispatched to the server
     expect(postActionsCount).toBe(1);
 
     // Remove route interception for subsequent operations
     await page.unroute("**/api/v1/tickets/*/actions-taken");
 
-    // 6. Verify newly created action entry appears chronologically (exactly 1 instance)
+    // Verification 2: Exactly 1 Action Taken record was created in the UI / database
     const createdActionDesc = page.locator(`text=${actionDesc}`);
     await expect(createdActionDesc).toHaveCount(1);
     await expect(page.locator(`text=${actionResult}`)).toBeVisible();

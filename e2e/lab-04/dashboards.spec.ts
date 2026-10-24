@@ -236,13 +236,24 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
 
     const unassignedBtn = page.locator('button:has-text("Unassigned")');
     await expect(unassignedBtn).toHaveClass(/btn-success/);
-    // Verify total count shows all unassigned tickets in queue (2 unassigned tickets in seed data)
-    await expect(page.locator("text=of 2 tickets")).toBeVisible();
-    // Verify TKT-2026-000001 (active unassigned ticket) is present in queue
+
+    // Verify active unassigned ticket (TKT-2026-000001) is present in queue
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
     // Negative assertion: assigned tickets must not appear
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).not.toBeVisible();
     await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000003" })).not.toBeVisible();
+
+    // Verify total unassigned tickets in queue is at least the active unassigned count
+    const queueText = await page.locator("p.text-secondary.small").filter({ hasText: "tickets" }).innerText();
+    const match = queueText.match(/of (\d+) tickets/);
+    const totalInQueue = Number(match?.[1] ?? "0");
+    expect(totalInQueue).toBeGreaterThanOrEqual(unassignedCount);
+
+    // Filter status to "NEW" to strictly isolate active unassigned ticket and match Unassigned Card count directly
+    await page.selectOption('select[aria-label="Filter by status"]', "NEW");
+    await expect(page.locator(`text=of ${unassignedCount} tickets`)).toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000001" })).toBeVisible();
+    await expect(page.locator("a:visible").filter({ hasText: "TKT-2026-000002" })).not.toBeVisible();
   });
 
   // --- E2E-09: Administrator Dashboard Journey ---

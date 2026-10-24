@@ -172,4 +172,36 @@ test.describe("Lab 4 Responsive Viewports & Accessibility Suite (RESP-01..RESP-0
       await assertMinimumTouchTargets(page);
     }
   });
+
+  test("RESP-01..RESP-04 & VIS-04: Ticket Resolution Gate controls and confirmation modal render responsively with zero overflow and touch target compliance", async ({
+    page,
+  }, testInfo) => {
+    // 1. Log in as IT Staff Michael Brown
+    await page.goto("/login");
+    await page.fill("#login-email", "michael.brown@toktickit.com");
+    await page.fill("#login-password", "Password123!");
+    await page.click('button[type="submit"]');
+
+    await page.waitForLoadState("networkidle");
+    await page.goto("/staff/tickets");
+    const ticketLink = page.locator('a:has-text("TKT-2026-000002"):visible').first();
+    await ticketLink.click();
+    await page.waitForURL(/\/staff\/tickets\/.+|\/queue\/.+/);
+
+    // 2. Open Resolution Gate dialog: OPEN -> IN_PROGRESS -> RESOLVED
+    const statusSelect = page.locator("#status-select");
+    await expect(statusSelect).toBeVisible();
+    await statusSelect.selectOption("IN_PROGRESS");
+    await page.waitForTimeout(400);
+
+    await statusSelect.selectOption("RESOLVED");
+    await page.waitForTimeout(400);
+
+    // 3. Assert zero horizontal overflow and no text clipping on resolution gate view
+    await assertNoHorizontalOverflow(page);
+    await assertNoTextClippingOrOverlap(page);
+    if (testInfo.project.name === "Tablet" || testInfo.project.name === "Mobile") {
+      await assertMinimumTouchTargets(page);
+    }
+  });
 });
