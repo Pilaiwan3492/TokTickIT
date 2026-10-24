@@ -352,6 +352,64 @@ describe("Lab 4 — Issue 35: Actions Taken Section & Modals (UI-01..UI-08, UI-2
   });
 
   // =========================================================================
+  // UI-03b: Form values preserved upon HTTP 409 Concurrency Conflict (STALE_UPDATE_CONFLICT)
+  // =========================================================================
+  it("UI-03b: preserves all entered form values upon HTTP 409 stale-update conflict", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        success: false,
+        error: {
+          code: "STALE_UPDATE_CONFLICT",
+          message: "Ticket was modified concurrently by another user. Please refresh and retry.",
+        },
+      }),
+    } as Response);
+
+    render(
+      <ActionsTakenList
+        ticketId="tkt-uuid-100"
+        ticketStatus="IN_PROGRESS"
+        ticketUpdatedAt="2026-09-01T10:00:00.000Z"
+        actions={[]}
+        currentUser={activeStaffUser}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /\+ Add Action Taken/i }));
+
+    const testDesc = "Checked database connection pool latency and reset idle connections.";
+    const testResult = "Connection pool normalized to 5 active sessions.";
+    const testNote = "Monitor connection spikes over the next 2 hours.";
+
+    const descInput = screen.getByLabelText(/Action Description/i) as HTMLTextAreaElement;
+    const resultInput = screen.getByLabelText(/^Result/i) as HTMLTextAreaElement;
+
+    fireEvent.change(descInput, { target: { value: testDesc } });
+    fireEvent.change(resultInput, { target: { value: testResult } });
+
+    fireEvent.click(screen.getByLabelText(/Follow-Up Required\?/i));
+    const noteInput = screen.getByLabelText(/Follow-Up Note/i) as HTMLTextAreaElement;
+    fireEvent.change(noteInput, { target: { value: testNote } });
+
+    // Submit form -> triggers HTTP 409
+    fireEvent.click(screen.getByRole("button", { name: /Save Action Taken/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Concurrency Conflict Detected (HTTP 409)")
+      ).toBeInTheDocument();
+    });
+
+    // Dialog remains open and all user inputs are strictly preserved
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(descInput.value).toBe(testDesc);
+    expect(resultInput.value).toBe(testResult);
+    expect(noteInput.value).toBe(testNote);
+  });
+
+  // =========================================================================
   // UI-04: Modal displays authenticated user as Performer (read-only)
   // =========================================================================
   it("UI-04: displays authenticated user's name and role as read-only in Performed By field", () => {
