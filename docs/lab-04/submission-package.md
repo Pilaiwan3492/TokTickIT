@@ -54,12 +54,12 @@ All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are
 | **39** | [#81](https://github.com/Pilaiwan3492/TokTickIT/issues/81) | Final Product Hardening, Full Regression & Submission Package | `feature/39-final-regression-submission` | **Done** |
 
 ### 1.3 Rendered Peer Review Record
-- Document Link: [`docs/lab-04/reviewer.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/reviewer.md)  
+- **Review Document Link:** [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/reviewer.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/reviewer.md)  
 - The review record catalogs the complete bi-directional review dialogue between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) across PRs #82 through #91. It documents substantive code reviews, changes requested (e.g., keyboard Tab navigation authenticity, tablet viewport alignment to 768px, seed data consistency), and final approvals.
 
 ### 1.4 `README.md` and `.gitignore` Content Evidence
-- `README.md`: Updated with comprehensive Sprint 4 documentation, live test credentials (Alice, Bob, David, Carol, Eve), running instructions, and automated test pass rate summaries.
-- `.gitignore`: Configured to exclude `node_modules/`, `dist/`, `.env`, temporary upload files, test coverage reports, and cache directories while tracking all essential documentation and source assets.
+- `README.md`: [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/README.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/README.md) &mdash; Updated with comprehensive Sprint 4 documentation, live seed account credentials (Alice, Bob, Michael, David, John), running instructions, and automated test pass rate summaries.
+- `.gitignore`: [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/.gitignore](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/.gitignore) &mdash; Configured to exclude `node_modules/`, `dist/`, `.env`, temporary upload files, test coverage reports, and cache directories while tracking all essential documentation and source assets.
 
 ### 1.5 Repository Directory Structure in IDE
 The codebase is structured into modular frontend (`client/`), backend (`server/`), end-to-end test suites (`e2e/`), artifacts (`artifacts/lab-04/`), and engineering documentation (`docs/lab-04/`).
@@ -69,7 +69,7 @@ The codebase is structured into modular frontend (`client/`), backend (`server/`
 ## Answer Part 2: Spec DD
 
 - **Link to `docs/lab-04/specification.md`:**  
-  [https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/specification.md](https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/specification.md) (Local: [`docs/lab-04/specification.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/specification.md))
+  [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/specification.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/specification.md)
 
 ### 1. Requirements Decomposition & Coverage
 The specification establishes **20 Functional Requirements (`FR-01` to `FR-20`)**, **19 Business Rules (`BR-01` to `BR-19`)**, and **25 Acceptance Criteria (`AC-01` to `AC-25`)** in Given-When-Then format.
@@ -105,7 +105,7 @@ The canonical specification was authored and approved on **2026-10-04**, prior t
 ## Answer Part 3: Test DD and Traceability
 
 - **Link to `docs/lab-04/tests.md`:**  
-  [https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/tests.md](https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/tests.md) (Local: [`docs/lab-04/tests.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/tests.md))
+  [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/tests.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/tests.md)
 
 ### Acceptance Criteria Traceability Matrix (Summary Excerpt)
 
@@ -170,7 +170,7 @@ Running 57 tests using 1 worker
 ## Answer Part 4: AI Use with Reflection
 
 - **Link to `docs/lab-04/ai-use.md`:**  
-  [https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/ai-use.md](https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/ai-use.md) (Local: [`docs/lab-04/ai-use.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/ai-use.md))
+  [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/ai-use.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/ai-use.md)
 
 ### 1. Selected Prompts Summary
 1. **Sprint 4 Contract Decomposition**: Formalized 20 FRs, 19 BRs, 25 ACs, 18-transition matrix, and optimistic concurrency protocols.
@@ -314,7 +314,7 @@ The full regression suite `e2e/lab-04/regression.spec.ts` executes across Deskto
 ## Answer Part 9: Zen Green UI, Responsive, Accessibility & Final Polish
 
 - **Link to `docs/lab-04/ui-spec.md`:**  
-  [https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/ui-spec.md](https://github.com/Pilaiwan3492/TokTickIT/blob/main/docs/lab-04/ui-spec.md) (Local: [`docs/lab-04/ui-spec.md`](file:///c:/Users/Acer/Desktop/TokTickIT/docs/lab-04/ui-spec.md))
+  [https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/ui-spec.md](https://github.com/Pilaiwan3492/TokTickIT/blob/lab4-staging/docs/lab-04/ui-spec.md)
 
 ### 1. Design Token Fidelity & Visual Invariants
 - **Primary Brand Color**: Zen Green `#006B3C` applied to application header, primary action buttons, active tab indicators, and metric card accents.

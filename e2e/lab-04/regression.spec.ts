@@ -113,7 +113,15 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
 
     await expect(page.locator("text=regression-proof.png").first()).toBeVisible();
 
-    // 4. Soft-delete attachment
+    // 4. Download attachment verification
+    const downloadBtn = page.locator('button:has-text("Download")').first();
+    await expect(downloadBtn).toBeVisible();
+    const downloadPromise = page.waitForEvent("download");
+    await downloadBtn.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("regression-proof.png");
+
+    // 5. Soft-delete attachment
     const removeBtn = page.locator('button:has-text("Remove")').first();
     await expect(removeBtn).toBeVisible();
     await removeBtn.click();
@@ -190,29 +198,30 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
     await expect(page.getByRole("tab", { name: /Public Comments/i })).toBeVisible();
     await expect(page.getByRole("tab", { name: /Internal Notes/i })).toBeVisible();
 
-    // Post Public Comment
+    // 1. Post Public Comment (strict assertion: form must be visible)
     const commentInput = page.locator('textarea[placeholder*="Write a comment" i], textarea[placeholder*="comment" i]').first();
-    if (await commentInput.isVisible()) {
-      await commentInput.fill("Automated regression public comment from IT Staff.");
-      await page.click('button:has-text("Post Comment")');
-      await expect(page.locator(".text-dark:has-text('Automated regression public comment from IT Staff.')").first()).toBeVisible();
-    }
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill("Automated regression public comment from IT Staff.");
+    await page.getByRole("button", { name: /Post Comment/i }).click();
+    await expect(page.locator(".text-dark:has-text('Automated regression public comment from IT Staff.')").first()).toBeVisible();
 
-    // Switch to Internal Notes tab and post Internal Note
+    // 2. Switch to Internal Notes tab and post Internal Note (strict assertion: form must be visible)
     await page.getByRole("tab", { name: /Internal Notes/i }).click();
-    const noteInput = page.locator('#internal-note-input');
-    if (await noteInput.isVisible()) {
-      await noteInput.fill("Private operational regression verification note.");
-      await page.click('button:has-text("Add Internal Note"), button:has-text("Add Note")');
-      await expect(page.locator("text=Private operational regression verification note.").first()).toBeVisible();
-    }
+    const amberNotice = page.locator("text=Internal Notes are private and never visible to the ticket Requester.");
+    await expect(amberNotice).toBeVisible();
 
-    // 2. Sign Out
+    const noteInput = page.locator("#staff-note-input");
+    await expect(noteInput).toBeVisible();
+    await noteInput.fill("Private operational regression verification note.");
+    await page.click('button:has-text("Add Internal Note")');
+    await expect(page.locator("text=Private operational regression verification note.").first()).toBeVisible();
+
+    // 3. Sign Out
     await page.click('header button[aria-haspopup="true"]');
     await page.click('header button:has-text("Sign Out")');
     await expect(page).toHaveURL(/\/login/);
 
-    // 3. Administrator User Management
+    // 4. Administrator User Management
     await page.fill("#login-email", "admin@toktickit.com");
     await page.fill("#login-password", "Password123!");
     await page.click('button[type="submit"]');
@@ -226,16 +235,26 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
     await expect(page.locator('text="Michael Brown"').filter({ visible: true }).first()).toBeVisible();
     await expect(page.locator('text="Bob Smith"').filter({ visible: true }).first()).toBeVisible();
 
-    // Verify Admin Self-Deactivation safety guard
-    const editSelfBtn = page.locator('button[aria-label*="admin@toktickit.com"], tr:has-text("admin@toktickit.com") button:has-text("Edit")').first();
-    if (await editSelfBtn.isVisible()) {
-      await editSelfBtn.click();
-      await page.waitForTimeout(400);
-      const activeToggle = page.locator('input[type="checkbox"]#user-active-toggle, input[type="checkbox"][name="isActive"]');
-      if (await activeToggle.isVisible()) {
-        await expect(activeToggle).toBeDisabled();
-      }
-    }
+    // Verify Admin Self-Deactivation safety guard (strict assertion without conditional skips)
+    const adminRowOrCard = page
+      .locator('[data-testid^="user-row-"], [data-testid^="user-card-"]')
+      .filter({ hasText: "admin@toktickit.com" })
+      .filter({ visible: true })
+      .first();
+    await expect(adminRowOrCard).toBeVisible();
+    await adminRowOrCard.locator('button:has-text("Edit")').click();
+    await expect(page.locator('[data-testid="admin-edit-user-modal"]')).toBeVisible();
+
+    const activeToggle = page.locator('[data-testid="switch-edit-active"]');
+    await expect(activeToggle).toBeDisabled();
+
+    const selfDeactNotice = page.locator('[data-testid="self-deactivation-notice"]');
+    await expect(selfDeactNotice).toBeVisible();
+    await expect(selfDeactNotice).toContainText("CANNOT_DEACTIVATE_SELF");
+
+    // Close modal
+    await page.locator('[data-testid="admin-edit-user-modal"] button:has-text("Cancel")').click();
+    await expect(page.locator('[data-testid="admin-edit-user-modal"]')).not.toBeVisible();
 
     await assertNoHorizontalOverflow(page);
   });

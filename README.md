@@ -109,13 +109,14 @@ TokTickIT/
 
 | Role | Name | Email | Password | Permissions & Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **Requester** | Alice Smith | `alice@example.com` | `Password123!` | Active Requester (Must change password on first login) |
-| **Requester** | Bob Jones | `bob@example.com` | `Password123!` | Active Requester with multiple owned tickets |
-| **Requester** | Charlie Brown | `charlie@example.com` | `Password123!` | Inactive Requester account |
-| **IT Staff** | David Lee | `david@example.com` | `Password123!` | Active IT Staff (Ticket Queue, Action Logging, Resolution) |
-| **IT Staff** | Carol White | `carol@example.com` | `Password123!` | Active IT Staff (Secondary assignee) |
-| **IT Staff** | Frank Miller | `frank@example.com` | `Password123!` | Inactive IT Staff (`INACTIVE_ACTOR_REJECTED`) |
-| **Admin** | Eve Davis | `eve@example.com` | `Password123!` | Administrator (User Management, Staff Queue, Metrics) |
+| **Requester** | Alice Johnson | `alice@example.com` | `InitialPass123!` | Active Requester (Must change password on first login) |
+| **Requester** | Bob Smith | `bob@example.com` | `Password123!` | Active Requester with multiple owned tickets |
+| **Requester** | Charlie Brown | `charlie@example.com` | `Password123!` | Active Requester |
+| **Requester** | Eve Inactive User | `eve@example.com` | `Password123!` | Inactive Requester (`ACCOUNT_INACTIVE`) |
+| **IT Staff** | Michael Brown | `michael.brown@toktickit.com` | `Password123!` | Active IT Staff (Queue processing, Ticket claiming) |
+| **IT Staff** | David Lee | `david.lee@toktickit.com` | `Password123!` | Active IT Staff (Ticket Owner & Action logger) |
+| **IT Staff** | Kevin Patel | `kevin.patel@toktickit.com` | `Password123!` | Inactive IT Staff (`INACTIVE_ACTOR_REJECTED`) |
+| **Admin** | John Smith | `admin@toktickit.com` | `Password123!` | Administrator (User Management, Safety Guards, Queue, Metrics) |
 
 ---
 
