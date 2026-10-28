@@ -1,3 +1,4 @@
+import fs from "fs";
 import { test, expect } from "@playwright/test";
 import { resetDatabaseState } from "../helpers/db-reset";
 import { assertNoHorizontalOverflow } from "../helpers/visual-check";
@@ -83,9 +84,8 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
 
     await categorySelect.selectOption({ label: "Hardware" });
     await systemSelect.selectOption({ index: 1 });
-    if (await prioritySelect.isVisible()) {
-      await prioritySelect.selectOption("HIGH");
-    }
+    await expect(prioritySelect).toBeVisible();
+    await prioritySelect.selectOption("HIGH");
 
     const summaryInput = page.locator('input[placeholder*="summary" i]').first();
     const descInput = page.locator('textarea[placeholder*="description" i]').first();
@@ -104,11 +104,15 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
 
     // 3. Attachments section: Upload an attachment
     await expect(page.getByRole("heading", { name: "Attachments" })).toBeVisible();
+    const uploadBuffer = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64"
+    );
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles({
       name: "regression-proof.png",
       mimeType: "image/png",
-      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"),
+      buffer: uploadBuffer,
     });
 
     await expect(page.locator("text=regression-proof.png").first()).toBeVisible();
@@ -120,6 +124,15 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
     await downloadBtn.click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe("regression-proof.png");
+
+    // Verify downloaded file stream and non-empty content buffer matching uploaded file
+    const downloadPath = await download.path();
+    expect(downloadPath).toBeTruthy();
+    if (downloadPath) {
+      const downloadedBuffer = fs.readFileSync(downloadPath);
+      expect(downloadedBuffer.length).toBeGreaterThan(0);
+      expect(downloadedBuffer.equals(uploadBuffer)).toBe(true);
+    }
 
     // 5. Soft-delete attachment
     const removeBtn = page.locator('button:has-text("Remove")').first();
@@ -147,6 +160,7 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
   // --- E2E-10 Part 3: Lab 3 Authentication, RBAC, and Mandatory Password Change ---
   test("E2E-10.3: Lab 3 Auth foundation, RBAC boundaries, and Password change flow", async ({
     page,
+    request,
   }) => {
     // 1. Mandatory password change for initial temporary password user (alice@example.com)
     await page.goto("/login");
@@ -164,10 +178,23 @@ test.describe("Lab 4 Sprint 4 Full Regression Suite across Labs 1–3 (E2E-10)",
     await page.click('button[type="submit"]:has-text("Continue")');
     await expect(page).toHaveURL(/\/(tickets|dashboard)/);
 
-    // 2. RBAC Boundary check: Requester cannot access /admin/users
+    // 2. RBAC Boundary check: Requester cannot access /admin/users (Client route guard redirects)
     await page.goto("/admin/users");
     await page.waitForLoadState("networkidle");
     await expect(page).not.toHaveURL(/\/admin\/users/);
+
+    // 3. Direct API verification: Requester token accessing /api/v1/admin/users explicitly returns HTTP 403 Forbidden
+    const requesterToken = await page.evaluate(() => localStorage.getItem("toktickit_auth_token"));
+    expect(requesterToken).toBeTruthy();
+
+    const apiRes = await request.get("/api/v1/admin/users", {
+      headers: {
+        Authorization: `Bearer ${requesterToken}`,
+      },
+    });
+    expect(apiRes.status()).toBe(403);
+    const apiError = await apiRes.json();
+    expect(["INSUFFICIENT_PERMISSIONS", "FORBIDDEN"]).toContain(apiError.error?.code);
 
     await assertNoHorizontalOverflow(page);
   });
