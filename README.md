@@ -1,54 +1,57 @@
 # TokTickIT — Full-Stack IT Service Desk
 
-**Course:** CPE 334 Software Engineering — Lab 3 (Sprint 3)  
+**Course:** CPE 334 Software Engineering — Lab 4 (Sprint 4)  
 **Author:** Pilaiwan Churdchu — 67070503492 — GitHub: [@Pilaiwan3492](https://github.com/Pilaiwan3492)  
 **Peer Reviewer:** Aphichaya Klinhual — 67070503447 — GitHub: [@Apichaya251400](https://github.com/Apichaya251400)  
-**Target Release:** `lab3-staging` → `main`
+**Author Repository:** [https://github.com/Pilaiwan3492/TokTickIT](https://github.com/Pilaiwan3492/TokTickIT)  
+**Partner Repository:** [https://github.com/Apichaya251400/TokTickIT](https://github.com/Apichaya251400/TokTickIT)  
+**Target Release:** `lab4-staging` → `main`
 
-TokTickIT is a full-stack IT service desk web application for handling Account & Access, Hardware, Software, and Network support requests. Built with a full-stack TypeScript architecture using React, Express, Prisma ORM, and PostgreSQL.
+TokTickIT is a full-stack IT service desk web application for handling Account & Access, Hardware, Software, and Network support requests. Built with a robust full-stack TypeScript architecture using React 18, Express, Prisma ORM, and PostgreSQL.
 
 ---
 
-## 🚀 Lab 3: Role-Based Access Control, Authentication & IT Operations
+## 🚀 Lab 4: Actions Taken, Role Dashboards, Ticket Lifecycle & Resolution Gate
 
-Lab 3 evolves TokTickIT from a single-role MVP into a complete, production-grade multi-role service desk application:
+Lab 4 expands TokTickIT into a comprehensive IT operations platform with work logging, role-tailored dashboards, state machine enforcement, optimistic concurrency, and multi-device responsive design:
 
-- **Authentication & Security Foundation**:
-  - JWT Bearer token authentication with bcrypt password hashing.
-  - Server-side session invalidation and token revocation blocklist (`POST /api/v1/auth/logout` via `RevokedToken`).
-  - Startup security check enforcing `JWT_SECRET` length $\ge 32$ characters with fail-secure abort.
-  - Mandatory first-login password change flow (`mustChangePassword = true` returning HTTP 403 `PASSWORD_CHANGE_REQUIRED`) with real-time complexity validation ($\ge 8$ chars, uppercase, lowercase, number, symbol).
-  - Sensitive credential leakage elimination (`passwordHash` and `tokenVersion` omitted from all queries and responses).
+- **Parent-Child Actions Taken Management**:
+  - Discrete `ActionTaken` model linked to parent `Ticket` and `User` (`performedBy`) with composite indexing (`ticketId`, `actionDate`).
+  - Strict RBAC: IT Staff and Admin can record and edit actions; Requesters possess read-only visibility on owned tickets (`403 FORBIDDEN` on other tickets or direct write attempts).
+  - Auto-attribution of `performedById` bound to the authenticated session (immutable once created).
+  - Inactive actor protection (`INACTIVE_ACTOR_REJECTED`) preventing inactive accounts from recording or editing work.
+  - Mandatory follow-up note validation: `followUpNote` is mandatory when `followUpRequired = true` (`FOLLOWUP_NOTE_REQUIRED`).
+  - Terminal ticket guard: Actions cannot be added to `CLOSED` or `CANCELLED` tickets (`TICKET_LOCKED`).
 
-- **Role-Based Navigation & Shell**:
-  - Three discrete canonical roles: `REQUESTER`, `IT_STAFF`, and `ADMIN`.
-  - Role-aware Header navigation and role badge with full deprecation and removal of the legacy Development Requester Selector.
-  - Client session expiration and revocation interception (`apiClient`) automatically redirecting stale sessions to Login.
+- **Ticket Lifecycle State Machine & Resolution Gate**:
+  - Full 18 permitted status transition matrix across 8 discrete statuses (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`).
+  - Backend Resolution Gate enforcement: Only IT Staff and Admin can transition tickets to `RESOLVED`.
+  - Decoupled Requester advisory resolution: Requesters indicate "Problem Appears Resolved" (`POST /resolve-indicator`), setting `isResolvedByUser: true` without altering official ticket status.
+  - Reopening workflow: `RESOLVED` tickets can transition to `CLOSED` or `REOPENED`.
+  - Terminal state lock: `CLOSED` and `CANCELLED` tickets are immutable and reject further status transitions (`400 TICKET_LOCKED`).
 
-- **Requester Regression & Public Comments**:
-  - Append-only chronological Public Comments feed (`GET/POST /api/v1/tickets/:id/comments`) with author avatar, role badge, timestamp, and live character counter (`0 / 2000`).
-  - "Problem Appears Resolved" indicator endpoint (`POST /api/v1/tickets/:id/resolve-indicator`) allowing requesters to signal resolution idempotently without altering official ticket status.
-  - Pre-query ticket ownership guard guaranteeing zero metadata leakage on unauthorized ticket access attempts (`403 FORBIDDEN`).
+- **Optimistic Concurrency Control (`STALE_UPDATE_CONFLICT`)**:
+  - Mismatched timestamp checks on status updates (`expectedUpdatedAt`) and action logging (`expectedTicketUpdatedAt`).
+  - Server returns HTTP 409 `STALE_UPDATE_CONFLICT` on race conditions, preventing silent data overwrites.
+  - Frontend preserves entered form inputs upon conflict with accessible "Refresh Ticket" CTA.
 
-- **IT Staff Queue & Operational Processing**:
-  - IT Staff Shared Queue (`/queue`) with debounced search, status and priority dropdown filters, and ownership filter tabs (`All`, `Unassigned`, `Assigned to Me`).
-  - Operational Ticket Detail (`/queue/:id`) with prominent operational control card.
-  - One-click ticket claiming, staff reassignment, and independent IT Priority management.
-  - Strict status transition state machine enforcing the BR-16 lifecycle (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `CANCELLED`, `REOPENED`).
-  - Private Internal Notes tab with distinct amber styling (`#854D0E`, `#FFFBEB`) strictly inaccessible to Requesters.
+- **Role-Specific Dashboards with SQL Aggregations**:
+  - Optimized database aggregations via Prisma `groupBy` and count queries ($< 300\text{ms}$ latency).
+  - **Requester Dashboard** (`/dashboard`): 4 primary metric cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table, recently resolved tickets list, and empty state CTA.
+  - **IT Staff Dashboard** (`/dashboard`): 6 primary operational metric cards (`New`, `Open`, `In Progress`, `Waiting Req`, `My Assigned`, `Unassigned`), Priority Attention strip (`Urgent`, `High`), and Current User Recent Actions list (max 5).
+  - **Administrator Dashboard** (`/dashboard`): Inherits Staff operational metrics and adds System User Accounts summary (`Active Users`, `Active Staff`, `Active Admins`).
+  - Accessible drill-down navigation: Clicking any metric card routes to filtered views (`/my-tickets?status=...` or `/staff/tickets?status=...`).
 
-- **Administrator User Management & Safety Guards**:
-  - Full user administration table (`/admin/users`) with safe user projections (`id`, `name`, `email`, `role`, `isActive`, `mustChangePassword`, `createdAt`).
-  - Create User, Edit User, and Reset Initial Password modals with complexity checklist and session revocation notice.
-  - Self-deactivation guard preventing administrators from deactivating their own account (`CANNOT_DEACTIVATE_SELF`).
-  - Concurrency-safe Last Active Administrator protection (`LAST_ACTIVE_ADMIN_PROTECTED`) backed by database transaction advisory locking.
-  - Bidirectional RequesterUser synchronization preserving referential integrity across role changes.
+- **Design System Fidelity & Multi-Device Responsive Experience**:
+  - Zen Green brand tokens: Primary Green `#006B3C`, Secondary Green `#0B7A46`, Pale Green `#EAF6EF`, Neutral White `#FFFFFF`, Neutral Border `#D5DDD8`.
+  - Distinct Amber styling (`#D97706` / `#FEF3C7`) for Follow-up Required pills and internal notes.
+  - High-contrast keyboard focus outlines (`#0B7A46`, $2\text{px}$) with sequential `Tab` accessibility.
+  - Responsive layouts verified on Desktop ($1280 \times 800$), Tablet ($768 \times 1024$), and Mobile ($375 \times 667$).
+  - Touch targets $\ge 44 \times 44\text{px}$ across all viewports (`touch-targets.css`).
+  - Zero unintended horizontal overflow (`document.documentElement.scrollWidth <= window.innerWidth`).
 
-- **Visual QA & Responsive Experience**:
-  - Design system tokens in Zen Green (`#006B3C`) and Amber notes styling (`#D97706`).
-  - Responsive layouts across Desktop ($\ge 1024\text{px}$), Tablet ($820 \times 1180$), and Mobile ($375 \times 667$).
-  - Touch targets verified $\ge 44\text{px}$ on mobile/tablet devices (`touch-targets.css`).
-  - Zero horizontal overflow enforced on all views (`assertNoHorizontalOverflow`).
+- **100% Backward Compatibility & Full Regression Suite**:
+  - Complete regression suite (`E2E-10`) executing across Desktop, Tablet, and Mobile verifying Labs 1–3 functionality (Health check, categories, Requester ticket lifecycle, attachments, JWT auth, password change, IT queue claiming, public comments, amber notes, admin user management).
 
 ---
 
@@ -57,51 +60,62 @@ Lab 3 evolves TokTickIT from a single-role MVP into a complete, production-grade
 ```text
 TokTickIT/
 ├── artifacts/
-│   └── lab-03/
-│       ├── screenshots/         # 26 high-resolution responsive evidence screenshots
-│       │   ├── authentication/  # Desktop, Tablet, Mobile login & password change
-│       │   ├── staff-queue/     # Queue table, mobile cards, filters
-│       │   ├── staff-ticket-detail/ # Operational controls, amber internal notes
-│       │   └── user-management/ # User table, modals, self-deactivation guard
-│       └── CPE334_Lab3_Submission_67070503492.docx # Final submission package
+│   └── lab-04/
+│       ├── screenshots/         # 24 high-resolution responsive evidence screenshots
+│       │   ├── 01-staff-dashboard-{desktop,tablet,mobile}.png
+│       │   ├── 02-requester-dashboard-{desktop,tablet,mobile}.png
+│       │   ├── 03-ticket-detail-actions-taken-{desktop,tablet,mobile}.png
+│       │   ├── 04-action-taken-modal-{desktop,tablet,mobile}.png
+│       │   ├── 05-ticket-resolution-gate-{desktop,tablet,mobile}.png
+│       │   ├── 06-requester-resolve-indicator-{desktop,tablet,mobile}.png
+│       │   ├── 07-concurrency-conflict-banner-{desktop,tablet,mobile}.png
+│       │   └── 08-admin-dashboard-{desktop,tablet,mobile}.png
+│       └── CPE334_Lab4_Submission_67070503492.docx # Final submission package
 ├── client/                      # React 18 + TypeScript + Vite frontend
 │   ├── src/
-│   │   ├── context/             # AuthContext (real authentication state)
-│   │   ├── pages/               # Login, ChangePassword, MyTickets, CreateTicket,
-│   │   │                        # TicketDetail, StaffTicketQueue, StaffTicketDetail, UserManagement
-│   │   ├── components/          # Header, ProtectedRoute, Modals, StatusBadge
-│   │   └── services/            # apiClient (Bearer interceptor & error handling)
-│   └── tests/lab-03/            # Vitest + RTL component tests (98 tests)
+│   │   ├── components/ticket/   # ActionsTakenSection, ActionTakenModal, ActionsTakenList
+│   │   ├── context/             # AuthContext (JWT auth state & session storage)
+│   │   ├── pages/               # RequesterDashboard, StaffDashboard, StaffTicketDetail,
+│   │   │                        # RequesterTicketDetail, StaffTicketQueue, MyTickets, CreateTicket
+│   │   └── api/                 # actionsTaken.api, dashboard.api, ticketWorkflow.api
+│   └── tests/lab-04/            # Vitest + RTL client component tests (181 tests across all labs)
 ├── server/                      # Node.js + Express + Prisma backend
 │   ├── prisma/                  # schema.prisma, pure SQL migrations, idempotent seed.ts
 │   ├── src/
-│   │   ├── controllers/         # auth, ticket, staff, comment, note, admin controllers
-│   │   ├── middlewares/         # requireAuth, requireRole, ownership guards
-│   │   └── app.ts
-│   ├── uploads/                 # Local attachment storage
-│   └── tests/lab-03/            # Vitest + Supertest API contract tests (140 tests)
+│   │   ├── controllers/         # actionsTaken, ticketWorkflow, dashboard, auth, admin controllers
+│   │   ├── validators/          # ticket-workflow.validator.ts, actions-taken.validator.ts
+│   │   └── middlewares/         # auth.middleware, requireRole, ownership guards
+│   └── tests/lab-04/            # Vitest + Supertest backend test suites (309 tests across all labs)
 ├── e2e/
-│   └── lab-03/                  # Playwright multi-device E2E tests (30 tests)
-│       ├── authentication.spec.ts
-│       ├── staff-ticket-flow.spec.ts
-│       └── user-administration.spec.ts
-├── docs/lab-03/                 # Engineering Specifications & Review Records
-│   ├── specification.md         # Architecture, 3 roles, AC-01..25, BR-01..28
-│   ├── api-spec.md              # REST API Contract, status transitions, auth matrix
-│   ├── ui-spec.md               # Zen Green UI specification & responsive design
-│   ├── tests.md                 # Test plan, dual AC/BR traceability matrices
-│   ├── ai-use.md                # AI Agent reflections & representative prompt logs
-│   └── reviewer.md              # Complete verbatim GitHub peer review dialogue
-├── playwright.config.ts         # Playwright multi-device configuration (Desktop, Tablet, Mobile)
+│   └── lab-04/                  # Playwright multi-device E2E suites (57 tests across 3 viewports)
+│       ├── actions-taken-flow.spec.ts
+│       ├── ticket-resolution.spec.ts
+│       ├── dashboards.spec.ts
+│       ├── responsive.spec.ts
+│       └── regression.spec.ts   # E2E-10 full regression suite
+├── docs/lab-04/                 # Engineering Specifications & Review Records
+│   ├── specification.md         # Canonical Sprint Specification (AC-01..25, BR-01..19, FR-01..20)
+│   ├── tests.md                 # Test Strategy, Test Catalog & Dual AC/BR Traceability Matrices
+│   ├── ai-use.md                # AI Agent Prompts Log & Personal Engineering Reflection
+│   ├── reviewer.md              # Complete Peer Review Dialogue & Pull Request Records
+│   └── submission-package.md    # Formatted 9-Part Lab 4 Final Submission Package
+├── playwright.config.ts         # Multi-device Playwright configuration (Desktop, Tablet, Mobile)
 └── README.md
 ```
 
 ---
 
-## 🛠️ Prerequisites
+## 👥 Seed Credentials & Test Accounts
 
-* **Node.js**: v20 or later
-* **PostgreSQL**: Running instance configured via `server/.env`
+| Role | Name | Email | Password | Permissions & Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **Requester** | Alice Smith | `alice@example.com` | `Password123!` | Active Requester (Must change password on first login) |
+| **Requester** | Bob Jones | `bob@example.com` | `Password123!` | Active Requester with multiple owned tickets |
+| **Requester** | Charlie Brown | `charlie@example.com` | `Password123!` | Inactive Requester account |
+| **IT Staff** | David Lee | `david@example.com` | `Password123!` | Active IT Staff (Ticket Queue, Action Logging, Resolution) |
+| **IT Staff** | Carol White | `carol@example.com` | `Password123!` | Active IT Staff (Secondary assignee) |
+| **IT Staff** | Frank Miller | `frank@example.com` | `Password123!` | Inactive IT Staff (`INACTIVE_ACTOR_REJECTED`) |
+| **Admin** | Eve Davis | `eve@example.com` | `Password123!` | Administrator (User Management, Staff Queue, Metrics) |
 
 ---
 
@@ -135,55 +149,54 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Automated Testing (100% Pass Rate — 268/268 Tests)
+## 🧪 Automated Testing Verification (100% Pass Rate — 547/547 Tests)
 
-Execute the full automated test suites with zero regressions:
+Execute the full automated test battery with zero regressions:
 
-### 1. Server API & Integration Tests (140 tests)
+### 1. Server Unit, API, Performance-Smoke & Migration Tests (309 tests)
 ```bash
 cd server
-npm test
+npm test -- --run
 ```
 
-### 2. Client Component & Unit Tests (98 tests)
+### 2. Client Component, Interaction, Visual & Style Tests (181 tests)
 ```bash
 cd client
-npm test
+npm test -- --run
 ```
 
-### 3. Playwright End-to-End Multi-Device Suite (30 tests)
+### 3. Playwright End-to-End Multi-Device Suite (57 tests)
 ```bash
-# Runs all 10 scenarios across Desktop, Tablet, and Mobile viewports
-npm run test:e2e
+# Runs all E2E scenarios (E2E-01..E2E-10) across Desktop, Tablet, and Mobile
+npx playwright test e2e/lab-04/
 ```
 
-### Production Build & Type Check
+### Production Build & Type Compilation
 ```bash
-# Server compilation
+# Backend compilation
 cd server && npm run build
 
-# Client production bundle
+# Frontend production bundle
 cd ../client && npm run build
 ```
 
 ---
 
-## 📊 Lab 3 Test Verification Summary
+## 📊 Lab 4 Test Verification Summary
 
-| Test Suite | Tooling | Scope / Devices | Passed / Total | Status |
-| :--- | :--- | :--- | :---: | :---: |
-| **Server API & Integration** | Vitest + Supertest | 13 test files (`API-01`..`API-48`, migrations) | **140 / 140** | **PASS** |
-| **Client Component Tests** | Vitest + RTL + jsdom | 15 test files (`UI-01`..`UI-30`, auth) | **98 / 98** | **PASS** |
-| **Playwright Multi-Device E2E** | Playwright Chromium | Desktop (1280x800), Tablet (820x1180), Mobile (375x667) | **30 / 30** | **PASS** |
-| **Total Automated Tests** | — | — | **268 / 268** | **PASS (100%)** |
+| Test Suite | Tooling | Scope / Test Count | Passed / Total | Pass Rate | Status |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Server Unit & API Tests** | Vitest + Supertest | 22 test files (`UNIT-01`..`04`, `API-01`..`33`, `PERF-01`..`02`, `MIG-01`..`04`) | **309 / 309** | 100% | **PASS** |
+| **Client Component Tests** | Vitest + RTL + jsdom | 22 test files (`UI-01`..`UI-26`, `VIS-01`..`03`, auth context) | **181 / 181** | 100% | **PASS** |
+| **Playwright Multi-Device E2E** | Playwright Chromium | 4 test suites across Desktop (1280x800), Tablet (768x1024), Mobile (375x667) | **57 / 57** | 100% | **PASS** |
+| **Total Automated Tests** | — | **Full Regression Battery across Labs 1, 2, 3, and 4** | **547 / 547** | **100%** | **PASS** |
 
 ---
 
-## 📑 Lab 3 Engineering Documentation Links
+## 📑 Lab 4 Engineering Documentation Links
 
-- [`docs/lab-03/specification.md`](docs/lab-03/specification.md) — Canonical Sprint Engineering Specification (AC-01..25, BR-01..28)
-- [`docs/lab-03/api-spec.md`](docs/lab-03/api-spec.md) — REST API Specification, Authorization Matrix & Status Transition Matrix
-- [`docs/lab-03/ui-spec.md`](docs/lab-03/ui-spec.md) — Zen Green UI Specification, Responsive Design & Visual Inspection Checklist
-- [`docs/lab-03/tests.md`](docs/lab-03/tests.md) — Test Strategy & Dual AC/BR Traceability Matrices
-- [`docs/lab-03/ai-use.md`](docs/lab-03/ai-use.md) — AI Agent Reflections & Representative Prompt Logs
-- [`docs/lab-03/reviewer.md`](docs/lab-03/reviewer.md) — Verbatim Peer Review Records & Approval Evidence
+- [`docs/lab-04/specification.md`](docs/lab-04/specification.md) — Canonical Sprint Specification (AC-01..25, BR-01..19, FR-01..20)
+- [`docs/lab-04/tests.md`](docs/lab-04/tests.md) — Test Strategy, Test Catalog & Dual AC/BR Traceability Matrices
+- [`docs/lab-04/ai-use.md`](docs/lab-04/ai-use.md) — AI Agent Prompts Log & Personal Engineering Reflection
+- [`docs/lab-04/reviewer.md`](docs/lab-04/reviewer.md) — Verbatim Peer Review Records & Approval Evidence
+- [`docs/lab-04/submission-package.md`](docs/lab-04/submission-package.md) — Formatted 9-Part Final Submission Package
