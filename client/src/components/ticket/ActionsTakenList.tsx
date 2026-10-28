@@ -742,6 +742,7 @@ export const ActionsTakenList: React.FC<ActionsTakenListProps> = ({
                             onClick={() => handleOpenEditModal(action)}
                             style={{
                               minHeight: 44,
+                              minWidth: 44,
                               borderColor: "#D5DDD8",
                               color: isActionModificationDisabled
                                 ? "#94A3B8"

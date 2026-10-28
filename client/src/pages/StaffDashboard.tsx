@@ -200,7 +200,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.newCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#0369A1" }}
+              style={{ color: "#0369A1", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View all new tickets"
             >
               View all &gt;
@@ -218,7 +218,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.openCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#047857" }}
+              style={{ color: "#047857", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View all open tickets"
             >
               View all &gt;
@@ -236,7 +236,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.inProgressCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#B45309" }}
+              style={{ color: "#B45309", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View all in-progress tickets"
             >
               View all &gt;
@@ -254,7 +254,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.waitingForRequesterCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#6B21A8" }}
+              style={{ color: "#6B21A8", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View all waiting for requester tickets"
             >
               View all &gt;
@@ -272,7 +272,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.myAssignedCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#006B3C" }}
+              style={{ color: "#006B3C", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View my assigned tickets"
             >
               View all &gt;
@@ -290,7 +290,7 @@ export const StaffDashboard: React.FC = () => {
             <Link
               to={drillDownPaths.unassignedCount}
               className="text-decoration-none small fw-semibold d-flex align-items-center gap-1 mt-auto"
-              style={{ color: "#475569" }}
+              style={{ color: "#475569", minHeight: 44, display: "inline-flex", alignItems: "center" }}
               aria-label="View unassigned tickets"
             >
               View all &gt;
@@ -311,7 +311,7 @@ export const StaffDashboard: React.FC = () => {
           <Link
             to={drillDownPaths.urgentCount}
             className="btn btn-sm d-flex align-items-center gap-2 fw-semibold text-decoration-none"
-            style={{ backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FECACA" }}
+            style={{ backgroundColor: "#FEE2E2", color: "#B91C1C", border: "1px solid #FECACA", minHeight: 44, display: "inline-flex", alignItems: "center" }}
             aria-label="View urgent priority tickets"
           >
             <span style={{ fontSize: "1rem" }}>🔴</span>
@@ -320,7 +320,7 @@ export const StaffDashboard: React.FC = () => {
           <Link
             to={drillDownPaths.highCount}
             className="btn btn-sm d-flex align-items-center gap-2 fw-semibold text-decoration-none"
-            style={{ backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A" }}
+            style={{ backgroundColor: "#FEF3C7", color: "#B45309", border: "1px solid #FDE68A", minHeight: 44, display: "inline-flex", alignItems: "center" }}
             aria-label="View high priority tickets"
           >
             <span style={{ fontSize: "1rem" }}>🟠</span>
@@ -357,8 +357,8 @@ export const StaffDashboard: React.FC = () => {
             </div>
             <Link
               to="/admin/users"
-              className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-              style={{ color: "#3730A3", borderColor: "#3730A3" }}
+              className="btn btn-outline-primary d-flex align-items-center gap-1"
+              style={{ color: "#3730A3", borderColor: "#3730A3", minHeight: 44 }}
             >
               Manage Users &gt;
             </Link>
@@ -373,7 +373,7 @@ export const StaffDashboard: React.FC = () => {
           <div className="card shadow-sm border-0 mb-4 h-100" style={{ backgroundColor: "#FFFFFF" }}>
             <div className="card-header bg-transparent border-0 pt-3 px-3 d-flex justify-content-between align-items-center">
               <h5 className="h6 fw-bold mb-0 text-dark">Recent Queue Tickets</h5>
-              <Link to="/staff/tickets" className="small text-decoration-none fw-semibold" style={{ color: "#006B3C" }}>
+              <Link to="/staff/tickets" className="small text-decoration-none fw-semibold" style={{ color: "#006B3C", minHeight: 44, display: "inline-flex", alignItems: "center" }}>
                 View all
               </Link>
             </div>
@@ -493,7 +493,7 @@ export const StaffDashboard: React.FC = () => {
               <Link
                 to="/staff/tickets?ownership=unassigned"
                 className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-start gap-2 py-2"
-                style={{ borderColor: "#D5DDD8", color: "#24272A" }}
+                style={{ borderColor: "#D5DDD8", color: "#24272A", minHeight: 44 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -515,7 +515,7 @@ export const StaffDashboard: React.FC = () => {
               <Link
                 to="/staff/tickets"
                 className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-start gap-2 py-2"
-                style={{ borderColor: "#D5DDD8", color: "#24272A" }}
+                style={{ borderColor: "#D5DDD8", color: "#24272A", minHeight: 44 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -537,7 +537,7 @@ export const StaffDashboard: React.FC = () => {
               <Link
                 to="/staff/tickets?ownership=assigned_to_me"
                 className="btn btn-sm d-flex align-items-center justify-content-start gap-2 py-2 text-white fw-semibold"
-                style={{ backgroundColor: "#006B3C" }}
+                style={{ backgroundColor: "#006B3C", minHeight: 44 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

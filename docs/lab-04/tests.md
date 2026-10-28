@@ -192,16 +192,19 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **E2E-01** | E2E | AC-01, AC-05, AC-06, BR-02, BR-03, BR-19 | IT Staff creates and edits Action Taken on open ticket; double-click guard | Entry appears chronologically; contributor name auto-attributed; edit updates row | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-02** | E2E | AC-02, BR-05 | IT Staff checks "Follow-up Required" in modal without entering note | Validation error displayed; submission blocked until note is entered | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-03** | E2E | AC-03, AC-04, BR-07 | Requester views owned ticket with multiple Actions Taken | Entries displayed clearly in read-only mode; write buttons strictly absent | `e2e/lab-04/actions-taken.spec.ts` | `Planned` |
-| **E2E-04** | E2E | AC-08, AC-09, AC-10, AC-11, BR-09, BR-10, BR-11 | Full Resolution Gate flow: Requester advisory signal $\rightarrow$ IT Staff review $\rightarrow$ formal resolution | Requester indicates resolution; IT Staff reviews advisory badge and resolves ticket | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
-| **E2E-05** | E2E | AC-07, AC-13, AC-14, BR-12 | Ticket closure and reopen cycle; action logging lock on closed ticket | Staff closes resolved ticket; further actions locked; staff reopens ticket | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
-| **E2E-06** | E2E | AC-12, BR-17 | Concurrent edit collision simulation (stale `updatedAt`) | Second actor receives 409 conflict dialog; can refresh and preserve state | `e2e/lab-04/ticket-workflow.spec.ts` | `Planned` |
+| **E2E-01** | E2E | AC-01, AC-05, AC-06, BR-02, BR-03, BR-19 | IT Staff creates and edits Action Taken on open ticket; double-click guard | Entry appears chronologically; contributor name auto-attributed; edit updates row | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-02** | E2E | AC-02, BR-05 | IT Staff checks "Follow-up Required" in modal without entering note | Validation error displayed; submission blocked until note is entered | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-03** | E2E | AC-03, AC-04, BR-07 | Requester views owned ticket with multiple Actions Taken | Entries displayed clearly in read-only mode; write buttons strictly absent | `e2e/lab-04/actions-taken-flow.spec.ts` | `Passed` |
+| **E2E-04** | E2E | AC-08, AC-09, AC-10, AC-11, BR-09, BR-10, BR-11 | Full Resolution Gate flow: Requester advisory signal $\rightarrow$ IT Staff review $\rightarrow$ formal resolution | Requester indicates resolution; IT Staff reviews advisory badge and resolves ticket | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
+| **E2E-05** | E2E | AC-07, AC-13, AC-14, BR-12 | Ticket closure and reopen cycle; action logging lock on closed ticket | Staff closes resolved ticket; further actions locked; staff reopens ticket | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
+| **E2E-06** | E2E | AC-12, BR-17 | Concurrent edit collision simulation (stale `updatedAt`) | Second actor receives 409 conflict dialog; can refresh and preserve state | `e2e/lab-04/ticket-resolution.spec.ts` | `Passed` |
 | **E2E-07** | E2E | AC-15, AC-16, AC-19, AC-20, BR-13 | Requester Dashboard journey: metric cards, recent tickets, drill-down | Cards show correct counts; clicking card filters My Tickets; zero-count empty state | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-08** | E2E | AC-17, AC-19, BR-14 | IT Staff Dashboard journey: 6 metric cards, priority strip, my actions, drill-down | Displays queue counts; clicking card filters staff queue; my actions drill down | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Planned` |
+
+> [!NOTE]
+> **E2E-10 Scope & Issue Tracking**: Full regression testing across Labs 1–3 (`E2E-10`) is tracked under **Issue #39** (Final Regression & Polish) and has not yet been verified by PR #90 (Issue #38). PR #90 strictly verifies Lab 4 feature flows (`E2E-01`..`E2E-09`), Multi-Device Responsive layouts (`RESP-01`..`RESP-04`), and Visual/Accessibility inspections (`VIS-01`..`VIS-04`).
 
 ---
 
@@ -212,7 +215,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **VIS-01** | Style | Section 9, Zen Green | Zen Green token fidelity across dashboard cards, header, and buttons | Computed styles match `#006B3C`, `#0B7A46`, `#EAF6EF`, `#D5DDD8` | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-02** | Style | Section 9, Badges | Status and Priority badge color tokens and Follow-up pill styling | Follow-up pill renders Amber (`#D97706` / `#FEF3C7`); badges conform to spec | `client/tests/lab-04/ui-style.test.tsx` | `Passed` |
 | **VIS-03** | Style | Section 9, A11y | Keyboard focus outlines and active indicators on all dashboard cards and modal inputs | Visible `#0B7A46` focus ring ($2\text{px}$ offset) on keyboard tab focus | `client/tests/lab-04/accessibility.test.tsx` | `Passed` |
-| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/helpers/visual-check.ts` | `Planned` |
+| **VIS-04** | Style | Section 9, Typography | Zero text clipping and element overlap on long descriptions and dense data | Long text wraps cleanly with `break-words`; metric numbers fit within cards | `e2e/lab-04/responsive.spec.ts` | `Passed` |
 
 ---
 
@@ -410,33 +413,33 @@ All screenshots will be captured during automated Playwright E2E execution and s
 | Category | Filename | Viewport / Dimensions | Description | Verification Criteria |
 | :--- | :--- | :--- | :--- | :--- |
 | **IT Staff Dashboard** | `01-staff-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Full IT Staff Dashboard with 6 metric cards | Zen Green layout, 6 primary metric cards, Priority strip, My Actions table |
-| **IT Staff Dashboard** | `01-staff-dashboard-tablet.png` | Tablet ($820 \times 1180$) | IT Staff Dashboard on tablet viewport | 2-column cards layout, responsive actions table |
+| **IT Staff Dashboard** | `01-staff-dashboard-tablet.png` | Tablet ($768 \times 1024$) | IT Staff Dashboard on tablet viewport | 2-column cards layout, responsive actions table |
 | **IT Staff Dashboard** | `01-staff-dashboard-mobile.png` | Mobile ($375 \times 667$) | IT Staff Dashboard mobile stacked view | 1-column stacked cards, touch targets $\ge 44\text{px}$, zero overflow |
 | **Requester Dashboard** | `02-requester-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Requester Dashboard with 4 metric cards | 4 primary metric cards, Recent Tickets, Recently Resolved tickets |
-| **Requester Dashboard** | `02-requester-dashboard-tablet.png` | Tablet ($820 \times 1180$) | Requester Dashboard on tablet viewport | 2-column cards, accessible filter links |
+| **Requester Dashboard** | `02-requester-dashboard-tablet.png` | Tablet ($768 \times 1024$) | Requester Dashboard on tablet viewport | 2-column cards, accessible filter links |
 | **Requester Dashboard** | `02-requester-dashboard-mobile.png` | Mobile ($375 \times 667$) | Requester Dashboard mobile stacked view | 1-column cards, touch-friendly CTA buttons |
 | **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-desktop.png` | Desktop ($1280 \times 800$) | Actions Taken section on Ticket Detail | Chronological actions list, Performer badge, Follow-up indicator, Add button |
-| **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-tablet.png` | Tablet ($820 \times 1180$) | Actions Taken on tablet viewport | Responsive layout, visible badges, accessible edit trigger |
+| **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-tablet.png` | Tablet ($768 \times 1024$) | Actions Taken on tablet viewport | Responsive layout, visible badges, accessible edit trigger |
 | **Ticket Detail (Actions)**| `03-ticket-detail-actions-taken-mobile.png` | Mobile ($375 \times 667$) | Actions Taken on mobile viewport | Stacked action items, touch targets $\ge 44\text{px}$, zero horizontal overflow |
 | **Actions Taken Modal** | `04-action-taken-modal-desktop.png` | Desktop ($1280 \times 800$) | Create/Edit Action Taken modal | Modal overlay, Performer display, follow-up checklist & note input |
-| **Actions Taken Modal** | `04-action-taken-modal-tablet.png` | Tablet ($820 \times 1180$) | Action Taken modal on tablet | Centered modal, form fields properly padded |
+| **Actions Taken Modal** | `04-action-taken-modal-tablet.png` | Tablet ($768 \times 1024$) | Action Taken modal on tablet | Centered modal, form fields properly padded |
 | **Actions Taken Modal** | `04-action-taken-modal-mobile.png` | Mobile ($375 \times 667$) | Action Taken modal on mobile | Full-width modal sheet, touch-friendly submit button |
 | **Resolution Gate** | `05-ticket-resolution-gate-desktop.png` | Desktop ($1280 \times 800$) | Status transition dropdown with Resolution Gate | Only permitted next statuses shown; resolution confirmation dialog |
-| **Resolution Gate** | `05-ticket-resolution-gate-tablet.png` | Tablet ($820 \times 1180$) | Resolution Gate controls on tablet | Accessible dropdown select, clear warning cues |
+| **Resolution Gate** | `05-ticket-resolution-gate-tablet.png` | Tablet ($768 \times 1024$) | Resolution Gate controls on tablet | Accessible dropdown select, clear warning cues |
 | **Resolution Gate** | `05-ticket-resolution-gate-mobile.png` | Mobile ($375 \times 667$) | Resolution Gate controls and modal on mobile | Full-width modal sheet, touch targets $\ge 44\text{px}$, zero overflow |
 | **Advisory Resolution** | `06-requester-resolve-indicator-desktop.png` | Desktop ($1280 \times 800$) | Requester advisory "Problem Appears Resolved" | Advisory banner displayed; formal status remains unchanged |
-| **Advisory Resolution** | `06-requester-resolve-indicator-tablet.png` | Tablet ($820 \times 1180$) | Advisory resolution banner on tablet | Responsive layout, visible advisory confirmation cues |
+| **Advisory Resolution** | `06-requester-resolve-indicator-tablet.png` | Tablet ($768 \times 1024$) | Advisory resolution banner on tablet | Responsive layout, visible advisory confirmation cues |
 | **Advisory Resolution** | `06-requester-resolve-indicator-mobile.png` | Mobile ($375 \times 667$) | Advisory resolution button and banner on mobile | Touch-friendly action button $\ge 44\text{px}$, clear advisory text |
 | **Concurrency Conflict**| `07-concurrency-conflict-banner-desktop.png` | Desktop ($1280 \times 800$) | Stale update HTTP 409 conflict banner | Non-destructive conflict banner with "Refresh" CTA; user input preserved |
-| **Concurrency Conflict**| `07-concurrency-conflict-banner-tablet.png` | Tablet ($820 \times 1180$) | Stale update conflict banner on tablet | Accessible conflict notification and "Refresh" trigger without text truncation |
+| **Concurrency Conflict**| `07-concurrency-conflict-banner-tablet.png` | Tablet ($768 \times 1024$) | Stale update conflict banner on tablet | Accessible conflict notification and "Refresh" trigger without text truncation |
 | **Concurrency Conflict**| `07-concurrency-conflict-banner-mobile.png` | Mobile ($375 \times 667$) | Stale update conflict banner on mobile | Full-width warning banner, preserved form fields, touch-friendly refresh CTA |
 | **Admin Dashboard** | `08-admin-dashboard-desktop.png` | Desktop ($1280 \times 800$) | Administrator Dashboard with User Metrics | Staff operational metrics plus System User accounts summary panel |
-| **Admin Dashboard** | `08-admin-dashboard-tablet.png` | Tablet ($820 \times 1180$) | Administrator Dashboard on tablet viewport | 2-column cards layout for staff metrics and system user summary |
+| **Admin Dashboard** | `08-admin-dashboard-tablet.png` | Tablet ($768 \times 1024$) | Administrator Dashboard on tablet viewport | 2-column cards layout for staff metrics and system user summary |
 | **Admin Dashboard** | `08-admin-dashboard-mobile.png` | Mobile ($375 \times 667$) | Administrator Dashboard on mobile viewport | 1-column stacked cards, legible user counters, zero horizontal scroll |
 
 ### 5.2 Responsive Visual Inspection Checklist
 
-- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($820\text{px}$), and Mobile ($375\text{px}$).
+- [x] **Zero Horizontal Overflow (`RESP-04`)**: `document.documentElement.scrollWidth <= window.innerWidth` verified by `assertNoHorizontalOverflow()` across all screens in Desktop ($1280\text{px}$), Tablet ($768\text{px}$), and Mobile ($375\text{px}$).
 - [x] **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)**: Buttons, modal close triggers, and form inputs meet or exceed $44 \times 44\text{px}$ hit areas.
 - [x] **Brand Token Fidelity (`VIS-01`)**: Header, metric card accents, and primary action buttons conform to `#006B3C` (Zen Green).
 - [x] **Follow-up Pill Visual Distinction (`VIS-02`)**: Amber theme (`#D97706` / `#FEF3C7`) clearly differentiates Actions Taken requiring follow-up.

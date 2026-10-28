@@ -469,7 +469,7 @@ export const ActionTakenModal: React.FC<ActionTakenModalProps> = ({
             aria-label="Close modal"
             disabled={isSubmitting}
             onClick={onClose}
-            style={{ minWidth: 32, minHeight: 32 }}
+            style={{ minWidth: 44, minHeight: 44 }}
           />
         </div>
 

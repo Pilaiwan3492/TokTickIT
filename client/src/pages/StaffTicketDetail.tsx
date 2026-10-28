@@ -55,6 +55,7 @@ export const StaffTicketDetail: React.FC = () => {
   const [isUpdatingOwner, setIsUpdatingOwner] = useState(false);
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
 
   // New Comment & New Note states
   const [newComment, setNewComment] = useState("");
@@ -217,6 +218,14 @@ export const StaffTicketDetail: React.FC = () => {
       showErrorToast(err.message || "Failed to transition ticket status.");
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const onSelectStatus = (targetStatus: TicketStatusType) => {
+    if (targetStatus === "RESOLVED") {
+      setShowResolveModal(true);
+    } else {
+      handleTransitionStatus(targetStatus);
     }
   };
 
@@ -395,7 +404,7 @@ export const StaffTicketDetail: React.FC = () => {
           <Link
             to="/queue"
             className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
-            style={{ minHeight: 38 }}
+            style={{ minHeight: 44 }}
           >
             &larr; Back to Queue
           </Link>
@@ -410,7 +419,7 @@ export const StaffTicketDetail: React.FC = () => {
           <button
             type="button"
             className="btn btn-success btn-sm text-white fw-semibold d-flex align-items-center gap-1"
-            style={{ backgroundColor: "#006B3C", borderColor: "#006B3C", minHeight: 38 }}
+            style={{ backgroundColor: "#006B3C", borderColor: "#006B3C", minHeight: 44 }}
             disabled={isUpdatingOwner}
             onClick={() => handleAssignOwner("me")}
           >
@@ -477,7 +486,7 @@ export const StaffTicketDetail: React.FC = () => {
               className="form-select"
               value={currentStatus}
               disabled={isUpdatingStatus || isTerminalStatus}
-              onChange={(e) => handleTransitionStatus(e.target.value as TicketStatusType)}
+              onChange={(e) => onSelectStatus(e.target.value as TicketStatusType)}
               aria-label="Transition Ticket Status"
             >
               <option value={currentStatus} disabled>
@@ -669,7 +678,7 @@ export const StaffTicketDetail: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-sm text-white fw-semibold"
-                  style={{ backgroundColor: "#006B3C", minHeight: 38 }}
+                  style={{ backgroundColor: "#006B3C", minHeight: 44 }}
                   disabled={!newComment.trim() || isPostingComment}
                 >
                   {isPostingComment ? "Posting..." : "Post Comment"}
@@ -764,7 +773,7 @@ export const StaffTicketDetail: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-sm fw-semibold text-white"
-                  style={{ backgroundColor: "#854D0E", minHeight: 38 }}
+                  style={{ backgroundColor: "#854D0E", minHeight: 44 }}
                   disabled={!newNote.trim() || isPostingNote}
                 >
                   {isPostingNote ? "Saving Note..." : "Add Internal Note"}
@@ -819,6 +828,75 @@ export const StaffTicketDetail: React.FC = () => {
           </div>
         )}
       </div>
+      {/* Resolution Gate Confirmation Modal (BR-11, UI-09) */}
+      {showResolveModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resolution-gate-modal-title"
+          data-testid="resolution-gate-modal"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1055 }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold text-dark" id="resolution-gate-modal-title">
+                  Confirm Ticket Resolution
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  style={{ minWidth: 44, minHeight: 44 }}
+                  onClick={() => setShowResolveModal(false)}
+                />
+              </div>
+              <div className="modal-body py-3">
+                <p className="text-secondary mb-3">
+                  You are about to formally mark this ticket as <strong>Resolved</strong> through the Resolution Gate.
+                </p>
+                {ticket.isRequesterResolved && (
+                  <div className="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
+                    <span className="small fw-semibold">Requester has indicated the problem appears resolved.</span>
+                  </div>
+                )}
+                <p className="small text-muted mb-0">
+                  Please verify that all necessary actions have been performed and documented before confirming.
+                </p>
+              </div>
+              <div className="modal-footer border-0 pt-0 d-flex gap-2 justify-content-end">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  data-testid="cancel-resolve-btn"
+                  style={{ minHeight: 44, minWidth: 100 }}
+                  onClick={() => setShowResolveModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  data-testid="confirm-resolve-btn"
+                  disabled={isUpdatingStatus}
+                  style={{ minHeight: 44, minWidth: 140, backgroundColor: "#006B3C", borderColor: "#006B3C" }}
+                  onClick={async () => {
+                    await handleTransitionStatus("RESOLVED");
+                    setShowResolveModal(false);
+                  }}
+                >
+                  {isUpdatingStatus ? (
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                  ) : null}
+                  Confirm Resolution
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
