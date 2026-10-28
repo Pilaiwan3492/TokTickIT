@@ -1,0 +1,82 @@
+name: CI Test & Build Battery
+
+on:
+  push:
+    branches:
+      - main
+      - lab4-staging
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - lab4-staging
+
+env:
+  DATABASE_URL: "postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"
+  JWT_SECRET: "ci-secret-token-at-least-32-characters-long-12345"
+  PORT: 3000
+
+jobs:
+  ci-verification:
+    name: Full Test Suite & Production Build (547 Tests)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: toktickit
+          POSTGRES_PASSWORD: toktickit
+          POSTGRES_DB: toktickit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Configure Environment Files
+        run: |
+          echo 'DATABASE_URL="postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"' > .env
+          echo 'PORT=3000' >> .env
+          echo 'JWT_SECRET="ci-secret-token-at-least-32-characters-long-12345"' >> .env
+          cp .env server/.env
+
+      - name: Install Root Dependencies
+        run: npm ci
+
+      - name: Setup Server & Execute Vitest Suite (309 Tests)
+        run: |
+          cd server
+          npm ci
+          npx prisma db push --skip-generate
+          npx prisma generate
+          npm run prisma:seed
+          npm test -- --run
+          npm run build
+
+      - name: Setup Client & Execute Vitest Suite (181 Tests)
+        run: |
+          cd client
+          npm ci
+          npm test -- --run
+          npm run build
+
+      - name: Install Playwright Chromium & Dependencies
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Execute Playwright Multi-Device E2E Suite (57 Tests)
+        run: |
+          npm run test:e2e -- e2e/lab-04/
