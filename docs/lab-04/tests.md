@@ -153,17 +153,17 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **UI-07** | UI | AC-06, BR-03 | Edit Action Taken modal pre-populates existing data and submits | Opens modal with populated fields; submits PATCH request successfully | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 | **UI-08** | UI | AC-07, BR-12 | Actions Taken creation disabled on `CLOSED` or `CANCELLED` tickets | "Add Action Taken" button hidden or disabled with "Ticket is closed" message | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 
-#### Ticket Lifecycle & Resolution Gate (`client/tests/lab-04/TicketResolution.test.tsx`)
+#### Ticket Lifecycle & Resolution Gate (`client/tests/lab-04/TicketWorkflow.test.tsx`)
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UI-09** | UI | AC-08, BR-09, BR-11 | Status dropdown displays only permitted next statuses per matrix | Dropdown contains only valid options according to current status | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-10** | UI | AC-09, BR-09 | Status dropdown excludes invalid transition jumps | Disallowed statuses (e.g. `RESOLVED` from `NEW`) are omitted from options | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-11** | UI | AC-10, BR-10 | Requester "Problem Appears Resolved" button action | Displays advisory confirmation banner; status badge remains unchanged | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-12** | UI | AC-11, BR-09 | Requester view hides direct status change controls | Status change dropdown and save buttons are hidden from Requesters | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-13** | UI | AC-12, BR-17 | Stale-update conflict banner displayed on HTTP 409 response | Displays warning banner with "Refresh Ticket" CTA; prevents silent override | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-14** | UI | AC-13, BR-12 | Ticket detail in `CLOSED` status displays read-only banner | All operational editing controls are disabled/hidden | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-15** | UI | AC-14, BR-09 | Status dropdown for `RESOLVED` ticket displays `CLOSED` and `REOPENED` | Only `CLOSED` and `REOPENED` appear as permitted choices | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
+| **UI-09** | UI | AC-08, BR-09, BR-11 | Status dropdown displays only permitted next statuses per matrix | Dropdown contains only valid options according to current status | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-10** | UI | AC-09, BR-09 | Status dropdown excludes invalid transition jumps | Disallowed statuses (e.g. `RESOLVED` from `NEW`) are omitted from options | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-11** | UI | AC-10, BR-10 | Requester "Problem Appears Resolved" button action | Displays advisory confirmation banner; status badge remains unchanged | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-12** | UI | AC-11, BR-09 | Requester view hides direct status change controls | Status change dropdown and save buttons are hidden from Requesters | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-13** | UI | AC-12, BR-17 | Stale-update conflict banner displayed on HTTP 409 response | Displays warning banner with "Refresh Ticket" CTA; prevents silent override | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-14** | UI | AC-13, BR-12 | Ticket detail in `CLOSED` status displays read-only banner | All operational editing controls are disabled/hidden | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-15** | UI | AC-14, BR-09 | Status dropdown for `RESOLVED` ticket displays `CLOSED` and `REOPENED` | Only `CLOSED` and `REOPENED` appear as permitted choices | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
 
 #### Requester Dashboard (`client/tests/lab-04/RequesterDashboard.test.tsx`)
 
@@ -201,10 +201,10 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **E2E-07** | E2E | AC-15, AC-16, AC-19, AC-20, BR-13 | Requester Dashboard journey: metric cards, recent tickets, drill-down | Cards show correct counts; clicking card filters My Tickets; zero-count empty state | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-08** | E2E | AC-17, AC-19, BR-14 | IT Staff Dashboard journey: 6 metric cards, priority strip, my actions, drill-down | Displays queue counts; clicking card filters staff queue; my actions drill down | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
-| **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Planned` |
+| **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Passed` |
 
 > [!NOTE]
-> **E2E-10 Scope & Issue Tracking**: Full regression testing across Labs 1–3 (`E2E-10`) is tracked under **Issue #39** (Final Regression & Polish) and has not yet been verified by PR #90 (Issue #38). PR #90 strictly verifies Lab 4 feature flows (`E2E-01`..`E2E-09`), Multi-Device Responsive layouts (`RESP-01`..`RESP-04`), and Visual/Accessibility inspections (`VIS-01`..`VIS-04`).
+> **E2E-10 Implementation & Verification**: Full regression testing across Labs 1–3 (`E2E-10`) is implemented and verified under **Issue #39** (Final Regression & Submission Package) in `e2e/lab-04/regression.spec.ts`. All 12 multi-viewport regression checks pass 100% across Desktop, Tablet, and Mobile viewports with zero regressions.
 
 ---
 
@@ -366,7 +366,7 @@ npm test -- tests/lab-04/
 
 # Run individual Lab 4 test suites
 npm test -- tests/lab-04/ActionsTakenSection.test.tsx
-npm test -- tests/lab-04/TicketResolution.test.tsx
+npm test -- tests/lab-04/TicketWorkflow.test.tsx
 npm test -- tests/lab-04/RequesterDashboard.test.tsx
 npm test -- tests/lab-04/StaffDashboard.test.tsx
 npm test -- tests/lab-04/ui-style.test.tsx

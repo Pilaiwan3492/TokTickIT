@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CPE334 Lab 4 Submission — TokTickIT (Pilaiwan Churdchu)</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      background-color: #f8fafc;
+      line-height: 1.55;
+      font-size: 13px;
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 36px 42px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    h1.doc-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #006B3C;
+      margin-bottom: 8px;
+      border-bottom: 2px solid #006B3C;
+      padding-bottom: 8px;
+    }
+    .meta-box {
+      background-color: #EAF6EF;
+      border: 1px solid #bfe3d0;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 13px;
+    }
+    .meta-box p {
+      margin: 4px 0;
+    }
+    h2.section-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #006B3C;
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #E2E8F0;
+      page-break-after: avoid;
+    }
+    h3.sub-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    p, li {
+      color: #334155;
+    }
+    ul, ol {
+      margin-top: 6px;
+      margin-bottom: 14px;
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-weight: 700;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-pass {
+      background-color: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .screenshot-card {
+      margin: 14px 0 20px 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fafafa;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+    .screenshot-card img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    .screenshot-card .caption {
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #64748b;
+      background: #f1f5f9;
+      border-top: 1px solid #e2e8f0;
+      font-weight: 500;
+      text-align: left;
+    }
+    .amber-box {
+      background-color: #FEF3C7;
+      border: 1px solid #F59E0B;
+      color: #92400E;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 12px 0;
+      font-size: 12.5px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      background-color: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+    pre {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      overflow-x: auto;
+      line-height: 1.45;
+    }
+    pre code {
+      background-color: transparent;
+      color: inherit;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1 class="doc-title">CPE334 Lab 4 Final Submission Package</h1>
+
+  <div class="meta-box">
+    <p><strong>Course:</strong> CPE 334 Software Engineering — Lab 4 (Sprint 4)</p>
+    <p><strong>Student Name:</strong> Pilaiwan Churdchu &bull; <strong>Student ID:</strong> 67070503492 &bull; <strong>GitHub:</strong> <a href="https://github.com/Pilaiwan3492">@Pilaiwan3492</a></p>
+    <p><strong>Peer Reviewer:</strong> Aphichaya Klinhual &bull; <strong>Student ID:</strong> 67070503447 &bull; <strong>GitHub:</strong> <a href="https://github.com/Apichaya251400">@Apichaya251400</a></p>
+    <p><strong>Author Repository:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT">https://github.com/Pilaiwan3492/TokTickIT</a></p>
+    <p><strong>Partner Repository:</strong> <a href="https://github.com/Apichaya251400/TokTickIT">https://github.com/Apichaya251400/TokTickIT</a></p>
+    <p><strong>Target Release:</strong> <code>lab4-staging</code> &rarr; <code>main</code> &bull; <strong>Release PR:</strong> #91</p>
+  </div>
+
+  <!-- ANSWER PART 1 -->
+  <h2 class="section-title">Answer Part 1: Git Use with Engineering Workflow</h2>
+  <p>Demonstrates full Git/GitHub engineering workflow, peer-review traceability, and clean repository structure for Lab 4.</p>
+
+  <h3 class="sub-title">1.1 Repository / Project / PRs</h3>
+  <p>All Lab 4 deliverables were coordinated and executed across dedicated feature branches, reviewed by peer reviewer @Apichaya251400, and integrated into <code>lab4-staging</code> prior to final release.</p>
+  <ul>
+    <li><strong>GitHub Repository URL:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT">https://github.com/Pilaiwan3492/TokTickIT</a></li>
+    <li><strong>GitHub Project Board URL:</strong> <a href="https://github.com/users/Pilaiwan3492/projects/1">https://github.com/users/Pilaiwan3492/projects/1</a></li>
+    <li><strong>GitHub Issues:</strong>
+      <ul>
+        <li>Issue 30: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/72">https://github.com/Pilaiwan3492/TokTickIT/issues/72</a></li>
+        <li>Issue 31: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/73">https://github.com/Pilaiwan3492/TokTickIT/issues/73</a></li>
+        <li>Issue 32: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/74">https://github.com/Pilaiwan3492/TokTickIT/issues/74</a></li>
+        <li>Issue 33: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/75">https://github.com/Pilaiwan3492/TokTickIT/issues/75</a></li>
+        <li>Issue 34: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/76">https://github.com/Pilaiwan3492/TokTickIT/issues/76</a></li>
+        <li>Issue 35: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/77">https://github.com/Pilaiwan3492/TokTickIT/issues/77</a></li>
+        <li>Issue 36: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/78">https://github.com/Pilaiwan3492/TokTickIT/issues/78</a></li>
+        <li>Issue 37: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/79">https://github.com/Pilaiwan3492/TokTickIT/issues/79</a></li>
+        <li>Issue 38: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/80">https://github.com/Pilaiwan3492/TokTickIT/issues/80</a></li>
+        <li>Issue 39: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/81">https://github.com/Pilaiwan3492/TokTickIT/issues/81</a></li>
+      </ul>
+    </li>
+    <li><strong>GitHub Pull Requests:</strong>
+      <ul>
+        <li>PR #30 (PR #82): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/82">https://github.com/Pilaiwan3492/TokTickIT/pull/82</a></li>
+        <li>PR #31 (PR #83): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/83">https://github.com/Pilaiwan3492/TokTickIT/pull/83</a></li>
+        <li>PR #32 (PR #84): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/84">https://github.com/Pilaiwan3492/TokTickIT/pull/84</a></li>
+        <li>PR #33 (PR #85): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/85">https://github.com/Pilaiwan3492/TokTickIT/pull/85</a></li>
+        <li>PR #34 (PR #86): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/86">https://github.com/Pilaiwan3492/TokTickIT/pull/86</a></li>
+        <li>PR #35 (PR #87): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/87">https://github.com/Pilaiwan3492/TokTickIT/pull/87</a></li>
+        <li>PR #36 (PR #88): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/88">https://github.com/Pilaiwan3492/TokTickIT/pull/88</a></li>
+        <li>PR #37 (PR #89): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/89">https://github.com/Pilaiwan3492/TokTickIT/pull/89</a></li>
+        <li>PR #38 (PR #90): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/90">https://github.com/Pilaiwan3492/TokTickIT/pull/90</a></li>
+        <li>PR #39 (PR #91): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/91">https://github.com/Pilaiwan3492/TokTickIT/pull/91</a></li>
+      </ul>
+    </li>
+  </ul>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/01-git-workflow-summary.png" alt="Lab 4 GitHub Repository, Pull Requests, and Project Board workflow">
+    <div class="caption">Figure: Lab 4 GitHub Repository, Pull Requests, and Project Board workflow</div>
+  </div>
+
+  <h3 class="sub-title">1.2 Commit History</h3>
+  <p>Clean commit history showing non-linear branch merges, issue-specific commit messages, and collaborative peer integration:</p>
+  <pre><code>git log --graph --oneline -n 15 lab4-staging</code></pre>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/02-git-commit-history.png" alt="Terminal Git Graph commit history for Sprint 4 on lab4-staging">
+    <div class="caption">Figure: Terminal Git Graph commit history for Sprint 4 on lab4-staging</div>
+  </div>
+
+  <h3 class="sub-title">1.3 Project Board</h3>
+  <p>All 10 Lab 4 Issues (Issues #30 through #39 / GitHub #72 through #81) have been executed and moved to the <strong>Done</strong> column on the Kanban board:</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/03-project-board.png" alt="Project Board">
+    <div class="caption">Figure: Project Board</div>
+  </div>
+
+  <h3 class="sub-title">1.4 reviewer.md</h3>
+  <p><strong>Review Document Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md"><code>docs/lab-04/reviewer.md</code></a></p>
+  <p>Documents the bi-directional code review records between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) for PRs #82 through #91. Includes reviewer feedback, technical revisions, and formal approvals.</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/04-rendered-reviewer.png" alt="Authentic GitHub Reviewer dialogue">
+    <div class="caption">Figure: Authentic GitHub Reviewer dialogue</div>
+  </div>
+
+  <h3 class="sub-title">1.5 README / .gitignore</h3>
+  <p>The repository root contains updated <code>README.md</code> with comprehensive Sprint 4 feature descriptions, live seed account credentials (Alice, Bob, Michael, David, John), test execution instructions, and complete <code>.gitignore</code> rules.</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/05a-readme-evidence.png" alt="README.md documentation">
+    <div class="caption">Figure: README.md documentation</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/05b-gitignore-evidence.png" alt=".gitignore configuration">
+    <div class="caption">Figure: .gitignore configuration</div>
+  </div>
+
+  <h3 class="sub-title">1.6 Directory Structure</h3>
+  <p>"The repository separates client, server, E2E tests, and Lab 4 documentation."</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/06-directory-structure.png" alt="Project directory architecture showing separation of client, server, e2e, and docs">
+    <div class="caption">Figure: Project directory architecture showing separation of client, server, e2e, and docs</div>
+  </div>
+
+  <!-- ANSWER PART 2 -->
+  <h2 class="section-title">Answer Part 2: Spec DD</h2>
+  <p><strong>Specification Document Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/specification.md"><code>docs/lab-04/specification.md</code></a></p>
+
+  <h3 class="sub-title">1. Requirements Decomposition & Coverage</h3>
+  <p>The engineering specification establishes <strong>20 Functional Requirements (FR-01..20)</strong>, <strong>19 Business Rules (BR-01..19)</strong>, and <strong>25 Acceptance Criteria (AC-01..25)</strong> in Given-When-Then format.</p>
+
+  <h3 class="sub-title">Permitted Status Transition Matrix (18 Valid Transitions):</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Current Status</th>
+        <th>Permitted Next Statuses</th>
+        <th>Lifecycle Invariant Enforced</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>NEW</strong></td><td>OPEN, CANCELLED</td><td>Cannot jump directly to RESOLVED or CLOSED</td></tr>
+      <tr><td><strong>OPEN</strong></td><td>IN_PROGRESS, WAITING_FOR_REQUESTER, RESOLVED, CANCELLED</td><td>Can transition to Resolution Gate</td></tr>
+      <tr><td><strong>IN_PROGRESS</strong></td><td>WAITING_FOR_REQUESTER, RESOLVED, CANCELLED</td><td>Active staff work transition</td></tr>
+      <tr><td><strong>WAITING_FOR_REQUESTER</strong></td><td>IN_PROGRESS, RESOLVED, CANCELLED</td><td>Awaiting user feedback</td></tr>
+      <tr><td><strong>RESOLVED</strong></td><td>CLOSED, REOPENED</td><td>Resolution Gate gatekeeper; can close or reopen</td></tr>
+      <tr><td><strong>REOPENED</strong></td><td>IN_PROGRESS, WAITING_FOR_REQUESTER, RESOLVED, CANCELLED</td><td>Resumes active operational handling</td></tr>
+      <tr><td><strong>CLOSED</strong></td><td><em>(None &mdash; Terminal State)</em></td><td>Immutable; action logging and status updates locked</td></tr>
+      <tr><td><strong>CANCELLED</strong></td><td><em>(None &mdash; Terminal State)</em></td><td>Immutable; action logging and status updates locked</td></tr>
+    </tbody>
+  </table>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/07-status-transition-matrix.png" alt="Canonical 18-Status Transition Matrix & Role Authorization">
+    <div class="caption">Figure: Canonical 18-Status Transition Matrix &amp; Role Authorization governing all endpoints.</div>
+  </div>
+
+  <h3 class="sub-title">2. Specification Existence Evidence Prior to Implementation</h3>
+  <pre><code>$ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-04/specification.md
+Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts</code></pre>
+  <p>Commit <code>57d6d56</code> proves that the specification existed and was approved on <strong>2026-10-04</strong>, prior to database migrations (PR #83), Actions Taken API development (PR #84), and dashboard UI implementations (PRs #86&ndash;#89).</p>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/08-spec-before-code.png" alt="Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation">
+    <div class="caption">Figure: Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation.</div>
+  </div>
+
+  <!-- ANSWER PART 3 -->
+  <h2 class="section-title">Answer Part 3: Test DD and Traceability</h2>
+  <p><strong>Test Catalog Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/tests.md"><code>docs/lab-04/tests.md</code></a></p>
+
+  <h3 class="sub-title">Dual Traceability Matrix Summary Excerpt</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Level</th>
+        <th>Ref</th>
+        <th>Test Description</th>
+        <th>Automated Test File</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>API-01</strong></td><td>API</td><td>AC-01</td><td>Create Action Taken auto-attributes performedById</td><td><code>server/tests/lab-04/actions-taken.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-02</strong></td><td>API</td><td>AC-02</td><td>Mandatory follow-up note validation</td><td><code>server/tests/lab-04/actions-taken.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-03</strong></td><td>API</td><td>AC-03</td><td>Requester forbidden from creating Actions Taken</td><td><code>server/tests/lab-04/actions-taken.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-06</strong></td><td>API</td><td>AC-07</td><td>Action logging locked on CLOSED/CANCELLED tickets</td><td><code>server/tests/lab-04/actions-taken.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-07</strong></td><td>API</td><td>BR-17</td><td>Stale expectedTicketUpdatedAt returns HTTP 409</td><td><code>server/tests/lab-04/actions-taken.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-13</strong></td><td>API</td><td>AC-08</td><td>Complete 18 permitted status transition matrix</td><td><code>server/tests/lab-04/ticket-workflow.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-13b</strong></td><td>API</td><td>AC-08</td><td>Valid Resolution Gate transition to RESOLVED</td><td><code>server/tests/lab-04/ticket-workflow.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-15</strong></td><td>API</td><td>AC-10</td><td>Requester advisory "Problem Appears Resolved" flag</td><td><code>server/tests/lab-04/ticket-workflow.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-23</strong></td><td>API</td><td>AC-15</td><td>Requester Dashboard returns authoritative counts</td><td><code>server/tests/lab-04/requester-dashboard.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>API-27</strong></td><td>API</td><td>AC-17</td><td>Staff Dashboard returns 6 operational metrics</td><td><code>server/tests/lab-04/staff-dashboard.api.test.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>UI-01</strong></td><td>UI</td><td>AC-01</td><td>"Add Action Taken" button rendered for IT Staff</td><td><code>client/tests/lab-04/ActionsTakenSection.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>UI-09</strong></td><td>UI</td><td>AC-08</td><td>Status dropdown displays permitted next statuses</td><td><code>client/tests/lab-04/TicketWorkflow.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>UI-13</strong></td><td>UI</td><td>AC-12</td><td>Stale-update HTTP 409 conflict banner &amp; retry</td><td><code>client/tests/lab-04/TicketWorkflow.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>UI-16</strong></td><td>UI</td><td>AC-15</td><td>Requester Dashboard renders 4 primary metric cards</td><td><code>client/tests/lab-04/RequesterDashboard.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>UI-18</strong></td><td>UI</td><td>AC-17</td><td>Staff Dashboard renders 6 operational cards</td><td><code>client/tests/lab-04/StaffDashboard.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-01</strong></td><td>E2E</td><td>AC-01</td><td>Staff creates &amp; edits Action Taken; double-click guard</td><td><code>e2e/lab-04/actions-taken-flow.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-04</strong></td><td>E2E</td><td>AC-08</td><td>Full Resolution Gate flow: Advisory &rarr; Formal</td><td><code>e2e/lab-04/ticket-resolution.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-06</strong></td><td>E2E</td><td>AC-12</td><td>Concurrent edit collision triggers 409 conflict</td><td><code>e2e/lab-04/ticket-resolution.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-07</strong></td><td>E2E</td><td>AC-15</td><td>Requester Dashboard journey &amp; drill-down filters</td><td><code>e2e/lab-04/dashboards.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-08</strong></td><td>E2E</td><td>AC-17</td><td>Staff Dashboard journey &amp; Queue drill-down filters</td><td><code>e2e/lab-04/dashboards.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>E2E-10</strong></td><td>E2E</td><td>AC-21</td><td>Full regression suite across Labs 1, 2, and 3</td><td><code>e2e/lab-04/regression.spec.ts</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/09-traceability-summary.png" alt="Traceability matrix summary showing 100% test file mapping and passing status">
+    <div class="caption">Figure: Traceability matrix summary showing 100% test file mapping and passing status.</div>
+  </div>
+
+  <h3 class="sub-title">Clean Execution Summary (547 / 547 Passed &mdash; 100% Pass Rate)</h3>
+  <ul>
+    <li><strong>Server Unit, API &amp; Migration Tests:</strong> 22 test files, <strong>309 passed</strong>, 0 failed</li>
+    <li><strong>Client Component &amp; Style Tests:</strong> 22 test files, <strong>181 passed</strong>, 0 failed</li>
+    <li><strong>Playwright Multi-Device E2E:</strong> 4 test files across Desktop, Tablet, and Mobile, <strong>57 passed</strong></li>
+    <li><strong>Total Automated Test Battery:</strong> <strong>547 / 547 Passed (100%)</strong></li>
+  </ul>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png" alt="Terminal output showing 309/309 server tests passing cleanly in Vitest">
+    <div class="caption">Figure: Terminal output showing 309/309 server tests passing cleanly in Vitest.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png" alt="Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL">
+    <div class="caption">Figure: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/12-playwright-e2e-pass.png" alt="Terminal output showing 57/57 Playwright multi-device E2E tests passing">
+    <div class="caption">Figure: Terminal output showing 57/57 Playwright multi-device E2E tests passing across Desktop, Tablet, and Mobile.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/13-production-build-success.png" alt="Terminal output showing server and client compiling with 0 errors">
+    <div class="caption">Figure: Terminal output showing server (tsc) and client (vite build) compiling with 0 errors.</div>
+  </div>
+
+  <!-- ANSWER PART 4 -->
+  <h2 class="section-title">Answer Part 4: AI Use with Reflection</h2>
+  <p><strong>AI Documentation Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/ai-use.md"><code>docs/lab-04/ai-use.md</code></a></p>
+  <p><strong>Primary Model:</strong> Google Gemini (Gemini 2.5 Flash / Pro via Antigravity Agent).</p>
+
+  <h3 class="sub-title">Key Prompts Summary (Selected 9 Prompts)</h3>
+  <ol>
+    <li><strong>Sprint 4 Contract Decomposition:</strong> Formalized 20 FRs, 19 BRs, 25 ACs, 18-transition matrix, and optimistic concurrency.</li>
+    <li><strong>Planned Test Catalog &amp; Traceability:</strong> Established dual AC/BR matrices mapping to unit, API, UI, and E2E tests.</li>
+    <li><strong>Database Migration &amp; Seeding:</strong> Modeled ActionTaken in Prisma, maintained backward compatibility, and seeded 8 statuses.</li>
+    <li><strong>Actions Taken REST API:</strong> Built REST endpoints with RBAC, follow-up validation, and timestamp concurrency.</li>
+    <li><strong>Ticket Workflow &amp; Resolution Gate:</strong> Developed 18-transition state validator and advisory resolution indicator.</li>
+    <li><strong>Actions Taken Frontend &amp; Visual Polish:</strong> Created React section with Zen Green styling, Amber pills, and form preservation.</li>
+    <li><strong>Role Dashboards SQL API &amp; Frontend:</strong> Developed SQL aggregations (&lt; 300ms) and responsive metric cards.</li>
+    <li><strong>Playwright Multi-Device E2E Suite:</strong> Verified Desktop, Tablet, and Mobile with 24 screenshots and zero horizontal overflow.</li>
+    <li><strong>Full Regression Suite across Labs 1&ndash;3 (E2E-10):</strong> Proved 100% backward compatibility with zero legacy regressions.</li>
+  </ol>
+
+  <h3 class="sub-title">My Reflection on AI Use</h3>
+  <p>Developing TokTickIT Lab 4 with an AI coding partner demonstrated the great power of <strong>Specification-Driven Development (Spec DD)</strong>. When rigorous constraints and state machine matrices were provided upfront, the AI agent executed complex full-stack features with remarkable velocity, maintaining 100% test coverage across 547 tests without legacy regressions.</p>
+  <p>Crucially, <strong>human engineering oversight remained irreplaceable in concurrency modeling and authentic accessibility</strong>. In optimistic concurrency, human analysis ensured that adding an Action Taken checked the parent ticket's <code>updatedAt</code> timestamp, preventing race conditions where work was logged against concurrently closed tickets. Similarly, peer review challenged synthetic <code>.focus()</code> calls in keyboard tests, directing the transition to real sequential <code>Tab</code> traversal. AI empowers rapid execution, but human engineers remain the essential architects of system reliability.</p>
+
+  <!-- ANSWER PART 5 -->
+  <h2 class="section-title">Answer Part 5: Working IT Staff Dashboard UI</h2>
+
+  <h3 class="sub-title">1. IT Staff Dashboard Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/01-staff-dashboard-desktop.png" alt="Staff Dashboard Desktop">
+    <div class="caption">Figure 5.1: Desktop Viewport (1280 &times; 800) &mdash; 6 operational metric cards, Priority Attention strip, and My Recent Actions table.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/01-staff-dashboard-tablet.png" alt="Staff Dashboard Tablet">
+    <div class="caption">Figure 5.2: Tablet Viewport (768 &times; 1024) &mdash; 2-column responsive grid conforming to AC-23.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/01-staff-dashboard-mobile.png" alt="Staff Dashboard Mobile">
+    <div class="caption">Figure 5.3: Mobile Viewport (375 &times; 667) &mdash; 1-column stacked cards with &ge; 44px touch targets.</div>
+  </div>
+
+  <h3 class="sub-title">2. Operational Metrics &amp; Priority Strip</h3>
+  <p>Displays 6 primary operational metric cards (<code>New</code>, <code>Open</code>, <code>In Progress</code>, <code>Waiting for Requester</code>, <code>My Assigned</code>, <code>Unassigned</code>) plus the Priority Attention strip highlighting urgent and high tickets requiring immediate attention.</p>
+
+  <h3 class="sub-title">3. Drill-Down Filter Navigation</h3>
+  <p>Clicking any metric card immediately navigates to <code>/staff/tickets</code> with the corresponding status or ownership filter active.</p>
+
+  <h3 class="sub-title">4. Database Query Parity</h3>
+  <p>All metrics are computed via backend SQL aggregations (Prisma <code>groupBy</code> and count) ensuring exact parity with queue queries without N+1 overhead.</p>
+
+  <!-- ANSWER PART 6 -->
+  <h2 class="section-title">Answer Part 6: Working Actions Taken UI</h2>
+
+  <h3 class="sub-title">1. Actions Taken List on Ticket Detail</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/03-ticket-detail-actions-taken-desktop.png" alt="Actions Taken Desktop">
+    <div class="caption">Figure 6.1: Actions Taken section on Desktop (1280 &times; 800) with chronological entries and contributor badges.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/03-ticket-detail-actions-taken-tablet.png" alt="Actions Taken Tablet">
+    <div class="caption">Figure 6.2: Actions Taken section on Tablet viewport (768 &times; 1024).</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/03-ticket-detail-actions-taken-mobile.png" alt="Actions Taken Mobile">
+    <div class="caption">Figure 6.3: Actions Taken section on Mobile viewport (375 &times; 667) with full touch-target compliance.</div>
+  </div>
+
+  <h3 class="sub-title">2. Create/Edit Action Taken Modal</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/04-action-taken-modal-desktop.png" alt="Action Taken Modal Desktop">
+    <div class="caption">Figure 6.4: Modal overlay with read-only Performer auto-attribution and follow-up validation.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/04-action-taken-modal-tablet.png" alt="Action Taken Modal Tablet">
+    <div class="caption">Figure 6.5: Action Taken Modal on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/04-action-taken-modal-mobile.png" alt="Action Taken Modal Mobile">
+    <div class="caption">Figure 6.6: Action Taken Modal on Mobile viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Mandatory Follow-up Validation &amp; Amber Pill</h3>
+  <div class="amber-box">
+    <strong>Follow-up Invariant (BR-05 / VIS-02):</strong> When "Follow-up Required" is checked, a non-empty note is strictly mandatory. Saved actions render a distinct Amber badge (<code>#D97706</code> / <code>#FEF3C7</code>).
+  </div>
+
+  <h3 class="sub-title">4. Requester Read-Only Visibility &amp; Terminal Lock</h3>
+  <p>Requesters see Actions Taken in read-only mode without write buttons. Closed and Cancelled tickets lock further action logging.</p>
+
+  <!-- ANSWER PART 7 -->
+  <h2 class="section-title">Answer Part 7: Working Ticket Workflow</h2>
+
+  <h3 class="sub-title">1. Resolution Gate &amp; Status Dropdown</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/05-ticket-resolution-gate-desktop.png" alt="Resolution Gate Desktop">
+    <div class="caption">Figure 7.1: Status dropdown restricted to permitted next choices and Resolution Gate confirmation dialog.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/05-ticket-resolution-gate-tablet.png" alt="Resolution Gate Tablet">
+    <div class="caption">Figure 7.2: Resolution Gate controls on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/05-ticket-resolution-gate-mobile.png" alt="Resolution Gate Mobile">
+    <div class="caption">Figure 7.3: Resolution Gate controls on Mobile viewport.</div>
+  </div>
+
+  <h3 class="sub-title">2. Requester Advisory Resolution Indicator</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/06-requester-resolve-indicator-desktop.png" alt="Requester Resolve Desktop">
+    <div class="caption">Figure 7.4: Requester indicates "Problem Appears Resolved" &mdash; sets advisory flag without altering official status.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/06-requester-resolve-indicator-tablet.png" alt="Requester Resolve Tablet">
+    <div class="caption">Figure 7.5: Advisory resolution banner on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/06-requester-resolve-indicator-mobile.png" alt="Requester Resolve Mobile">
+    <div class="caption">Figure 7.6: Advisory resolution banner on Mobile viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Optimistic Concurrency Conflict Banner (HTTP 409)</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-desktop.png" alt="Concurrency Conflict Desktop">
+    <div class="caption">Figure 7.7: Non-destructive conflict banner with "Refresh Ticket" CTA, preserving uncommitted inputs.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-tablet.png" alt="Concurrency Conflict Tablet">
+    <div class="caption">Figure 7.8: Concurrency conflict banner on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-mobile.png" alt="Concurrency Conflict Mobile">
+    <div class="caption">Figure 7.9: Concurrency conflict banner on Mobile viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/15-concurrency-409-evidence.png" alt="Concurrency 409 Collision Evidence">
+    <div class="caption">Figure 7.10: Terminal / API evidence of Optimistic Concurrency Conflict Collision (API-17, E2E-06, BR-18).</div>
+  </div>
+
+  <!-- ANSWER PART 8 -->
+  <h2 class="section-title">Answer Part 8: Working Requester Dashboard &amp; Final Regression UI</h2>
+
+  <h3 class="sub-title">1. Requester Dashboard Across Viewports</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/02-requester-dashboard-desktop.png" alt="Requester Dashboard Desktop">
+    <div class="caption">Figure 8.1: Requester Dashboard on Desktop (1280 &times; 800) with 4 primary metric cards and Recent Tickets table.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/02-requester-dashboard-tablet.png" alt="Requester Dashboard Tablet">
+    <div class="caption">Figure 8.2: Requester Dashboard on Tablet viewport (768 &times; 1024).</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/02-requester-dashboard-mobile.png" alt="Requester Dashboard Mobile">
+    <div class="caption">Figure 8.3: Requester Dashboard on Mobile viewport (375 &times; 667).</div>
+  </div>
+
+  <h3 class="sub-title">2. Administrator Dashboard System User Metrics</h3>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/08-admin-dashboard-desktop.png" alt="Admin Dashboard Desktop">
+    <div class="caption">Figure 8.4: Administrator Dashboard displaying staff operational metrics plus System User Accounts summary.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/08-admin-dashboard-tablet.png" alt="Admin Dashboard Tablet">
+    <div class="caption">Figure 8.5: Administrator Dashboard on Tablet viewport.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/08-admin-dashboard-mobile.png" alt="Admin Dashboard Mobile">
+    <div class="caption">Figure 8.6: Administrator Dashboard on Mobile viewport.</div>
+  </div>
+
+  <h3 class="sub-title">3. Full Regression Suite across Labs 1&ndash;3 (E2E-10)</h3>
+  <p>Automated test suite <code>e2e/lab-04/regression.spec.ts</code> executes 12 multi-viewport regression scenarios covering Lab 1 (health check, categories), Lab 2 (requester creation, My Tickets, detail, attachments), and Lab 3 (auth, forced password change, queue claiming, comments, notes, admin safety) with 100% pass rate.</p>
+
+  <!-- ANSWER PART 9 -->
+  <h2 class="section-title">Answer Part 9: Zen Green UI, Responsive, Accessibility &amp; Final Polish</h2>
+  <p><strong>UI Specification Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/ui-spec.md"><code>docs/lab-04/ui-spec.md</code></a></p>
+
+  <h3 class="sub-title">Design Tokens &amp; Invariant Compliance</h3>
+  <ul>
+    <li><strong>Zen Green Brand Tokens:</strong> Primary <code>#006B3C</code>, Hover <code>#0B7A46</code>, Tint <code>#EAF6EF</code>, Canvas <code>#F5F7F6</code>, White <code>#FFFFFF</code>.</li>
+    <li><strong>Amber Follow-up &amp; Notes:</strong> Border <code>#D97706</code>, Surface <code>#FEF3C7</code>, Text <code>#92400E</code>.</li>
+    <li><strong>Editable vs. Readonly:</strong> White inputs (<code>#FFFFFF</code>) for active forms; soft gray-green (<code>#F0F4F2</code>) for read-only displays.</li>
+  </ul>
+
+  <h3 class="sub-title">Completed Responsive Visual Checklist</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Requirement</th>
+        <th>Inspection Standard</th>
+        <th>Verification Method</th>
+        <th>Compliance Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Zero Horizontal Overflow (RESP-04)</strong></td><td><code>scrollWidth &le; innerWidth</code> across all devices</td><td>Automated <code>assertNoHorizontalOverflow()</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Minimum Touch Targets (RESP-03)</strong></td><td>Buttons/inputs &ge; 44 &times; 44px on tablet/mobile</td><td>Automated <code>assertMinimumTouchTargets()</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Brand Color Tokens (VIS-01)</strong></td><td>Strict adherence to #006B3C Zen Green</td><td>Automated CSS token assertions</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Badge Semantic Contrast (VIS-02)</strong></td><td>WCAG AA contrast for Role, Status, and Priority</td><td>Automated style tests in <code>ui-style.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Visible Focus Rings (VIS-03)</strong></td><td>Visible #0B7A46 focus outline on Tab navigation</td><td>Sequential Tab traversal in Playwright &amp; RTL</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Zero Text Clipping (VIS-04)</strong></td><td>Natural word wrapping without truncation</td><td>E2E responsive multi-device assertions</td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Form State Preservation (BR-18)</strong></td><td>Preserves inputs upon error or 409 conflict</td><td>Component tests in <code>ActionsTakenSection.test.tsx</code></td><td><span class="badge badge-pass">Pass</span></td></tr>
+      <tr><td><strong>Double-Click Protection (BR-19)</strong></td><td>Disables submit button and shows spinner in-flight</td><td>E2E and component race condition tests</td><td><span class="badge badge-pass">Pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/14-visual-checklist-summary.png" alt="Visual QA and responsive design invariant verification matrix">
+    <div class="caption">Figure 9.1: Visual QA and responsive design invariant verification matrix.</div>
+  </div>
+
+  <h3 class="sub-title">Complete 24 Screenshot Evidence Inventory</h3>
+  <p>All 24 screenshot evidence artifacts captured across Desktop ($1280 \times 800$), Tablet ($768 \times 1024$), and Mobile ($375 \times 667$) are committed and verified under <code>artifacts/lab-04/screenshots/</code>.</p>
+
+  <hr style="margin-top: 36px; border: 0; border-top: 1px solid #E2E8F0;">
+  <p style="text-align: center; color: #94A3B8; font-size: 11px;">TokTickIT &bull; CPE334 Software Engineering &bull; Lab 4 Final Submission Package</p>
+
+</div>
+</body>
+</html>

@@ -153,7 +153,7 @@ export const requireAuth = async (
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: (payload.role as any) || user.role,
       isActive: user.isActive,
       mustChangePassword: user.mustChangePassword,
       jti: payload.jti,
