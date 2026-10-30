@@ -178,61 +178,88 @@
 
   <!-- ANSWER PART 1 -->
   <h2 class="section-title">Answer Part 1: Git Use with Engineering Workflow</h2>
+  <p>Demonstrates full Git/GitHub engineering workflow, peer-review traceability, and clean repository structure for Lab 4.</p>
 
-  <h3 class="sub-title">1.1 Git Commit History & Branching Model</h3>
-  <p>The TokTickIT engineering workflow strictly enforces isolated feature branching: <code>feature/*</code> &rarr; <code>lab4-staging</code> &rarr; <code>main</code>. Every feature branch corresponds to an authorized GitHub Issue, includes automated unit and integration tests, passes peer review by @Apichaya251400, and is merged to staging before final release:</p>
-  <pre><code>*   9c7c941 (origin/lab4-staging, lab4-staging) Merge pull request #90 from feature/38-playwright-e2e-responsive
-|\  
-| * 4e24bad docs(test): add E2E-10 scope note and align Ticket 8 seed comment (#38)
-| * 18f3513 fix(e2e): align tablet viewport to 768px per AC-23 specification (#38)
-| * 996b223 feat(e2e): add resolution gate modal, link touch target checks, visual layer separation (#38)
-| * 5996566 feat(e2e): implement Lab 4 Playwright test suites and responsive visual evidence (#38)
-|/  
-*   aed679f Merge pull request #89 from feature/37-dashboard-react-frontend
-|\  
-| * 334c89b test: verify dashboard metric counts against filtered queues and update test checklist (#37)
-| * c587ba7 Resolve Lab 4 test documentation merge conflict
-| * 0bc8891 test(e2e): verify keyboard Tab traversal to target link without programmatic focus (#37)
-| * fe36ade test(e2e): add keyboard Tab navigation and visible focus ring E2E tests (#37)
-| * d544681 test(e2e): add dashboard drill-down E2E tests, requester empty-state tests (#37)
-|/  
-*   746092b Merge pull request #87 from feature/36-dashboard-backend-sql</code></pre>
+  <h3 class="sub-title">1.1 Repository / Project / PRs</h3>
+  <p>All Lab 4 deliverables were coordinated and executed across dedicated feature branches, reviewed by peer reviewer @Apichaya251400, and integrated into <code>lab4-staging</code> prior to final release.</p>
+  <ul>
+    <li><strong>GitHub Repository URL:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT">https://github.com/Pilaiwan3492/TokTickIT</a></li>
+    <li><strong>GitHub Project Board URL:</strong> <a href="https://github.com/users/Pilaiwan3492/projects/1">https://github.com/users/Pilaiwan3492/projects/1</a></li>
+    <li><strong>GitHub Issues:</strong>
+      <ul>
+        <li>Issue 30: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/72">https://github.com/Pilaiwan3492/TokTickIT/issues/72</a></li>
+        <li>Issue 31: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/73">https://github.com/Pilaiwan3492/TokTickIT/issues/73</a></li>
+        <li>Issue 32: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/74">https://github.com/Pilaiwan3492/TokTickIT/issues/74</a></li>
+        <li>Issue 33: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/75">https://github.com/Pilaiwan3492/TokTickIT/issues/75</a></li>
+        <li>Issue 34: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/76">https://github.com/Pilaiwan3492/TokTickIT/issues/76</a></li>
+        <li>Issue 35: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/77">https://github.com/Pilaiwan3492/TokTickIT/issues/77</a></li>
+        <li>Issue 36: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/78">https://github.com/Pilaiwan3492/TokTickIT/issues/78</a></li>
+        <li>Issue 37: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/79">https://github.com/Pilaiwan3492/TokTickIT/issues/79</a></li>
+        <li>Issue 38: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/80">https://github.com/Pilaiwan3492/TokTickIT/issues/80</a></li>
+        <li>Issue 39: <a href="https://github.com/Pilaiwan3492/TokTickIT/issues/81">https://github.com/Pilaiwan3492/TokTickIT/issues/81</a></li>
+      </ul>
+    </li>
+    <li><strong>GitHub Pull Requests:</strong>
+      <ul>
+        <li>PR #30 (PR #82): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/82">https://github.com/Pilaiwan3492/TokTickIT/pull/82</a></li>
+        <li>PR #31 (PR #83): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/83">https://github.com/Pilaiwan3492/TokTickIT/pull/83</a></li>
+        <li>PR #32 (PR #84): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/84">https://github.com/Pilaiwan3492/TokTickIT/pull/84</a></li>
+        <li>PR #33 (PR #85): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/85">https://github.com/Pilaiwan3492/TokTickIT/pull/85</a></li>
+        <li>PR #34 (PR #86): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/86">https://github.com/Pilaiwan3492/TokTickIT/pull/86</a></li>
+        <li>PR #35 (PR #87): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/87">https://github.com/Pilaiwan3492/TokTickIT/pull/87</a></li>
+        <li>PR #36 (PR #88): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/88">https://github.com/Pilaiwan3492/TokTickIT/pull/88</a></li>
+        <li>PR #37 (PR #89): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/89">https://github.com/Pilaiwan3492/TokTickIT/pull/89</a></li>
+        <li>PR #38 (PR #90): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/90">https://github.com/Pilaiwan3492/TokTickIT/pull/90</a></li>
+        <li>PR #39 (PR #91): <a href="https://github.com/Pilaiwan3492/TokTickIT/pull/91">https://github.com/Pilaiwan3492/TokTickIT/pull/91</a></li>
+      </ul>
+    </li>
+  </ul>
 
-  <h3 class="sub-title">1.2 GitHub Project Kanban Board</h3>
-  <p>All 10 Lab 4 Issues (Issues #30 through #39 / GitHub #72 through #81) have been executed and moved to the <strong>Done</strong> column:</p>
-  <table>
-    <thead>
-      <tr>
-        <th>Sprint Issue</th>
-        <th>GitHub Ref</th>
-        <th>Scope / Deliverables</th>
-        <th>Feature Branch</th>
-        <th>Kanban Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>Issue 30</strong></td><td>#72</td><td>Project Setup, Baseline Environment & Lab 4 Planning</td><td><code>feature/30-project-setup</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 31</strong></td><td>#73</td><td>Sprint 4 Specification, Contracts & Planned Test Catalog</td><td><code>feature/31-specification-test-plan</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 32</strong></td><td>#74</td><td>Database Schema Migration, Idempotent Seed & Compatibility</td><td><code>feature/32-schema-migration-seed</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 33</strong></td><td>#75</td><td>Actions Taken Backend REST API & Concurrency Control</td><td><code>feature/33-actions-taken-backend-api</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 34</strong></td><td>#76</td><td>Ticket Lifecycle State Machine & Resolution Gate API</td><td><code>feature/34-ticket-workflow-resolution-gate-api</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 35</strong></td><td>#77</td><td>Actions Taken Frontend React Section, Modals & Visual Fidelity</td><td><code>feature/35-actions-taken-frontend-react</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 36</strong></td><td>#78</td><td>Role Dashboards Backend SQL Aggregation API</td><td><code>feature/36-dashboard-backend-sql</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 37</strong></td><td>#79</td><td>Role Dashboards React Frontend UI & Drill-Down Navigation</td><td><code>feature/37-dashboard-react-frontend</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 38</strong></td><td>#80</td><td>Playwright E2E Multi-Device Testing & Visual Inspection</td><td><code>feature/38-playwright-e2e-responsive</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-      <tr><td><strong>Issue 39</strong></td><td>#81</td><td>Final Product Hardening, Full Regression & Submission Package</td><td><code>feature/39-final-regression-submission</code></td><td><span class="badge badge-pass">Done</span></td></tr>
-    </tbody>
-  </table>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/01-git-workflow-summary.png" alt="Lab 4 GitHub Repository, Pull Requests, and Project Board workflow">
+    <div class="caption">Figure: Lab 4 GitHub Repository, Pull Requests, and Project Board workflow</div>
+  </div>
 
-  <h3 class="sub-title">1.3 Rendered Peer Review Record</h3>
+  <h3 class="sub-title">1.2 Commit History</h3>
+  <p>Clean commit history showing non-linear branch merges, issue-specific commit messages, and collaborative peer integration:</p>
+  <pre><code>git log --graph --oneline -n 15 lab4-staging</code></pre>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/02-git-commit-history.png" alt="Terminal Git Graph commit history for Sprint 4 on lab4-staging">
+    <div class="caption">Figure: Terminal Git Graph commit history for Sprint 4 on lab4-staging</div>
+  </div>
+
+  <h3 class="sub-title">1.3 Project Board</h3>
+  <p>All 10 Lab 4 Issues (Issues #30 through #39 / GitHub #72 through #81) have been executed and moved to the <strong>Done</strong> column on the Kanban board:</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/03-project-board.png" alt="Project Board">
+    <div class="caption">Figure: Project Board</div>
+  </div>
+
+  <h3 class="sub-title">1.4 reviewer.md</h3>
   <p><strong>Review Document Link:</strong> <a href="https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md"><code>docs/lab-04/reviewer.md</code></a></p>
-  <p>Documents the bi-directional code review records between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) for PRs #82 through #91. Includes reviewer feedback, technical revisions (e.g. keyboard Tab traversal without synthetic focus, tablet viewport alignment to 768px, seed data consistency), and formal approvals.</p>
+  <p>Documents the bi-directional code review records between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) for PRs #82 through #91. Includes reviewer feedback, technical revisions, and formal approvals.</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/04-rendered-reviewer.png" alt="Authentic GitHub Reviewer dialogue">
+    <div class="caption">Figure: Authentic GitHub Reviewer dialogue</div>
+  </div>
 
-  <h3 class="sub-title">1.4 README.md and .gitignore Content Evidence</h3>
+  <h3 class="sub-title">1.5 README / .gitignore</h3>
   <p>The repository root contains updated <code>README.md</code> with comprehensive Sprint 4 feature descriptions, live seed account credentials (Alice, Bob, Michael, David, John), test execution instructions, and complete <code>.gitignore</code> rules.</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/05a-readme-evidence.png" alt="README.md documentation">
+    <div class="caption">Figure: README.md documentation</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/05b-gitignore-evidence.png" alt=".gitignore configuration">
+    <div class="caption">Figure: .gitignore configuration</div>
+  </div>
 
-  <h3 class="sub-title">1.5 Repository Directory Structure</h3>
-  <p>Modular full-stack architecture separated into <code>client/</code> (React 18 + Vite), <code>server/</code> (Express + Prisma ORM), <code>e2e/</code> (Playwright test suites), <code>artifacts/lab-04/</code> (screenshot artifacts), and <code>docs/lab-04/</code> (engineering specifications).</p>
+  <h3 class="sub-title">1.6 Directory Structure</h3>
+  <p>"The repository separates client, server, E2E tests, and Lab 4 documentation."</p>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/06-directory-structure.png" alt="Project directory architecture showing separation of client, server, e2e, and docs">
+    <div class="caption">Figure: Project directory architecture showing separation of client, server, e2e, and docs</div>
+  </div>
 
   <!-- ANSWER PART 2 -->
   <h2 class="section-title">Answer Part 2: Spec DD</h2>
@@ -262,10 +289,20 @@
     </tbody>
   </table>
 
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/07-status-transition-matrix.png" alt="Canonical 18-Status Transition Matrix & Role Authorization">
+    <div class="caption">Figure: Canonical 18-Status Transition Matrix &amp; Role Authorization governing all endpoints.</div>
+  </div>
+
   <h3 class="sub-title">2. Specification Existence Evidence Prior to Implementation</h3>
   <pre><code>$ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-04/specification.md
 Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts</code></pre>
   <p>Commit <code>57d6d56</code> proves that the specification existed and was approved on <strong>2026-10-04</strong>, prior to database migrations (PR #83), Actions Taken API development (PR #84), and dashboard UI implementations (PRs #86&ndash;#89).</p>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/08-spec-before-code.png" alt="Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation">
+    <div class="caption">Figure: Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation.</div>
+  </div>
 
   <!-- ANSWER PART 3 -->
   <h2 class="section-title">Answer Part 3: Test DD and Traceability</h2>
@@ -308,6 +345,11 @@ Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): spr
     </tbody>
   </table>
 
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/09-traceability-summary.png" alt="Traceability matrix summary showing 100% test file mapping and passing status">
+    <div class="caption">Figure: Traceability matrix summary showing 100% test file mapping and passing status.</div>
+  </div>
+
   <h3 class="sub-title">Clean Execution Summary (547 / 547 Passed &mdash; 100% Pass Rate)</h3>
   <ul>
     <li><strong>Server Unit, API &amp; Migration Tests:</strong> 22 test files, <strong>309 passed</strong>, 0 failed</li>
@@ -315,6 +357,23 @@ Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): spr
     <li><strong>Playwright Multi-Device E2E:</strong> 4 test files across Desktop, Tablet, and Mobile, <strong>57 passed</strong></li>
     <li><strong>Total Automated Test Battery:</strong> <strong>547 / 547 Passed (100%)</strong></li>
   </ul>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png" alt="Terminal output showing 309/309 server tests passing cleanly in Vitest">
+    <div class="caption">Figure: Terminal output showing 309/309 server tests passing cleanly in Vitest.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png" alt="Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL">
+    <div class="caption">Figure: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/12-playwright-e2e-pass.png" alt="Terminal output showing 57/57 Playwright multi-device E2E tests passing">
+    <div class="caption">Figure: Terminal output showing 57/57 Playwright multi-device E2E tests passing across Desktop, Tablet, and Mobile.</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/13-production-build-success.png" alt="Terminal output showing server and client compiling with 0 errors">
+    <div class="caption">Figure: Terminal output showing server (tsc) and client (vite build) compiling with 0 errors.</div>
+  </div>
 
   <!-- ANSWER PART 4 -->
   <h2 class="section-title">Answer Part 4: AI Use with Reflection</h2>
@@ -447,6 +506,10 @@ Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): spr
     <img src="../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-mobile.png" alt="Concurrency Conflict Mobile">
     <div class="caption">Figure 7.9: Concurrency conflict banner on Mobile viewport.</div>
   </div>
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/15-concurrency-409-evidence.png" alt="Concurrency 409 Collision Evidence">
+    <div class="caption">Figure 7.10: Terminal / API evidence of Optimistic Concurrency Conflict Collision (API-17, E2E-06, BR-18).</div>
+  </div>
 
   <!-- ANSWER PART 8 -->
   <h2 class="section-title">Answer Part 8: Working Requester Dashboard &amp; Final Regression UI</h2>
@@ -514,6 +577,11 @@ Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): spr
       <tr><td><strong>Double-Click Protection (BR-19)</strong></td><td>Disables submit button and shows spinner in-flight</td><td>E2E and component race condition tests</td><td><span class="badge badge-pass">Pass</span></td></tr>
     </tbody>
   </table>
+
+  <div class="screenshot-card">
+    <img src="../../artifacts/lab-04/screenshots/terminal-evidence/14-visual-checklist-summary.png" alt="Visual QA and responsive design invariant verification matrix">
+    <div class="caption">Figure 9.1: Visual QA and responsive design invariant verification matrix.</div>
+  </div>
 
   <h3 class="sub-title">Complete 24 Screenshot Evidence Inventory</h3>
   <p>All 24 screenshot evidence artifacts captured across Desktop ($1280 \times 800$), Tablet ($768 \times 1024$), and Mobile ($375 \times 667$) are committed and verified under <code>artifacts/lab-04/screenshots/</code>.</p>

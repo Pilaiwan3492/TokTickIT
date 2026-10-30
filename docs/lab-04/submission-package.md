@@ -17,6 +17,8 @@
 The TokTickIT project strictly adheres to a staged feature-branch workflow:
 `feature/*` $\rightarrow$ `lab4-staging` $\rightarrow$ `main`. Every increment is developed on an isolated feature branch linked to a GitHub Issue, verified by automated unit, API, and E2E tests, subjected to mandatory peer review by `@Apichaya251400`, and merged via fast-forward or squash merge.
 
+![Figure 1.1: Git Workflow Summary Card](../../artifacts/lab-04/screenshots/terminal-evidence/01-git-workflow-summary.png)
+
 ```text
 *   9c7c941 (origin/lab4-staging, lab4-staging) Merge pull request #90 from feature/38-playwright-e2e-responsive
 |\  
@@ -37,6 +39,8 @@ The TokTickIT project strictly adheres to a staged feature-branch workflow:
 ...
 ```
 
+![Figure 1.2: Terminal Git Commit Log](../../artifacts/lab-04/screenshots/terminal-evidence/02-git-commit-history.png)
+
 ### 1.2 GitHub Project Kanban Board
 All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are successfully delivered, verified, and transitioned to the **Done** column on the Kanban board:
 
@@ -53,16 +57,25 @@ All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are
 | **38** | [#80](https://github.com/Pilaiwan3492/TokTickIT/issues/80) | Playwright E2E Multi-Device Testing & Visual Inspection | `feature/38-playwright-e2e-responsive` | **Done** |
 | **39** | [#81](https://github.com/Pilaiwan3492/TokTickIT/issues/81) | Final Product Hardening, Full Regression & Submission Package | `feature/39-final-regression-submission` | **Done** |
 
+![Figure 1.3: GitHub Project Kanban Board](../../artifacts/lab-04/screenshots/terminal-evidence/03-project-board.png)
+
 ### 1.3 Rendered Peer Review Record
 - **Review Document Link:** [https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md](https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md)  
 - The review record catalogs the complete bi-directional review dialogue between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) across PRs #82 through #91. It documents substantive code reviews, changes requested (e.g., keyboard Tab navigation authenticity, tablet viewport alignment to 768px, seed data consistency), and final approvals.
+
+![Figure 1.4: Rendered Peer Review Record](../../artifacts/lab-04/screenshots/terminal-evidence/04-rendered-reviewer.png)
 
 ### 1.4 `README.md` and `.gitignore` Content Evidence
 - `README.md`: [https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/README.md](https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/README.md) &mdash; Updated with comprehensive Sprint 4 documentation, live seed account credentials (Alice, Bob, Michael, David, John), running instructions, and automated test pass rate summaries.
 - `.gitignore`: [https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/.gitignore](https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/.gitignore) &mdash; Configured to exclude `node_modules/`, `dist/`, `.env`, temporary upload files, test coverage reports, and cache directories while tracking all essential documentation and source assets.
 
+![Figure 1.5a: README.md Evidence](../../artifacts/lab-04/screenshots/terminal-evidence/05a-readme-evidence.png)
+![Figure 1.5b: .gitignore Evidence](../../artifacts/lab-04/screenshots/terminal-evidence/05b-gitignore-evidence.png)
+
 ### 1.5 Repository Directory Structure in IDE
 The codebase is structured into modular frontend (`client/`), backend (`server/`), end-to-end test suites (`e2e/`), artifacts (`artifacts/lab-04/`), and engineering documentation (`docs/lab-04/`).
+
+![Figure 1.6: Project Directory Architecture](../../artifacts/lab-04/screenshots/terminal-evidence/06-directory-structure.png)
 
 ---
 
@@ -92,6 +105,8 @@ The specification establishes **20 Functional Requirements (`FR-01` to `FR-20`)*
 | **`CLOSED`** | *(None — Terminal State)* | Immutable; action logging and status updates locked |
 | **`CANCELLED`** | *(None — Terminal State)* | Immutable; action logging and status updates locked |
 
+![Figure 2.1: Canonical 18-Status Transition Matrix & Role Authorization](../../artifacts/lab-04/screenshots/terminal-evidence/07-status-transition-matrix.png)
+
 ### 2. Specification Existence Evidence Prior to Implementation
 The Git commit history confirms that `docs/lab-04/specification.md` existed before coding began:
 ```bash
@@ -99,6 +114,8 @@ $ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab
 Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts
 ```
 The canonical specification was authored and approved on **2026-10-04**, prior to database migrations (PR #83), Actions Taken API development (PR #84), and dashboard implementations (PRs #86–#89).
+
+![Figure 2.2: Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation](../../artifacts/lab-04/screenshots/terminal-evidence/08-spec-before-code.png)
 
 ---
 
@@ -136,6 +153,8 @@ The canonical specification was authored and approved on **2026-10-04**, prior t
 | **E2E-08** | E2E | AC-17 | IT Staff Dashboard journey & queue drill-downs | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
 | **E2E-10** | E2E | AC-21 | Full regression suite across Labs 1, 2, and 3 | `e2e/lab-04/regression.spec.ts` | **Pass** |
 
+![Figure 3.1: Traceability matrix summary showing 100% test file mapping and passing status](../../artifacts/lab-04/screenshots/terminal-evidence/09-traceability-summary.png)
+
 ### Complete Test Execution Outputs from Clean State
 
 #### 1. Server Unit, API, Performance-Smoke & Migration Tests (22 Files, 309 Passed)
@@ -164,6 +183,11 @@ Running 57 tests using 1 worker
   57 passed (3.2m)
 ```
 **Total Automated Verification:** **547 / 547 Passed (100% Pass Rate)**
+
+![Figure 3.2: Terminal output showing 309/309 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
+![Figure 3.3: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL](../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png)
+![Figure 3.4: Terminal output showing 57/57 Playwright multi-device E2E tests passing](../../artifacts/lab-04/screenshots/terminal-evidence/12-playwright-e2e-pass.png)
+![Figure 3.5: Terminal output showing server and client compiling with 0 errors](../../artifacts/lab-04/screenshots/terminal-evidence/13-production-build-success.png)
 
 ---
 
@@ -277,6 +301,8 @@ When two users concurrently modify a ticket or its actions, the backend detects 
   ![Concurrency Conflict Tablet](../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-tablet.png)
 - **Mobile:**  
   ![Concurrency Conflict Mobile](../../artifacts/lab-04/screenshots/07-concurrency-conflict-banner-mobile.png)
+- **Terminal / API Concurrency Conflict Collision:**  
+  ![Concurrency 409 Collision Evidence](../../artifacts/lab-04/screenshots/terminal-evidence/15-concurrency-409-evidence.png)
 
 ---
 
@@ -347,6 +373,8 @@ The full regression suite `e2e/lab-04/regression.spec.ts` executes across Deskto
 | **Zero Text Clipping (`VIS-04`)** | Dense text wraps cleanly (`break-words`); metric numbers fit | Multi-device visual layout inspection in E2E | ✅ **Passed** |
 | **Form State Preservation (`BR-18`)** | Form values preserved upon validation or HTTP 409 conflict | Component tests in `ActionsTakenSection.test.tsx` | ✅ **Passed** |
 | **Double-Click Protection (`BR-19`)** | In-flight submissions disable button and display spinner | E2E and component race condition tests | ✅ **Passed** |
+
+![Figure 9.1: Visual QA and responsive design invariant verification matrix](../../artifacts/lab-04/screenshots/terminal-evidence/14-visual-checklist-summary.png)
 
 ---
 
