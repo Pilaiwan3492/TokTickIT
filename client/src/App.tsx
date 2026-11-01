@@ -13,6 +13,8 @@ import TicketDetail from "./pages/TicketDetail";
 import StaffTicketQueue from "./pages/StaffTicketQueue";
 import StaffTicketDetail from "./pages/StaffTicketDetail";
 import UserManagement from "./pages/UserManagement";
+import RequesterDashboard from "./pages/RequesterDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -120,6 +122,17 @@ function RootRoute() {
   return <Navigate to={role === "REQUESTER" ? "/tickets" : "/queue"} replace />;
 }
 
+function DashboardDispatcher() {
+  const { role } = useAuth();
+  if (role === "REQUESTER") {
+    return <RequesterDashboard />;
+  }
+  if (role === "IT_STAFF" || role === "ADMIN") {
+    return <StaffDashboard />;
+  }
+  return <Navigate to="/login" replace />;
+}
+
 function TicketDetailDispatcher() {
   const { role } = useAuth();
   return role === "REQUESTER" ? <TicketDetail /> : <StaffTicketDetail />;
@@ -132,6 +145,24 @@ function AppContent() {
     <div style={{ backgroundColor: "#F5F7F6", minHeight: "100vh" }}>
       {isAuthenticated && <Header />}
       <Routes>
+        {/* Role-Appropriate Dashboard Route (FR-18, UI-16, UI-18) */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["REQUESTER", "IT_STAFF", "ADMIN"]}>
+              <DashboardDispatcher />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Public Login Route */}
         <Route path="/login" element={<Login />} />
 
@@ -148,6 +179,14 @@ function AppContent() {
         {/* Requester Ticket Routes */}
         <Route
           path="/tickets"
+          element={
+            <ProtectedRoute allowedRoles={["REQUESTER"]}>
+              <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-tickets"
           element={
             <ProtectedRoute allowedRoles={["REQUESTER"]}>
               <MyTickets />
@@ -178,6 +217,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/my-tickets/:id"
+          element={
+            <ProtectedRoute allowedRoles={["REQUESTER", "IT_STAFF", "ADMIN"]}>
+              <TicketDetailDispatcher />
+            </ProtectedRoute>
+          }
+        />
 
         {/* IT Staff & Admin Queue & Detail */}
         <Route
@@ -189,7 +236,23 @@ function AppContent() {
           }
         />
         <Route
+          path="/staff/tickets"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffTicketQueue />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/queue/:id"
+          element={
+            <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
+              <StaffTicketDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/tickets/:id"
           element={
             <ProtectedRoute allowedRoles={["IT_STAFF", "ADMIN"]}>
               <StaffTicketDetail />

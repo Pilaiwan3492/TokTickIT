@@ -1,5 +1,5 @@
 import { UserRole } from "./auth";
-import { Attachment, TicketComment } from "./ticket";
+import { Attachment, TicketComment, ActionTaken } from "./ticket";
 
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -73,4 +73,5 @@ export interface StaffTicketDetailModel extends StaffQueueTicket {
   attachments: Attachment[];
   comments: TicketComment[];
   notes: InternalNoteItem[];
+  actionsTaken?: ActionTaken[];
 }

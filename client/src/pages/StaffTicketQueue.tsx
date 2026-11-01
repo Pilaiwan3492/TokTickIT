@@ -1,22 +1,54 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/apiClient";
 import { useAuth } from "../context/AuthContext";
 import { StaffQueueTicket, QueuePagination, TicketPriority, TicketStatusType } from "../types/staff";
 
 export const StaffTicketQueue: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  // Query & Filter State
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [priorityFilter, setPriorityFilter] = useState<string>("");
-  const [ownershipFilter, setOwnershipFilter] = useState<"ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME">("ALL");
-  const [page, setPage] = useState(1);
+  const parseOwnershipParam = (param: string | null): "ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME" => {
+    if (!param) return "ALL";
+    const upper = param.toUpperCase();
+    if (upper === "ASSIGNED_TO_ME" || upper === "UNASSIGNED") return upper;
+    return "ALL";
+  };
+
+  // Query & Filter State initialized from URL query parameters (supports drill-down links)
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") || "");
+  const [priorityFilter, setPriorityFilter] = useState<string>(() => searchParams.get("priority") || "");
+  const [ownershipFilter, setOwnershipFilter] = useState<"ALL" | "UNASSIGNED" | "ASSIGNED_TO_ME">(() =>
+    parseOwnershipParam(searchParams.get("ownership"))
+  );
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
   const [pageSize] = useState(10);
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState(() => searchParams.get("sortBy") || "createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    searchParams.get("sortOrder") === "asc" ? "asc" : "desc"
+  );
+
+  // Synchronize when searchParams change (resetting to defaults when parameters are removed from URL)
+  useEffect(() => {
+    const q = searchParams.get("search") || "";
+    setSearch(q);
+    setDebouncedSearch(q);
+
+    setStatusFilter(searchParams.get("status") || "");
+    setPriorityFilter(searchParams.get("priority") || "");
+    setOwnershipFilter(parseOwnershipParam(searchParams.get("ownership")));
+
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    setPage(isNaN(p) || p < 1 ? 1 : p);
+
+    setSortBy(searchParams.get("sortBy") || "createdAt");
+    setSortOrder(searchParams.get("sortOrder") === "asc" ? "asc" : "desc");
+  }, [searchParams]);
 
   // Data State
   const [tickets, setTickets] = useState<StaffQueueTicket[]>([]);
@@ -33,12 +65,13 @@ export const StaffTicketQueue: React.FC = () => {
 
   // Debounce search input (300ms)
   useEffect(() => {
+    if (search === debouncedSearch) return;
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch Tickets
   const fetchQueueTickets = useCallback(async () => {

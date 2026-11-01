@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { UserRole } from "../types/auth";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, role, logout, isAuthenticated } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -61,6 +62,19 @@ export const Header: React.FC = () => {
 
   const homeLink = role === "REQUESTER" ? "/tickets" : "/queue";
 
+  const getNavLinkClass = (path: string) => {
+    let isActive = location.pathname === path;
+    if (path === "/tickets" && (location.pathname === "/tickets" || location.pathname === "/my-tickets")) {
+      isActive = true;
+    }
+    if (path === "/queue" && (location.pathname === "/queue" || location.pathname === "/staff/tickets")) {
+      isActive = true;
+    }
+    return `text-white text-decoration-none small d-flex align-items-center gap-1 px-3 py-2 rounded ${
+      isActive ? "fw-bold bg-white bg-opacity-25" : "fw-medium opacity-90"
+    }`;
+  };
+
   const handleSignOut = async () => {
     setIsDropdownOpen(false);
     navigate("/login");
@@ -78,6 +92,7 @@ export const Header: React.FC = () => {
           <Link
             to={isAuthenticated ? homeLink : "/login"}
             className="d-flex align-items-center gap-2 fw-bold fs-5 text-white text-decoration-none"
+            style={{ minHeight: 44 }}
           >
             {/* Clock Icon */}
             <svg
@@ -100,12 +115,35 @@ export const Header: React.FC = () => {
           {/* Role-Filtered Navigation */}
           {isAuthenticated && (
             <nav className="d-flex align-items-center gap-2 gap-sm-3 flex-wrap">
+              {/* Dashboard Link for all authenticated roles */}
+              <Link
+                to="/dashboard"
+                className={getNavLinkClass("/dashboard")}
+                style={{ minHeight: 44 }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.8}
+                  stroke="currentColor"
+                  style={{ width: 16, height: 16 }}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+                  />
+                </svg>
+                Dashboard
+              </Link>
               {/* Requester Navigation */}
               {role === "REQUESTER" && (
                 <>
                   <Link
                     to="/tickets"
-                    className="text-white text-decoration-none small fw-medium opacity-90 d-flex align-items-center gap-1"
+                    className={getNavLinkClass("/tickets")}
+                    style={{ minHeight: 44 }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -125,7 +163,8 @@ export const Header: React.FC = () => {
                   </Link>
                   <Link
                     to="/create-ticket"
-                    className="text-white text-decoration-none small fw-medium opacity-90 d-flex align-items-center gap-1"
+                    className={getNavLinkClass("/create-ticket")}
+                    style={{ minHeight: 44 }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -150,7 +189,8 @@ export const Header: React.FC = () => {
               {role === "IT_STAFF" && (
                 <Link
                   to="/queue"
-                  className="text-white text-decoration-none small fw-medium opacity-90 d-flex align-items-center gap-1"
+                  className={getNavLinkClass("/queue")}
+                  style={{ minHeight: 44 }}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -175,7 +215,8 @@ export const Header: React.FC = () => {
                 <>
                   <Link
                     to="/queue"
-                    className="text-white text-decoration-none small fw-medium opacity-90 d-flex align-items-center gap-1"
+                    className={getNavLinkClass("/queue")}
+                    style={{ minHeight: 44 }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -195,7 +236,8 @@ export const Header: React.FC = () => {
                   </Link>
                   <Link
                     to="/admin/users"
-                    className="text-white text-decoration-none small fw-medium opacity-90 d-flex align-items-center gap-1"
+                    className={getNavLinkClass("/admin/users")}
+                    style={{ minHeight: 44 }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -226,7 +268,7 @@ export const Header: React.FC = () => {
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="btn p-1 d-flex align-items-center gap-2 text-white border-0"
-              style={{ background: "transparent" }}
+              style={{ background: "transparent", minHeight: 44 }}
               aria-expanded={isDropdownOpen}
               aria-haspopup="true"
             >

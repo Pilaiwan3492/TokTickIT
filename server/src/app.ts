@@ -7,6 +7,7 @@ import attachmentRoutes from "./routes/attachment.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import staffRoutes from "./routes/staff.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 
 void getPrisma;
 
@@ -168,5 +169,8 @@ app.use("/api/auth", authRoutes);
 // Lab 3 — IT Staff & Admin APIs
 app.use("/api/v1/staff", staffRoutes);
 app.use("/api/v1/admin", adminRoutes);
+
+// Lab 4 — Role Dashboards APIs
+app.use("/api/v1/dashboard", dashboardRoutes);
 
 export default app;

@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation, } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import MyTickets from "../../src/pages/MyTickets";
 import { RequesterProvider } from "../../src/context/RequesterContext";
 import { RequesterSelector } from "../../src/components/RequesterSelector";
@@ -897,6 +897,63 @@ describe("MyTickets - Lab 2 UI Tests", () => {
 
     await waitFor(() => {
       expect(getLatestTicketRequestUrl()).toContain("sort=ticketNo_asc");
+    });
+  });
+
+  it("resets filters to defaults and reloads tickets when query parameters are removed from URL", async () => {
+    localStorage.setItem(
+      "toktickit_selected_requester",
+      JSON.stringify(mockRequesters[0])
+    );
+
+    const NavigationTester: React.FC = () => {
+      const navigate = useNavigate();
+      return (
+        <div>
+          <button onClick={() => navigate("/my-tickets")}>Clear URL Params</button>
+          <MyTickets />
+        </div>
+      );
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/my-tickets?status=NEW&priority=HIGH&search=computer"]}>
+        <RequesterProvider>
+          <NavigationTester />
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+
+    await screen.findByText("TKT-2026-000001");
+
+    const selects = screen.getAllByRole("combobox");
+    const categorySelect = selects[0] as HTMLSelectElement;
+    const prioritySelect = selects[1] as HTMLSelectElement;
+    const statusSelect = selects[2] as HTMLSelectElement;
+
+    expect(statusSelect.value).toBe("NEW");
+    expect(prioritySelect.value).toBe("HIGH");
+
+    const searchInput = screen.getByPlaceholderText(/Search by ticket number, summary, or description.../i) as HTMLInputElement;
+    expect(searchInput.value).toBe("computer");
+
+    // Clear URL parameters
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Clear URL Params"));
+
+    // Verify filter controls reset to defaults
+    await waitFor(() => {
+      expect(statusSelect.value).toBe("");
+      expect(prioritySelect.value).toBe("");
+      expect(searchInput.value).toBe("");
+    });
+
+    // Verify tickets request without query parameters
+    await waitFor(() => {
+      const lastUrl = getLatestTicketRequestUrl();
+      expect(lastUrl).not.toContain("priority=");
+      expect(lastUrl).not.toContain("status=");
+      expect(lastUrl).not.toContain("search=");
     });
   });
 });

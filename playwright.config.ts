@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e/lab-03",
+  testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -30,7 +30,7 @@ export default defineConfig({
       name: "Tablet",
       use: {
         browserName: "chromium",
-        viewport: { width: 820, height: 1180 },
+        viewport: { width: 768, height: 1024 },
       },
     },
     {

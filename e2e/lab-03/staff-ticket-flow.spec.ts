@@ -167,8 +167,12 @@ test.describe("IT Staff Ticket Queue & Workflow Suite", () => {
     await statusSelect.selectOption("IN_PROGRESS");
     await expect(statusSelect).toHaveValue("IN_PROGRESS");
 
-    // Step 3: Transition IN_PROGRESS -> RESOLVED
+    // Step 3: Transition IN_PROGRESS -> RESOLVED (handling Lab 4 resolution gate modal if present)
     await statusSelect.selectOption("RESOLVED");
+    const resolveModalConfirm = page.locator('[data-testid="confirm-resolve-btn"], #confirm-resolution-btn');
+    if (await resolveModalConfirm.isVisible()) {
+      await resolveModalConfirm.click();
+    }
     await expect(statusSelect).toHaveValue("RESOLVED");
 
     // Step 4: Reload page to verify status persistence in database

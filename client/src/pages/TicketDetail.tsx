@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../api/apiClient";
 import { Ticket, TicketComment, Attachment } from "../types/ticket";
+import { getActionsTaken } from "../api/actionsTaken.api";
+import { ActionsTakenList } from "../components/ticket/ActionsTakenList";
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +37,7 @@ export default function TicketDetail() {
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentSuccess, setCommentSuccess] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState<string | null>(null);
 
   const fetchTicket = useCallback(async () => {
     if (!id) {
@@ -71,7 +74,24 @@ export default function TicketDetail() {
       }
 
       const responseData = await res.json();
-      setTicket(responseData.data || responseData);
+      const loadedTicket = responseData.data || responseData;
+      if (loadedTicket) {
+        if (Array.isArray(loadedTicket.actionsTaken)) {
+          setActionsError(null);
+        } else {
+          try {
+            const fetchedActions = await getActionsTaken(id);
+            loadedTicket.actionsTaken = fetchedActions;
+            setActionsError(null);
+          } catch (err: any) {
+            console.error("Error fetching actions taken:", err);
+            const msg = err?.message || "Failed to load Actions Taken.";
+            setActionsError(msg);
+            loadedTicket.actionsTaken = undefined;
+          }
+        }
+      }
+      setTicket(loadedTicket);
     } catch (err) {
       console.error("Error fetching ticket details:", err);
       setError("Unable to load ticket details. Please try again.");
@@ -389,7 +409,10 @@ export default function TicketDetail() {
     try {
       const res = await apiFetch(`/api/v1/tickets/${id}/resolve-indicator`, {
         method: "POST",
-        body: JSON.stringify({ isRequesterResolved: true }),
+        body: JSON.stringify({
+          isRequesterResolved: true,
+          expectedUpdatedAt: ticket?.updatedAt || new Date().toISOString(),
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -398,7 +421,15 @@ export default function TicketDetail() {
         return;
       }
 
-      setTicket((prev) => (prev ? { ...prev, isRequesterResolved: true } : null));
+      setTicket((prev) =>
+        prev
+          ? {
+              ...prev,
+              isRequesterResolved: true,
+              updatedAt: data?.data?.updatedAt || prev.updatedAt,
+            }
+          : null
+      );
       setResolveSuccess("Problem resolution indicated successfully.");
     } catch (err) {
       setResolveError("An error occurred while updating resolution status.");
@@ -759,6 +790,31 @@ export default function TicketDetail() {
             </p>
           </div>
         </section>
+
+        {/* Actions Taken (Read-Only for Requesters — Lab 4 Issue 35, UI-06) */}
+        <ActionsTakenList
+          ticketId={ticket.id}
+          ticketStatus={ticket.currentStatus}
+          ticketUpdatedAt={ticket.updatedAt}
+          actions={ticket.actionsTaken || []}
+          actionsError={actionsError}
+          onRetryLoadActions={fetchTicket}
+          currentUser={user}
+          readOnly={user?.role !== "IT_STAFF" && user?.role !== "ADMIN"}
+          onActionsChange={(updatedActions, newTicketUpdatedAt) => {
+            setActionsError(null);
+            setTicket((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    actionsTaken: updatedActions,
+                    updatedAt: newTicketUpdatedAt || prev.updatedAt,
+                  }
+                : prev
+            );
+          }}
+          onRefreshTicket={fetchTicket}
+        />
 
         {/* Attachments */}
         <section>
