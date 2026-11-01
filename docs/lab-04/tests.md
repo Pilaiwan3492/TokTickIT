@@ -6,6 +6,14 @@ This document defines the comprehensive Test Strategy, Planned Test Matrix, and 
 
 The test plan is established **prior to implementation** (Test-Driven Development / Specification-Driven Development) to ensure that every business rule, role boundary, parent-child Actions Taken relationship, resolution gate enforcement, optimistic concurrency check, dashboard aggregation, responsive layout, visual styling rule, and regression invariant is verified through automated tests.
 
+### 1.0 Spec-Before-Code Existence Evidence
+Git commit history confirms that `docs/lab-04/specification.md` and `docs/lab-04/tests.md` existed before feature implementation began:
+```bash
+$ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-04/tests.md
+Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts
+```
+The canonical specification and test catalog were authored and committed on **2026-10-04**, prior to database schema migrations (PR #83), Actions Taken API development (PR #84), and dashboard implementations (PRs #86–#89).
+
 ---
 
 ### 1.1 Test Levels & Methodology
@@ -241,6 +249,15 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 ---
 
+### 2.9 Lab 3 Security & Admin Concurrency Regression (`API-45b`, `API-45c`)
+
+| Test ID | Level | Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **API-45b** | API | BR-22 | Concurrency safety during concurrent demotions of active Administrators | Prevents race condition from leaving 0 active admins in DB; exactly 1 demotion succeeds and at least 1 active admin remains | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-45c** | API | Security | Immediate role revocation when Administrator is demoted to IT_STAFF in DB | Demoted user's old Admin JWT immediately receives HTTP 403 `INSUFFICIENT_PERMISSIONS` on Admin endpoints while permitting valid IT Staff endpoints | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+
+---
+
 ## 3. Dual Traceability Matrix
 
 ### 3.1 Acceptance Criteria Traceability Matrix (AC-01 through AC-25)
@@ -390,17 +407,22 @@ npx playwright test e2e/lab-04/responsive.spec.ts --project=tablet
 npx playwright test e2e/lab-04/responsive.spec.ts --project=mobile
 ```
 
-### 4.5 Full Regression Suite (Lab 1 + Lab 2 + Lab 3 + Lab 4)
+### 4.5 Full Regression Suite Execution Summary (548 / 548 Passed — 100% Pass Rate)
 ```bash
-# Run all server tests across all labs
+# Run all server tests across all labs (22 files, 310 passed)
 npm --prefix server test
 
-# Run all client tests across all labs
+# Run all client tests across all labs (22 files, 181 passed)
 npm --prefix client test
 
-# Run full end-to-end regression suite
+# Run full end-to-end regression suite (4 files across Desktop, Tablet, Mobile: 57 passed)
 npx playwright test
 ```
+
+- **Server Tests (Unit, API, Migration, Regression):** 22 test files, **310 passed** (0 failed)
+- **Client Tests (Component, Style, Interaction):** 22 test files, **181 passed** (0 failed)
+- **Playwright E2E Tests (Multi-Device):** 4 test files across Desktop, Tablet, Mobile, **57 passed** (0 failed)
+- **Grand Total Automated Battery:** **548 / 548 Passed (100% Pass Rate)**
 
 ---
 

@@ -40,7 +40,7 @@ jobs:
         run: npm run build
 
   server:
-    name: Server Build & Vitest (309 Tests)
+    name: Server Build & Vitest (310 Tests)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -153,3 +153,13 @@ jobs:
 
       - name: Run Playwright Multi-Device E2E Suite (57 Tests)
         run: npx playwright test e2e/lab-04/
+
+      - name: Upload Playwright Test Report Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

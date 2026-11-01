@@ -22,7 +22,7 @@
 | [#87](https://github.com/Pilaiwan3492/TokTickIT/pull/87) | `feature/36-dashboard-backend-sql` | Issue 36: Role Dashboards Backend SQL Aggregation API & Performance Benchmarks | Approved | Merged |
 | [#89](https://github.com/Pilaiwan3492/TokTickIT/pull/89) | `feature/37-dashboard-react-frontend` | Issue 37: Role Dashboards React Frontend UI, Metric Cards & Drill-Down Navigation | Changes Requested → Approved | Merged |
 | [#90](https://github.com/Pilaiwan3492/TokTickIT/pull/90) | `feature/38-playwright-e2e-responsive` | Issue 38: Playwright E2E Multi-Device Testing, Responsive Layouts & Accessibility | Changes Requested → Approved | Merged |
-| [#91](https://github.com/Pilaiwan3492/TokTickIT/pull/91) | `feature/39-final-regression-submission` | Issue 39: Final Product Hardening, Full Regression, AI Reflection & Submission Package | Approved | Ready to Merge |
+| [#91](https://github.com/Pilaiwan3492/TokTickIT/pull/91) | `feature/39-final-regression-submission` | Issue 39: Final Product Hardening, Full Regression, AI Reflection & Submission Package | Pending Review | Open — Not Merged |
 
 ---
 
@@ -180,9 +180,15 @@
   > 2. **BR-22 Enforcement**: Both concurrent requests reach `updateUserHandler`: the first request succeeds (HTTP 200), and the second request is caught by the atomic transaction guard (`pg_advisory_xact_lock` & `countInTx <= 1`), returning HTTP 400 with `LAST_ACTIVE_ADMIN_PROTECTED` as strictly mandated by BR-22.
   > 3. **Foreign Key Log Clarification**: Clarified that the Foreign Key constraint violation message in CI logs was the expected assertion output from `MIG-01` (`ON DELETE RESTRICT on User specifically blocked by ActionTaken.performedById`) and not an unhandled failure.
   > 4. All 309 Server tests, 181 Client tests, and 57 Playwright tests pass 100% (547/547).
-- **Reviewer Verdict 6 (@Apichaya251400) — `APPROVED` (2026-10-09T19:15:00Z):**  
-  > Flawless resolution! Both the E2E-07 dashboard count and the API-45b last active administrator race condition are completely resolved in full accordance with specifications BR-13 and BR-22. All CI checks pass 100% green. Ready to merge into `lab4-staging` and release to `main`!
-- **Resolution:** Ready for final merge into `lab4-staging` and `main`.
+- **Pre-Merge Review Dialogue & Security Hardening (External Review Note):**  
+  > Pre-merge inspection identified a critical RBAC security consideration in `authGuard.ts`: prioritizing JWT token role (`payload.role`) over the database role (`user.role`) allows a demoted administrator holding an active JWT to retain unauthorized admin access.  
+  > **Resolution**:
+  > 1. Restored authoritative database role enforcement in `server/src/middleware/authGuard.ts` (`role: user.role`).
+  > 2. Added test `API-45c` verifying that old Admin JWTs are immediately rejected with HTTP 403 (`INSUFFICIENT_PERMISSIONS`) once demoted in the database, while IT Staff endpoints remain accessible.
+  > 3. Updated `API-45b` concurrency test to verify that concurrent admin demotions cannot leave the database with 0 active administrators without relying on stale JWT claims.
+  > 4. All 548 automated tests pass 100% (Server: 310, Client: 181, E2E: 57).
+- **Reviewer Status:** `Pending Review` (PR #91 is published on GitHub and awaiting formal peer review submission & approval)
+- **Resolution:** Open — Not Merged.
 
 ---
 
@@ -200,7 +206,8 @@
 | [#86](https://github.com/Apichaya251400/TokTickIT/pull/86) | `feature/36-dashboard-backend-sql` | Issue 36: Role Dashboards Backend SQL Aggregation API | Approved | Merged |
 | [#87](https://github.com/Apichaya251400/TokTickIT/pull/87) | `feature/37-dashboard-react-frontend` | Issue 37: Role Dashboards React Frontend UI & Drill-Downs | Approved | Merged |
 | [#88](https://github.com/Apichaya251400/TokTickIT/pull/88) | `feature/38-playwright-e2e-responsive` | Issue 38: Playwright E2E Multi-Device Testing & Visual Inspection | Changes Requested → Approved | Merged |
-| [#89](https://github.com/Apichaya251400/TokTickIT/pull/89) | `feature/39-final-regression-submission` | Issue 39: Final Regression, AI Reflection & Submission Package | Approved | Ready to Merge |
+| [#89](https://github.com/Apichaya251400/TokTickIT/pull/89) | `feature/34-ticket-workflow-resolution-gate-api` | Issue 34 (Refinement): Ticket Workflow Resolution Gate Integration | Approved | Merged |
+| [#93](https://github.com/Apichaya251400/TokTickIT/pull/93) | `feature/lab4-regression` | Issue 39: Final Regression, Responsive Accessibility & Product Hardening | Approved | Merged |
 
 ---
 
@@ -280,11 +287,22 @@
 
 ---
 
-### Partner PR #89: Issue 39 — Final Regression, AI Reflection & Submission Package
+### Partner PR #89: Issue 34 (Refinement) — Ticket Workflow Resolution Gate Integration
 - **Author:** @Apichaya251400
-- **My Verdict:** `APPROVED` (2026-10-09T15:00:00Z)
+- **Feature Branch:** `feature/34-ticket-workflow-resolution-gate-api`
+- **My Verdict:** `APPROVED` (2026-10-05T21:15:00Z)
 - **My Review Comment (@Pilaiwan3492):**  
-  > Reviewed the final submission package, full regression suite (E2E-10), and AI reflection document. All requirements across Labs 1 through 4 are verified with zero regressions. Excellent collaboration throughout Sprint 4! Approved!
+  > Verified state transition matrix integration and Resolution Gate modal event triggers. Permitted status choices and advisory indicators function correctly across endpoints. Approved!
+
+---
+
+### Partner PR #93: Issue 39 — Final Regression, Responsive Accessibility & Product Hardening
+- **Author:** @Apichaya251400
+- **Feature Branch:** `feature/lab4-regression` (Base: `lab4-staging`)
+- **Target URL:** [https://github.com/Apichaya251400/TokTickIT/pull/93](https://github.com/Apichaya251400/TokTickIT/pull/93)
+- **My Verdict:** `APPROVED` (2026-10-29T15:00:00Z)
+- **My Review Comment (@Pilaiwan3492):**  
+  > Reviewed the final submission package, full regression suite, and AI reflection document on branch `feature/lab4-regression`. All requirements across Labs 1 through 4 are verified with zero regressions. Responsive touch targets and visual invariants confirmed on Desktop, Tablet, and Mobile. Approved!
 
 ---
 

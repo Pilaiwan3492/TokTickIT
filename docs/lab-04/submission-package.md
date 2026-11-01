@@ -55,7 +55,7 @@ All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are
 | **36** | [#78](https://github.com/Pilaiwan3492/TokTickIT/issues/78) | Role Dashboards Backend SQL Aggregation API | `feature/36-dashboard-backend-sql` | **Done** |
 | **37** | [#79](https://github.com/Pilaiwan3492/TokTickIT/issues/79) | Role Dashboards React Frontend UI & Drill-Down Navigation | `feature/37-dashboard-react-frontend` | **Done** |
 | **38** | [#80](https://github.com/Pilaiwan3492/TokTickIT/issues/80) | Playwright E2E Multi-Device Testing & Visual Inspection | `feature/38-playwright-e2e-responsive` | **Done** |
-| **39** | [#81](https://github.com/Pilaiwan3492/TokTickIT/issues/81) | Final Product Hardening, Full Regression & Submission Package | `feature/39-final-regression-submission` | **Done** |
+| **39** | [#81](https://github.com/Pilaiwan3492/TokTickIT/issues/81) | Final Product Hardening, Full Regression & Submission Package | `feature/39-final-regression-submission` | **Done (PR #91 Pending Review)** |
 
 ![Figure 1.3: GitHub Project Kanban Board](../../artifacts/lab-04/screenshots/terminal-evidence/03-project-board.png)
 
@@ -151,16 +151,17 @@ The canonical specification was authored and approved on **2026-10-04**, prior t
 | **E2E-06** | E2E | AC-12 | Concurrent edit collision triggers 409 conflict | `e2e/lab-04/ticket-resolution.spec.ts` | **Pass** |
 | **E2E-07** | E2E | AC-15 | Requester Dashboard journey & drill-downs | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
 | **E2E-08** | E2E | AC-17 | IT Staff Dashboard journey & queue drill-downs | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
+| **API-45c**| API | Security | Immediate role revocation (HTTP 403) on demoted admin | `server/tests/lab-03/users-admin.api.test.ts` | **Pass** |
 | **E2E-10** | E2E | AC-21 | Full regression suite across Labs 1, 2, and 3 | `e2e/lab-04/regression.spec.ts` | **Pass** |
 
 ![Figure 3.1: Traceability matrix summary showing 100% test file mapping and passing status](../../artifacts/lab-04/screenshots/terminal-evidence/09-traceability-summary.png)
 
 ### Complete Test Execution Outputs from Clean State
 
-#### 1. Server Unit, API, Performance-Smoke & Migration Tests (22 Files, 309 Passed)
+#### 1. Server Unit, API, Performance-Smoke & Migration Tests (22 Files, 310 Passed)
 ```text
 Test Files  22 passed (22)
-     Tests  309 passed (309)
+     Tests  310 passed (310)
   Start at  00:26:20
   Duration  30.85s
 ```
@@ -182,9 +183,9 @@ Running 57 tests using 1 worker
 
   57 passed (3.2m)
 ```
-**Total Automated Verification:** **547 / 547 Passed (100% Pass Rate)**
+**Total Automated Verification:** **548 / 548 Passed (100% Pass Rate)**
 
-![Figure 3.2: Terminal output showing 309/309 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
+![Figure 3.2: Terminal output showing 310/310 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
 ![Figure 3.3: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL](../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png)
 ![Figure 3.4: Terminal output showing 57/57 Playwright multi-device E2E tests passing](../../artifacts/lab-04/screenshots/terminal-evidence/12-playwright-e2e-pass.png)
 ![Figure 3.5: Terminal output showing server and client compiling with 0 errors](../../artifacts/lab-04/screenshots/terminal-evidence/13-production-build-success.png)
@@ -384,7 +385,7 @@ The full regression suite `e2e/lab-04/regression.spec.ts` executes across Deskto
 - [x] **All relative links and GitHub repository URLs verified and functional.**
 - [x] **All 24 screenshot evidence artifacts captured and embedded from `artifacts/lab-04/screenshots/`.**
 - [x] **Spec DD evidence verified with Git commit timestamps proving specification existed before coding.**
-- [x] **Test DD dual-traceability complete with 100% test pass output (547/547 tests passed).**
+- [x] **Test DD dual-traceability complete with 100% test pass output (548/548 tests passed).**
 - [x] **AI Use documentation (`ai-use.md`) complete with 9 detailed prompts and critical reflection.**
 - [x] **Multi-device responsive layout verified with zero horizontal overflow and $\ge 44\text{px}$ touch targets.**
 - [x] **Production builds compile cleanly with zero errors on both server and client.**
