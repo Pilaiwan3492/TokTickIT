@@ -180,15 +180,50 @@
   > 2. **BR-22 Enforcement**: Both concurrent requests reach `updateUserHandler`: the first request succeeds (HTTP 200), and the second request is caught by the atomic transaction guard (`pg_advisory_xact_lock` & `countInTx <= 1`), returning HTTP 400 with `LAST_ACTIVE_ADMIN_PROTECTED` as strictly mandated by BR-22.
   > 3. **Foreign Key Log Clarification**: Clarified that the Foreign Key constraint violation message in CI logs was the expected assertion output from `MIG-01` (`ON DELETE RESTRICT on User specifically blocked by ActionTaken.performedById`) and not an unhandled failure.
   > 4. All 309 Server tests, 181 Client tests, and 57 Playwright tests pass 100% (547/547).
-- **Pre-Merge Review Dialogue & Security Hardening (External Review Note):**  
-  > Pre-merge inspection identified a critical RBAC security consideration in `authGuard.ts`: prioritizing JWT token role (`payload.role`) over the database role (`user.role`) allows a demoted administrator holding an active JWT to retain unauthorized admin access. In addition, authentic migration path validation (`MIG-01b`) was added to verify Lab 4 migration SQL execution against pre-existing Lab 1–3 schema with legacy data.  
-  > **Resolution**:
-  > 1. Restored authoritative database role enforcement in `server/src/middleware/authGuard.ts` (`role: user.role`).
-  > 2. Added test `API-45c` verifying that old Admin JWTs are immediately rejected with HTTP 403 (`INSUFFICIENT_PERMISSIONS`) once demoted in the database, while IT Staff endpoints remain accessible.
-  > 3. Updated `API-45b` concurrency test to verify that concurrent admin demotions cannot leave the database with 0 active administrators without relying on stale JWT claims.
-  > 4. Added `MIG-01b` executing real migration SQL against an isolated schema with pre-existing legacy data, proving 100% data preservation and successful schema evolution.
-  > 5. Fixed GitHub Actions CI E2E job cache dependency path and root Playwright setup.
-  > 6. All 549 automated tests pass 100% (Server: 311, Client: 181, E2E: 57).
+- **Reviewer Verdict 6 (@Apichaya251400) — `CHANGES REQUESTED` (2026-11-01T10:00:00Z):**  
+  > Detailed review of commit `5167c48`:
+  > 1. **High Priority RBAC Security Flaw in `authGuard.ts`**: The assignment `role: (payload.role as any) || user.role` gives priority to the JWT token claim over the authoritative database state. If an Administrator is demoted to IT Staff, they retain an active JWT with `role: ADMIN` and can continue accessing Admin-only endpoints (`/api/v1/admin/users`). The middleware must enforce `role: user.role` from the database.
+  > 2. **Immediate Role Revocation Test (`API-45c`)**: Add an explicit test in `users-admin.api.test.ts` verifying that when an Admin is demoted to IT Staff, their existing JWT token is immediately rejected with HTTP 403 (`INSUFFICIENT_PERMISSIONS`) on Admin endpoints, while remaining valid for IT Staff endpoints.
+  > 3. **Fix Concurrency Demotion Test (`API-45b`)**: Ensure `API-45b` verifies atomic protection without relying on stale token claims.
+  > 4. **Authentic Migration Test (`MIG-01b`)**: Add a migration regression test that applies the pure SQL migration file against pre-existing Lab 1–3 schema with legacy data to prove schema evolution and data preservation.
+  > 5. **CI E2E Failure in Run #18**: Fix `setup-node` cache error in `.github/workflows/ci.yml` caused by missing root `package-lock.json`.
+- **Author Response 6 (@Pilaiwan3492) (2026-11-01T11:30:00Z):**  
+  > Addressed all security and CI items in commit `db60a52` / `41adb1e`:
+  > 1. **Authoritative DB Role**: Reverted `server/src/middleware/authGuard.ts` to enforce `role: user.role` authoritative database lookup.
+  > 2. **Added `API-45c`**: Implemented `API-45c` in `server/tests/lab-03/users-admin.api.test.ts`, asserting immediate HTTP 403 rejection on Admin endpoints after demotion, while IT Staff routes remain accessible.
+  > 3. **Hardened `API-45b`**: Refactored `API-45b` to test atomic demotion protection under valid admin sessions.
+  > 4. **Added `MIG-01b`**: Added `server/tests/lab-04/migration-regression.test.ts` to test schema evolution from Lab 1–3 baseline to Lab 4 with legacy entities.
+  > 5. **Fixed CI E2E Job**: Configured `cache-dependency-path` targeting `client/package-lock.json` and `server/package-lock.json`, and installed root Playwright runner via `npm install ... --no-save`.
+- **Reviewer Verdict 7 (@Apichaya251400) — `CHANGES REQUESTED` (2026-11-01T14:00:00Z):**  
+  > Review of commit `41adb1e`:
+  > 1. **CI Failure on MIG-01b (Run #22)**: Server test failed on `MIG-01b` with `PostgreSQL: cannot insert multiple commands into a prepared statement`. Prepared statements cannot receive multiple commands in a single query string.
+  > 2. **Requester Dashboard Inconsistency**: Documentation differs across files: `README.md` (Open, Waiting for Requester, Resolved, Closed), `specification.md` (Open, Waiting for Requester, Recently Updated, Recently Resolved), `ui-spec.md`. Confirm canonical dashboard model, metrics, calculation rules, and drill-downs, and harmonize across all docs.
+  > 3. **Duplicate Submission Documents**: Multiple DOCX files detected (`TokTickIT_Lab4_Final_Submission.docx` and `CPE334_Lab4_Submission_67070503492.docx`). Clean up to a single canonical DOCX and single PDF.
+  > 4. **Issue vs. PR Distinction**: Clarify that Issue #39 implementation is Done, while PR #91 is published, open, and awaiting formal GitHub review approval.
+  > 5. **Demo Credentials Security Notice**: Add explicit security notice in `README.md` for test credentials.
+- **Author Response 7 (@Pilaiwan3492) (2026-11-01T15:30:00Z):**  
+  > Addressed all 5 points in commit `a87dbfc`:
+  > 1. **MIG-01b Multi-Statement Execution Fix**: Implemented statement-by-statement execution helper `executeStatements()` splitting DDL/DML by `;`, executed inside `prisma.$transaction` with `SET search_path TO "${schemaName}", public`. CI Run #24 passed 3/3 jobs (549/549 tests).
+  > 2. **Canonical Requester Dashboard Harmonization**: Confirmed canonical model: 4 primary cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table (`take: 5`), and recently resolved tickets list (`take: 5`). Formally documented that `Waiting for Requester` is an operational subset of `My Open Tickets` (intentional overlap). Harmonized in `specification.md` (lines 31 & 312), `ui-spec.md`, `api-spec.md`, `README.md`, and submission packages.
+  > 3. **Single Canonical Submission Package**: Removed duplicate DOCX, leaving only `artifacts/lab-04/CPE334_Lab4_Submission_67070503492.docx` and `artifacts/lab-04/report_lab04_67070503492.pdf`.
+  > 4. **Issue vs. PR Status Clarification**: Updated `reviewer.md` to cleanly separate Issue #39 (Done) from PR #91 (Open, pending formal review).
+  > 5. **Demo Credentials Notice**: Added prominent Security Notice blockquote under `Seed Credentials & Test Accounts` in `README.md`.
+- **Reviewer Verdict 8 (@Apichaya251400) — `COMMENTED / CHANGES REQUESTED` (2026-11-01T16:45:00Z):**  
+  > Latest review of commit `c196faf` and CI Run #26:
+  > 1. **CI 3/3 Jobs Passed**: All 549 tests pass 100% on GitHub Actions (Server: 311, Client: 181, E2E: 57).
+  > 2. **MIG-01b Architectural Limitation Noted**: Acknowledged that MIG-01b proves SQL migration script correctness, legacy data preservation, and FK constraints in isolated schema by parsing SQL commands, but does not execute full `prisma migrate deploy` CLI. (Recommended as future staging enhancement).
+  > 3. **Update CI Status in reviewer.md**: Change `PENDING CI RUN` to `PASS — Latest GitHub Actions Run #26 completed successfully`, record latest commit `c196faf`, test count `549/549`, and `PENDING FORMAL PEER REVIEW AND GITHUB APPROVAL`.
+  > 4. **Harmonize Test Counts in README & Docs**: Recheck all occurrences of 548, 547, 310 across README and docs to ensure no stale test numbers exist as current metrics; enforce 549 (Server: 311, Client: 181, E2E: 57).
+  > 5. **Update PR #91 Description on GitHub**: Replace stale commit SHA reference with generic "the latest commit" and check the 549 tests pass verification checkbox.
+  > 6. **Record Complete Review Comments in reviewer.md & Post on PR #91**: Record full review dialogue in `reviewer.md` and post a comprehensive update comment on GitHub PR #91.
+- **Author Response 8 (@Pilaiwan3492) (2026-11-01T17:05:00Z):**  
+  > Addressed all final review items in commits `76f4366` and `c196faf`:
+  > 1. Updated `docs/lab-04/reviewer.md` with CI Status PASS (Run #26), latest verified commit, and 549/549 test counts.
+  > 2. Documented architectural note regarding MIG-01b schema evolution validation vs CLI deployment.
+  > 3. Verified all test counts across `README.md`, `tests.md`, `ai-use.md`, `submission-package.md`, and `submission-package.html` to be strictly 549 tests (Server: 311, Client: 181, E2E: 57).
+  > 4. Patched PR #91 description on GitHub via API: checked passing test checkbox and removed hardcoded SHA.
+  > 5. Posted full review dialogue and resolution comment directly to GitHub PR #91.
+  > 6. Recompiled canonical DOCX and PDF submission artifacts and pushed to `feature/39-final-regression-submission`.
 - **Reviewer Status:** `Pending Review` (PR #91 is published on GitHub and awaiting formal peer review submission & approval)
 - **Resolution:** Open — Not Merged.
 
