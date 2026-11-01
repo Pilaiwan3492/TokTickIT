@@ -235,11 +235,17 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
       });
 
       // 3. Attempting to delete the isolated user must fail due to ActionTaken.performedById ON DELETE RESTRICT
-      await expect(
-        prisma.user.delete({
+      let foreignKeyError: any = null;
+      try {
+        await prisma.user.delete({
           where: { id: isolatedUser.id },
-        })
-      ).rejects.toThrow();
+        });
+      } catch (err: any) {
+        foreignKeyError = err;
+      }
+      expect(foreignKeyError).not.toBeNull();
+      // Verifies foreign key constraint on ActionTaken.performedById blocks User deletion
+      expect(String(foreignKeyError.message || foreignKeyError)).toMatch(/foreign key|constraint|ActionTaken_performedById|P2003/i);
 
       // 4. Once the ActionTaken is removed, deletion of the isolated user must succeed
       await prisma.actionTaken.delete({

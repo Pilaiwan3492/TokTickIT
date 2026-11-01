@@ -61,7 +61,7 @@ All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are
 
 ### 1.3 Rendered Peer Review Record
 - **Review Document Link:** [https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md](https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md)  
-- The review record catalogs the complete bi-directional review dialogue between Author Pilaiwan Churdchu (@Pilaiwan3492) and Peer Reviewer Aphichaya Klinhual (@Apichaya251400) across PRs #82 through #91. It documents substantive code reviews, changes requested (e.g., keyboard Tab navigation authenticity, tablet viewport alignment to 768px, seed data consistency), and final approvals.
+- The review record documents the completed peer review history for previous feature PRs (PRs #82–#90 on author repo; PRs #81–#89, #93 on partner repo) and the current pending review status of PR #91. The final approval for PR #91 will be recorded after the formal GitHub review is completed.
 
 ![Figure 1.4: Rendered Peer Review Record](../../artifacts/lab-04/screenshots/terminal-evidence/04-rendered-reviewer.png)
 
@@ -209,7 +209,7 @@ Running 57 tests using 1 worker
 9. **Full Regression Suite across Labs 1–3**: Verified complete backward compatibility for all legacy features without regressions.
 
 ### 2. My Reflection on AI Use
-Developing **TokTickIT Lab 4** highlighted the immense value of combining modern AI coding agents with strict software engineering methodology (Spec DD and TDD). When architectural constraints and business rules were formally established upfront in `specification.md`, the AI agent implemented complex full-stack features with high fidelity, writing 547 automated tests with zero regressions.
+Developing **TokTickIT Lab 4** highlighted the immense value of combining modern AI coding agents with strict software engineering methodology (Spec DD and TDD). When architectural constraints and business rules were formally established upfront in `specification.md`, the AI agent implemented complex full-stack features with high fidelity, writing 548 automated tests with zero regressions.
 
 The experience also underscored that **human engineering judgment remains paramount in handling concurrency, security boundaries, and authentic accessibility**:
 - **Optimistic Concurrency Control**: Preventing dirty writes on parent-child entities required human architectural guidance to ensure that adding an Action Taken checked the parent ticket's `updatedAt` timestamp (`expectedTicketUpdatedAt`), avoiding race conditions against concurrent ticket closures.
