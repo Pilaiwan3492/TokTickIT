@@ -28,7 +28,7 @@ To address this:
   - Backend enforcement rejecting client bypass attempts with HTTP 400 / HTTP 403.
   - Concurrency collision detection returning HTTP 409 `STALE_UPDATE_CONFLICT` when updating outdated ticket versions.
 - **Role-Appropriate Dashboards**:
-  - **Requester Dashboard**: Total open tickets count, tickets waiting for requester count, recently updated tickets, recently resolved tickets, and quick actions (`Create Ticket`, `View My Tickets`).
+  - **Requester Dashboard**: 4 primary metric cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table (`take: 5`), recently resolved tickets list (`take: 5`), and quick actions (`+ Create Ticket`, `View My Tickets`). All counts are strictly scoped to the authenticated Requester.
   - **IT Staff Dashboard**: Unassigned tickets count, tickets owned by current user count, tickets grouped by status or IT Priority, recent operational tickets queue, and quick actions.
   - **Administrator Dashboard**: Inherits IT Staff operational metrics with concise user-account summary counters (`activeUsers`, `activeStaff`, `activeAdmins`).
   - Backend authoritative queries calculating summary metrics (no raw full collection filtering on the client) with documented empty states and query parameters for accessible drill-down navigation.
@@ -309,7 +309,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 - **AC-14**: Given a ticket in `RESOLVED` status, when an IT Staff user transitions it to `REOPENED`, then the status updates to `REOPENED` and active queue processing resumes.
 
 ### 10.3 Role Dashboards Acceptance Criteria
-- **AC-15**: Given an authenticated Requester calling `GET /api/v1/dashboard/requester`, then the response contains authoritative counts for Open, In Progress, Resolved, and Closed tickets owned exclusively by that Requester.
+- **AC-15**: Given an authenticated Requester calling `GET /api/v1/dashboard/requester`, then the response contains authoritative counts for `My Open Tickets` (`openTickets`), `Waiting for Requester` (`waitingForRequester`), `Resolved` (`resolved`), and `Closed` (`closed`) tickets owned exclusively by that Requester.
 - **AC-16**: Given an authenticated Requester with zero tickets, when viewing the Requester Dashboard, then all metric cards display zero counts and the recent tickets list displays an accessible empty state with a "Create Ticket" call to action.
 - **AC-17**: Given an authenticated IT Staff user calling `GET /api/v1/dashboard/staff`, then the response contains authoritative service-desk metrics for Unassigned, Assigned to Me, and counts by Status and IT Priority.
 - **AC-18**: Given an authenticated Administrator calling `GET /api/v1/dashboard/staff`, then the response includes IT Staff operational metrics plus user account summary counts (`activeUsers`, `activeStaff`, `activeAdmins`).
