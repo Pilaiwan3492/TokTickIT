@@ -37,7 +37,12 @@ Lab 4 expands TokTickIT into a comprehensive IT operations platform with work lo
 
 - **Role-Specific Dashboards with SQL Aggregations**:
   - Optimized database aggregations via Prisma `groupBy` and count queries ($< 300\text{ms}$ latency).
-  - **Requester Dashboard** (`/dashboard`): 4 primary metric cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table, recently resolved tickets list, and empty state CTA.
+  - **Requester Dashboard** (`/dashboard`): 4 primary metric cards scoped strictly to the authenticated Requester:
+    - `My Open Tickets`: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')` (Drill-down: `/my-tickets?status=open_all`).
+    - `Waiting for Requester`: Count of tickets where `status = 'WAITING_FOR_REQUESTER'` requiring Requester attention. Note: This is an operational subset of `My Open Tickets` (Drill-down: `/my-tickets?status=WAITING_FOR_REQUESTER`).
+    - `Resolved`: Count of tickets formally marked `RESOLVED` by IT Staff; excludes `CLOSED` (Drill-down: `/my-tickets?status=RESOLVED`).
+    - `Closed`: Count of terminal `CLOSED` tickets; excludes `RESOLVED` (Drill-down: `/my-tickets?status=CLOSED`).
+    - Recent tickets table (up to 5 most recently updated, `take: 5`), recently resolved tickets list (top 5 `RESOLVED`, `take: 5`), and accessible empty state CTA.
   - **IT Staff Dashboard** (`/dashboard`): 6 primary operational metric cards (`New`, `Open`, `In Progress`, `Waiting Req`, `My Assigned`, `Unassigned`), Priority Attention strip (`Urgent`, `High`), and Current User Recent Actions list (max 5).
   - **Administrator Dashboard** (`/dashboard`): Inherits Staff operational metrics and adds System User Accounts summary (`Active Users`, `Active Staff`, `Active Admins`).
   - Accessible drill-down navigation: Clicking any metric card routes to filtered views (`/my-tickets?status=...` or `/staff/tickets?status=...`).
@@ -70,7 +75,8 @@ TokTickIT/
 │       │   ├── 06-requester-resolve-indicator-{desktop,tablet,mobile}.png
 │       │   ├── 07-concurrency-conflict-banner-{desktop,tablet,mobile}.png
 │       │   └── 08-admin-dashboard-{desktop,tablet,mobile}.png
-│       └── CPE334_Lab4_Submission_67070503492.docx # Final submission package
+│       ├── CPE334_Lab4_Submission_67070503492.docx # Canonical final submission package
+│       └── report_lab04_67070503492.pdf            # Official 37-page submission report
 ├── client/                      # React 18 + TypeScript + Vite frontend
 │   ├── src/
 │   │   ├── components/ticket/   # ActionsTakenSection, ActionTakenModal, ActionsTakenList
@@ -85,7 +91,7 @@ TokTickIT/
 │   │   ├── controllers/         # actionsTaken, ticketWorkflow, dashboard, auth, admin controllers
 │   │   ├── validators/          # ticket-workflow.validator.ts, actions-taken.validator.ts
 │   │   └── middlewares/         # auth.middleware, requireRole, ownership guards
-│   └── tests/lab-04/            # Vitest + Supertest backend test suites (310 tests across all labs)
+│   └── tests/lab-04/            # Vitest + Supertest backend test suites (311 tests across all labs)
 ├── e2e/
 │   └── lab-04/                  # Playwright multi-device E2E suites (57 tests across 3 viewports)
 │       ├── actions-taken-flow.spec.ts
@@ -106,6 +112,12 @@ TokTickIT/
 ---
 
 ## 👥 Seed Credentials & Test Accounts
+
+> [!WARNING]
+> **Security Notice — Demo Credentials**  
+> The credentials listed below are provided strictly for local development, testing, and demonstration purposes. They are seeded test accounts and must not be reused in production or deployed environments.  
+> 
+> For production deployments, configure unique accounts, strong passwords, and secure environment-specific credentials. Never expose real user credentials, production passwords, or secrets in the repository.
 
 | Role | Name | Email | Password | Permissions & Notes |
 | :--- | :--- | :--- | :--- | :--- |
@@ -187,10 +199,10 @@ cd ../client && npm run build
 
 | Test Suite | Tooling | Scope / Test Count | Passed / Total | Pass Rate | Status |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| **Server Unit & API Tests** | Vitest + Supertest | 22 test files (`UNIT-01`..`04`, `API-01`..`33`, `PERF-01`..`02`, `MIG-01`..`04`) | **310 / 310** | 100% | **PASS** |
+| **Server Unit & API Tests** | Vitest + Supertest | 22 test files (`UNIT-01`..`04`, `API-01`..`33`, `PERF-01`..`02`, `MIG-01`..`04`) | **311 / 311** | 100% | **PASS** |
 | **Client Component Tests** | Vitest + RTL + jsdom | 22 test files (`UI-01`..`UI-26`, `VIS-01`..`03`, auth context) | **181 / 181** | 100% | **PASS** |
 | **Playwright Multi-Device E2E** | Playwright Chromium | 4 test suites across Desktop (1280x800), Tablet (768x1024), Mobile (375x667) | **57 / 57** | 100% | **PASS** |
-| **Total Automated Tests** | — | **Full Regression Battery across Labs 1, 2, 3, and 4** | **548 / 548** | **100%** | **PASS** |
+| **Total Automated Tests** | — | **Full Regression Battery across Labs 1, 2, 3, and 4** | **549 / 549** | **100%** | **PASS** |
 
 ---
 

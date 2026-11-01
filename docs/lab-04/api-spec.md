@@ -398,6 +398,21 @@ Retrieve summary metrics, recent tickets, and recently resolved tickets scoped s
 }
 ```
 
+#### Metric Definitions & Calculation Rules:
+All metrics are strictly calculated via PostgreSQL aggregations and scoped to tickets owned by the authenticated Requester (`Ticket.userId = currentUserId` or legacy `Ticket.requesterId = requesterProfileId`):
+- `openTickets`: Sum of tickets where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`.
+- `waitingForRequester`: Count of tickets where `status = 'WAITING_FOR_REQUESTER'`. **Invariant Relationship**: This is an operational subset of `openTickets` awaiting user action (its count is contained inside `openTickets`).
+- `resolved`: Count of tickets where `status = 'RESOLVED'` (strictly excludes `CLOSED`).
+- `closed`: Count of terminal tickets where `status = 'CLOSED'` (strictly excludes active `RESOLVED`).
+
+#### Drill-Down Navigation Mappings:
+| Metric Key | UI Card Title | Status Filter | Target Route |
+| :--- | :--- | :--- | :--- |
+| `openTickets` | My Open Tickets | `open_all` | `/my-tickets?status=open_all` |
+| `waitingForRequester` | Waiting for Requester | `WAITING_FOR_REQUESTER` | `/my-tickets?status=WAITING_FOR_REQUESTER` |
+| `resolved` | Resolved | `RESOLVED` | `/my-tickets?status=RESOLVED` |
+| `closed` | Closed | `CLOSED` | `/my-tickets?status=CLOSED` |
+
 ---
 
 ### 4.2 IT Staff & Administrator Dashboard

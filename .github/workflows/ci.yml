@@ -40,7 +40,7 @@ jobs:
         run: npm run build
 
   server:
-    name: Server Build & Vitest (310 Tests)
+    name: Server Build & Vitest (311 Tests)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -86,7 +86,7 @@ jobs:
       - name: Seed database
         run: npm run prisma:seed
 
-      - name: Run server tests (310 tests)
+      - name: Run server tests (311 tests)
         run: npm test -- --run
 
       - name: Build server

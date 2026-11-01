@@ -1,6 +1,6 @@
-# CPE334 Lab 4 Submission — TokTickIT
+# CPE334 Lab 4 Submission â€” TokTickIT
 
-**Course:** CPE 334 Software Engineering — Lab 4 (Sprint 4)  
+**Course:** CPE 334 Software Engineering â€” Lab 4 (Sprint 4)  
 **Student Name:** Pilaiwan Churdchu  
 **Student ID:** 67070503492  
 **GitHub Username:** [@Pilaiwan3492](https://github.com/Pilaiwan3492)  
@@ -57,11 +57,15 @@ All 10 Lab 4 Issues (Issues #30 through #39 / GitHub Issues #72 through #81) are
 | **38** | [#80](https://github.com/Pilaiwan3492/TokTickIT/issues/80) | Playwright E2E Multi-Device Testing & Visual Inspection | `feature/38-playwright-e2e-responsive` | **Done** |
 | **39** | [#81](https://github.com/Pilaiwan3492/TokTickIT/issues/81) | Final Product Hardening, Full Regression & Submission Package | `feature/39-final-regression-submission` | **Done (PR #91 Pending Review)** |
 
+> **Distinction Between Issue #39 and PR #91**:  
+> - **Issue #39 (GitHub Issue #81)**: Engineering deliverables, full test suites, documentation, and artifact compilation are 100% completed (**Done**).  
+> - **PR #91**: Published and open on GitHub targeting `lab4-staging`. It is currently awaiting formal peer review submission and approval by `@Apichaya251400` (**Pending Review / Open — Not Merged**). Merge will only occur after explicit GitHub review approval.
+
 ![Figure 1.3: GitHub Project Kanban Board](../../artifacts/lab-04/screenshots/terminal-evidence/03-project-board.png)
 
 ### 1.3 Rendered Peer Review Record
 - **Review Document Link:** [https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md](https://github.com/Pilaiwan3492/TokTickIT/blob/feature/39-final-regression-submission/docs/lab-04/reviewer.md)  
-- The review record documents the completed peer review history for previous feature PRs (PRs #82–#90 on author repo; PRs #81–#89, #93 on partner repo) and the current pending review status of PR #91. The final approval for PR #91 will be recorded after the formal GitHub review is completed.
+- The review record documents the completed peer review history for previous feature PRs (PRs #82â€“#90 on author repo; PRs #81â€“#89, #93 on partner repo) and the current pending review status of PR #91. The final approval for PR #91 will be recorded after the formal GitHub review is completed.
 
 ![Figure 1.4: Rendered Peer Review Record](../../artifacts/lab-04/screenshots/terminal-evidence/04-rendered-reviewer.png)
 
@@ -91,7 +95,7 @@ The specification establishes **20 Functional Requirements (`FR-01` to `FR-20`)*
 - **FR-01 to FR-07 (Actions Taken)**: Parent-child Actions Taken relationship linked to tickets, auto-attributed `performedBy`, edit operations, mandatory follow-up notes, inactive actor rejection, Requester read-only visibility, and terminal state action logging locking.
 - **FR-08 to FR-12 (Ticket Lifecycle & Resolution Gate)**: 18-transition permitted status matrix across 8 statuses, resolution gate restricting `RESOLVED` to IT Staff and Admin, advisory resolution indicator for Requesters, and optimistic concurrency collision handling.
 - **FR-13 to FR-16 (Role Dashboards)**: Scoped Requester dashboard (4 cards, recent tickets), Staff dashboard (6 operational cards, priority strip, my actions), Admin system metrics, and drill-down navigation.
-- **FR-17 to FR-20 (System Invariants & Quality)**: 100% backward compatibility with Labs 1–3, application shell landing page routing, safe client error states, and WCAG touch targets / focus rings.
+- **FR-17 to FR-20 (System Invariants & Quality)**: 100% backward compatibility with Labs 1â€“3, application shell landing page routing, safe client error states, and WCAG touch targets / focus rings.
 
 #### Permitted Status Transition Matrix (18 Transitions):
 | Current Status | Permitted Next Statuses | Invariant Enforced |
@@ -102,8 +106,8 @@ The specification establishes **20 Functional Requirements (`FR-01` to `FR-20`)*
 | **`WAITING_FOR_REQUESTER`** | `IN_PROGRESS`, `RESOLVED`, `CANCELLED` | Awaiting user clarification |
 | **`RESOLVED`** | `CLOSED`, `REOPENED` | Terminal gate or work resumption |
 | **`REOPENED`** | `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | Resumes active operational workflow |
-| **`CLOSED`** | *(None — Terminal State)* | Immutable; action logging and status updates locked |
-| **`CANCELLED`** | *(None — Terminal State)* | Immutable; action logging and status updates locked |
+| **`CLOSED`** | *(None â€” Terminal State)* | Immutable; action logging and status updates locked |
+| **`CANCELLED`** | *(None â€” Terminal State)* | Immutable; action logging and status updates locked |
 
 ![Figure 2.1: Canonical 18-Status Transition Matrix & Role Authorization](../../artifacts/lab-04/screenshots/terminal-evidence/07-status-transition-matrix.png)
 
@@ -113,7 +117,7 @@ The Git commit history confirms that `docs/lab-04/specification.md` existed befo
 $ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-04/specification.md
 Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts
 ```
-The canonical specification was authored and approved on **2026-10-04**, prior to database migrations (PR #83), Actions Taken API development (PR #84), and dashboard implementations (PRs #86–#89).
+The canonical specification was authored and approved on **2026-10-04**, prior to database migrations (PR #83), Actions Taken API development (PR #84), and dashboard implementations (PRs #86â€“#89).
 
 ![Figure 2.2: Terminal evidence proving specification authored on 2026-10-04 prior to feature implementation](../../artifacts/lab-04/screenshots/terminal-evidence/08-spec-before-code.png)
 
@@ -152,18 +156,19 @@ The canonical specification was authored and approved on **2026-10-04**, prior t
 | **E2E-07** | E2E | AC-15 | Requester Dashboard journey & drill-downs | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
 | **E2E-08** | E2E | AC-17 | IT Staff Dashboard journey & queue drill-downs | `e2e/lab-04/dashboards.spec.ts` | **Pass** |
 | **API-45c**| API | Security | Immediate role revocation (HTTP 403) on demoted admin | `server/tests/lab-03/users-admin.api.test.ts` | **Pass** |
+| **MIG-01b** | Migration | AC-21 | Multi-stage migration path verification executing Lab 4 SQL onto pre-existing Lab 1–3 schema | `server/tests/lab-04/migration-regression.test.ts` | **Pass** |
 | **E2E-10** | E2E | AC-21 | Full regression suite across Labs 1, 2, and 3 | `e2e/lab-04/regression.spec.ts` | **Pass** |
 
 ![Figure 3.1: Traceability matrix summary showing 100% test file mapping and passing status](../../artifacts/lab-04/screenshots/terminal-evidence/09-traceability-summary.png)
 
 ### Complete Test Execution Outputs from Clean State
 
-#### 1. Server Unit, API, Performance-Smoke & Migration Tests (22 Files, 310 Passed)
+#### 1. Server Unit, API, Performance-Smoke & Migration Tests (22 Files, 311 Passed)
 ```text
 Test Files  22 passed (22)
-     Tests  310 passed (310)
+     Tests  311 passed (311)
   Start at  00:26:20
-  Duration  30.85s
+  Duration  31.20s
 ```
 
 #### 2. Client Component, Style & Interaction Tests (22 Files, 181 Passed)
@@ -183,7 +188,7 @@ Running 57 tests using 1 worker
 
   57 passed (3.2m)
 ```
-**Total Automated Verification:** **548 / 548 Passed (100% Pass Rate)**
+**Total Automated Verification:** **549 / 549 Passed (100% Pass Rate)**
 
 ![Figure 3.2: Terminal output showing 310/310 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
 ![Figure 3.3: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL](../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png)
@@ -206,7 +211,7 @@ Running 57 tests using 1 worker
 6. **Actions Taken Frontend & Visual Polish**: Created React components with Zen Green tokens, Amber pills, and form preservation.
 7. **Role Dashboards SQL API & Frontend**: Developed high-performance SQL aggregation endpoints and responsive dashboard UI.
 8. **Playwright Multi-Device Battery**: Implemented automated test suites across Desktop, Tablet, and Mobile with 24 screenshots.
-9. **Full Regression Suite across Labs 1–3**: Verified complete backward compatibility for all legacy features without regressions.
+9. **Full Regression Suite across Labs 1â€“3**: Verified complete backward compatibility for all legacy features without regressions.
 
 ### 2. My Reflection on AI Use
 Developing **TokTickIT Lab 4** highlighted the immense value of combining modern AI coding agents with strict software engineering methodology (Spec DD and TDD). When architectural constraints and business rules were formally established upfront in `specification.md`, the AI agent implemented complex full-stack features with high fidelity, writing 548 automated tests with zero regressions.
@@ -310,7 +315,16 @@ When two users concurrently modify a ticket or its actions, the backend detects 
 ## Answer Part 8: Working Requester Dashboard & Final Regression UI
 
 ### 1. Requester Dashboard Across Viewports
-Provides Requesters with personalized metrics: 4 primary cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table, and recently resolved tickets list.
+Provides Requesters with personalized metrics: 4 primary cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table, and recently resolved tickets list. All metrics are calculated authoritatively by PostgreSQL and strictly scoped to the logged-in Requester (`Ticket.userId = currentUserId` or legacy `Ticket.requesterId = currentProfileId`).
+
+#### Requester Dashboard Metric Card Calculation Rules & Invariants:
+| Card Title | Calculation / Included Statuses | Invariant & Relationship Rule | Drill-Down Destination |
+| :--- | :--- | :--- | :--- |
+| **My Open Tickets** | `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')` | Sum of all active operational tickets owned by the Requester. | `/my-tickets?status=open_all` |
+| **Waiting for Requester** | `status = 'WAITING_FOR_REQUESTER'` | **Operational Subset**: Tickets requiring Requester action/clarification. Its count is contained within *My Open Tickets*, not a disjoint set. | `/my-tickets?status=WAITING_FOR_REQUESTER` |
+| **Resolved** | `status = 'RESOLVED'` | Formally marked resolved by IT Staff. Strictly excludes `CLOSED`. | `/my-tickets?status=RESOLVED` |
+| **Closed** | `status = 'CLOSED'` | Terminal tickets. Strictly excludes active `RESOLVED`. | `/my-tickets?status=CLOSED` |
+
 - **Desktop ($1280 \times 800$):**  
   ![Requester Dashboard Desktop](../../artifacts/lab-04/screenshots/02-requester-dashboard-desktop.png)
 - **Tablet ($768 \times 1024$):**  
@@ -366,14 +380,14 @@ The full regression suite `e2e/lab-04/regression.spec.ts` executes across Deskto
 
 | Quality Invariant | Inspection Standard | Verification Method | Status |
 | :--- | :--- | :--- | :---: |
-| **Zero Horizontal Overflow (`RESP-04`)** | `document.documentElement.scrollWidth <= window.innerWidth` | `assertNoHorizontalOverflow()` across all screens in Playwright | ✅ **Passed** |
-| **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)** | Interactive buttons, inputs, close icons meet minimum $44\text{px}$ hit areas | Multi-device assertions & `touch-targets.css` | ✅ **Passed** |
-| **Brand Color Fidelity (`VIS-01`)** | Header, cards, and buttons conform strictly to `#006B3C` | Computed CSS token assertions in RTL & Vitest | ✅ **Passed** |
-| **Badge Contrast & Distinction (`VIS-02`)**| Status/Priority badges conform to spec; Amber follow-up pill `#D97706` | Automated style assertions in `ui-style.test.tsx` | ✅ **Passed** |
-| **Visible Focus Outlines (`VIS-03`)** | High-contrast keyboard focus indicator (`#0B7A46`, $2\text{px}$) visible | Sequential `Tab` key traversal test in Playwright & RTL | ✅ **Passed** |
-| **Zero Text Clipping (`VIS-04`)** | Dense text wraps cleanly (`break-words`); metric numbers fit | Multi-device visual layout inspection in E2E | ✅ **Passed** |
-| **Form State Preservation (`BR-18`)** | Form values preserved upon validation or HTTP 409 conflict | Component tests in `ActionsTakenSection.test.tsx` | ✅ **Passed** |
-| **Double-Click Protection (`BR-19`)** | In-flight submissions disable button and display spinner | E2E and component race condition tests | ✅ **Passed** |
+| **Zero Horizontal Overflow (`RESP-04`)** | `document.documentElement.scrollWidth <= window.innerWidth` | `assertNoHorizontalOverflow()` across all screens in Playwright | âœ… **Passed** |
+| **Touch Targets $\ge 44 \times 44\text{px}$ (`RESP-03`)** | Interactive buttons, inputs, close icons meet minimum $44\text{px}$ hit areas | Multi-device assertions & `touch-targets.css` | âœ… **Passed** |
+| **Brand Color Fidelity (`VIS-01`)** | Header, cards, and buttons conform strictly to `#006B3C` | Computed CSS token assertions in RTL & Vitest | âœ… **Passed** |
+| **Badge Contrast & Distinction (`VIS-02`)**| Status/Priority badges conform to spec; Amber follow-up pill `#D97706` | Automated style assertions in `ui-style.test.tsx` | âœ… **Passed** |
+| **Visible Focus Outlines (`VIS-03`)** | High-contrast keyboard focus indicator (`#0B7A46`, $2\text{px}$) visible | Sequential `Tab` key traversal test in Playwright & RTL | âœ… **Passed** |
+| **Zero Text Clipping (`VIS-04`)** | Dense text wraps cleanly (`break-words`); metric numbers fit | Multi-device visual layout inspection in E2E | âœ… **Passed** |
+| **Form State Preservation (`BR-18`)** | Form values preserved upon validation or HTTP 409 conflict | Component tests in `ActionsTakenSection.test.tsx` | âœ… **Passed** |
+| **Double-Click Protection (`BR-19`)** | In-flight submissions disable button and display spinner | E2E and component race condition tests | âœ… **Passed** |
 
 ![Figure 9.1: Visual QA and responsive design invariant verification matrix](../../artifacts/lab-04/screenshots/terminal-evidence/14-visual-checklist-summary.png)
 
@@ -385,7 +399,7 @@ The full regression suite `e2e/lab-04/regression.spec.ts` executes across Deskto
 - [x] **All relative links and GitHub repository URLs verified and functional.**
 - [x] **All 24 screenshot evidence artifacts captured and embedded from `artifacts/lab-04/screenshots/`.**
 - [x] **Spec DD evidence verified with Git commit timestamps proving specification existed before coding.**
-- [x] **Test DD dual-traceability complete with 100% test pass output (548/548 tests passed).**
+- [x] **Test DD dual-traceability complete with 100% test pass output (549/549 tests passed).**
 - [x] **AI Use documentation (`ai-use.md`) complete with 9 detailed prompts and critical reflection.**
 - [x] **Multi-device responsive layout verified with zero horizontal overflow and $\ge 44\text{px}$ touch targets.**
 - [x] **Production builds compile cleanly with zero errors on both server and client.**

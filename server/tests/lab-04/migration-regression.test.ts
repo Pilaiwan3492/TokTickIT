@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import fs from "fs";
+import path from "path";
 import request from "supertest";
 import bcrypt from "bcryptjs";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
 import { seedDatabase } from "../../prisma/seed.js";
 
-describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG-04)", () => {
+describe("Database Migration & Regression Tests (Lab 4 â€” Issue 32: MIG-01..MIG-04)", () => {
   const prisma = getPrisma();
 
   let tokenRequester: string;
@@ -258,6 +260,188 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
       expect(deletedUser.id).toBe(isolatedUser.id);
     });
 
+    it("MIG-01b: should prove authentic migration path by applying Lab 4 migration SQL to pre-existing Lab 1-3 schema with legacy data", async () => {
+      // 1. Create isolated test schema
+      const schemaName = `mig_test_${Date.now()}`;
+      await prisma.$executeRawUnsafe(`CREATE SCHEMA "${schemaName}"`);
+
+      try {
+        // 2. Read migration SQL files
+        const migrationDir = path.resolve(__dirname, "../../prisma/migrations");
+        const lab4SqlPath = path.join(migrationDir, "20261006000000_add_lab4_actions_taken/migration.sql");
+        const lab4Sql = fs.readFileSync(lab4SqlPath, "utf8");
+
+        // 3. Construct baseline Lab 1-3 tables within the isolated schema
+        // This simulates a running Lab 3 database before Lab 4 migration is introduced
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE "${schemaName}"."Category" (
+            "id" SERIAL NOT NULL PRIMARY KEY,
+            "name" TEXT NOT NULL UNIQUE,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE "${schemaName}"."RelatedSystem" (
+            "id" SERIAL NOT NULL PRIMARY KEY,
+            "name" TEXT NOT NULL UNIQUE,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE "${schemaName}"."User" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "email" TEXT NOT NULL UNIQUE,
+            "name" TEXT NOT NULL,
+            "passwordHash" TEXT NOT NULL,
+            "role" "Role" NOT NULL,
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "mustChangePassword" BOOLEAN NOT NULL DEFAULT false,
+            "tokenVersion" INTEGER NOT NULL DEFAULT 0,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL
+          );
+
+          CREATE TABLE "${schemaName}"."RequesterUser" (
+            "id" SERIAL NOT NULL PRIMARY KEY,
+            "name" TEXT NOT NULL,
+            "email" TEXT NOT NULL UNIQUE,
+            "userId" TEXT UNIQUE REFERENCES "${schemaName}"."User"("id"),
+            "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE "${schemaName}"."Ticket" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "ticketNo" TEXT NOT NULL UNIQUE,
+            "requesterId" INTEGER NOT NULL REFERENCES "${schemaName}"."RequesterUser"("id"),
+            "userId" TEXT REFERENCES "${schemaName}"."User"("id"),
+            "ownerId" TEXT REFERENCES "${schemaName}"."User"("id"),
+            "categoryId" INTEGER NOT NULL REFERENCES "${schemaName}"."Category"("id"),
+            "relatedSystemId" INTEGER NOT NULL REFERENCES "${schemaName}"."RelatedSystem"("id"),
+            "summary" TEXT NOT NULL,
+            "description" TEXT NOT NULL,
+            "requestedPriority" "Priority" NOT NULL,
+            "itPriority" "Priority",
+            "currentStatus" "TicketStatus" NOT NULL DEFAULT 'NEW',
+            "status" "TicketStatus" NOT NULL DEFAULT 'NEW',
+            "isRequesterResolved" BOOLEAN NOT NULL DEFAULT false,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL
+          );
+
+          CREATE TABLE "${schemaName}"."Comment" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "ticketId" TEXT NOT NULL REFERENCES "${schemaName}"."Ticket"("id") ON DELETE CASCADE,
+            "authorId" TEXT NOT NULL REFERENCES "${schemaName}"."User"("id"),
+            "content" TEXT NOT NULL,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE "${schemaName}"."InternalNote" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "ticketId" TEXT NOT NULL REFERENCES "${schemaName}"."Ticket"("id") ON DELETE CASCADE,
+            "authorId" TEXT NOT NULL REFERENCES "${schemaName}"."User"("id"),
+            "content" TEXT NOT NULL,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+
+        // 4. Seed pre-migration legacy data from Labs 1, 2, and 3
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "${schemaName}"."Category" ("id", "name", "isActive") VALUES (1, 'Hardware', true);
+          INSERT INTO "${schemaName}"."RelatedSystem" ("id", "name", "isActive") VALUES (1, 'Email & Calendar', true);
+          INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
+          VALUES ('user-leg-01', 'legacy.user@example.com', 'Legacy User', 'hash123', 'REQUESTER', true, 0, NOW(), NOW());
+          INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
+          VALUES ('user-leg-02', 'legacy.staff@example.com', 'Legacy Staff', 'hash123', 'IT_STAFF', true, 0, NOW(), NOW());
+          INSERT INTO "${schemaName}"."RequesterUser" ("id", "name", "email", "userId", "isActive")
+          VALUES (1, 'Legacy User', 'legacy.user@example.com', 'user-leg-01', true);
+          INSERT INTO "${schemaName}"."Ticket" ("id", "ticketNo", "requesterId", "userId", "categoryId", "relatedSystemId", "summary", "description", "requestedPriority", "currentStatus", "status", "createdAt", "updatedAt")
+          VALUES ('tkt-leg-01', 'TKT-LEGACY-0001', 1, 'user-leg-01', 1, 1, 'Legacy Ticket Before Lab 4', 'Pre-existing ticket description', 'HIGH', 'OPEN', 'OPEN', NOW(), NOW());
+          INSERT INTO "${schemaName}"."Comment" ("id", "ticketId", "authorId", "content", "createdAt")
+          VALUES ('cmt-leg-01', 'tkt-leg-01', 'user-leg-01', 'Legacy comment pre-migration', NOW());
+          INSERT INTO "${schemaName}"."InternalNote" ("id", "ticketId", "authorId", "content", "createdAt")
+          VALUES ('note-leg-01', 'tkt-leg-01', 'user-leg-02', 'Legacy internal note pre-migration', NOW());
+        `);
+
+        // 5. Assert baseline pre-migration counts
+        const preTicket: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."Ticket"`);
+        const preUser: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."User"`);
+        const preComment: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."Comment"`);
+        const preNote: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."InternalNote"`);
+
+        expect(preTicket[0].count).toBe(1);
+        expect(preUser[0].count).toBe(2);
+        expect(preComment[0].count).toBe(1);
+        expect(preNote[0].count).toBe(1);
+
+        // 6. Deploy the authentic Lab 4 migration SQL (server/prisma/migrations/20261006000000_add_lab4_actions_taken/migration.sql)
+        // Set search_path so the migration script targets the isolated schema
+        await prisma.$executeRawUnsafe(`SET search_path TO "${schemaName}", public`);
+        await prisma.$executeRawUnsafe(lab4Sql);
+
+        // 7. Verify new ActionTaken table and columns exist in schema
+        const columns: any = await prisma.$queryRawUnsafe(`
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = '${schemaName}' AND table_name = 'ActionTaken'
+        `);
+        const columnNames = columns.map((c: any) => c.column_name);
+        expect(columnNames).toContain("id");
+        expect(columnNames).toContain("ticketId");
+        expect(columnNames).toContain("actionDate");
+        expect(columnNames).toContain("actionDescription");
+        expect(columnNames).toContain("result");
+        expect(columnNames).toContain("performedById");
+        expect(columnNames).toContain("followUpRequired");
+        expect(columnNames).toContain("followUpNote");
+        expect(columnNames).toContain("attachmentNotes");
+        expect(columnNames).toContain("createdAt");
+        expect(columnNames).toContain("updatedAt");
+
+        // 8. Verify zero data loss: All legacy records remain 100% intact after Lab 4 migration
+        const postTicket: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."Ticket"`);
+        const postUser: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."User"`);
+        const postComment: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."Comment"`);
+        const postNote: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."InternalNote"`);
+
+        expect(postTicket[0].count).toBe(preTicket[0].count);
+        expect(postUser[0].count).toBe(preUser[0].count);
+        expect(postComment[0].count).toBe(preComment[0].count);
+        expect(postNote[0].count).toBe(preNote[0].count);
+
+        // 9. Verify legacy ticket has zero actions initially
+        const actionCount: any = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int as count FROM "${schemaName}"."ActionTaken" WHERE "ticketId" = 'tkt-leg-01'
+        `);
+        expect(actionCount[0].count).toBe(0);
+
+        // 10. Verify that new ActionsTaken can be logged against legacy tickets seamlessly
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "${schemaName}"."ActionTaken" (
+            "id", "ticketId", "actionDescription", "result", "performedById", "followUpRequired", "createdAt", "updatedAt"
+          ) VALUES (
+            'act-new-leg-01', 'tkt-leg-01', 'Migrated work completed', 'Verified operational', 'user-leg-02', false, NOW(), NOW()
+          )
+        `);
+
+        const postActionCount: any = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int as count FROM "${schemaName}"."ActionTaken" WHERE "ticketId" = 'tkt-leg-01'
+        `);
+        expect(postActionCount[0].count).toBe(1);
+
+        // 11. Verify cascade deletion on legacy ticket cleans up child ActionTaken
+        await prisma.$executeRawUnsafe(`DELETE FROM "${schemaName}"."Ticket" WHERE "id" = 'tkt-leg-01'`);
+        const cascadeActionCount: any = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int as count FROM "${schemaName}"."ActionTaken" WHERE "ticketId" = 'tkt-leg-01'
+        `);
+        expect(cascadeActionCount[0].count).toBe(0);
+      } finally {
+        await prisma.$executeRawUnsafe(`SET search_path TO public`);
+        await prisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+      }
+    });
+
     it("should support chronological query on ActionTaken via compound index [ticketId, actionDate ASC]", async () => {
       const ticketWithActions = await prisma.ticket.findFirst({
         where: {
@@ -473,9 +657,9 @@ describe("Database Migration & Regression Tests (Lab 4 — Issue 32: MIG-01..MIG
   });
 
   // =========================================================================
-  // MIG-04: Labs 1–3 Migration Regression Smoke Suite
+  // MIG-04: Labs 1â€“3 Migration Regression Smoke Suite
   // =========================================================================
-  describe("MIG-04: Labs 1–3 Migration Regression Smoke Suite", () => {
+  describe("MIG-04: Labs 1â€“3 Migration Regression Smoke Suite", () => {
     // Lab 1 Regression
     it("Lab 1: should return HTTP 200 for health check endpoint", async () => {
       const res = await request(app).get("/api/health");

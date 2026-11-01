@@ -74,7 +74,7 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 | | [View all>| | [View all>| | [View all>| | [View all>| | [View all >]  | | [View all >]  |                 |
 | +-----------+ +-----------+ +-----------+ +-----------+ +---------------+ +---------------+                 |
 |                                                                                                             |
-| Attention Required:  [ 🔴 Urgent: 3 tickets > ]    [ 🟠 High Priority: 12 tickets > ]                       |
+| Attention Required:  [ ðŸ”´ Urgent: 3 tickets > ]    [ ðŸŸ  High Priority: 12 tickets > ]                       |
 |                                                                                                             |
 | +-----------------------------------------------------+  +------------------------------------------------+ |
 | | Recent Queue Tickets                    [ View all ]|  | My Recent Actions Taken (Performed by You)    | |
@@ -135,7 +135,7 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 | Here's the latest on your requests.                                                                         |
 |                                                                                                             |
 | +-------------------+ +-------------------+ +-------------------+ +-------------------+                     |
-| | My Open Tickets   | | Waiting for Me    | | Resolved          | | Closed            |                     |
+| | My Open Tickets   | | Waiting Requester | | Resolved          | | Closed            |                     |
 | | 3                 | | 1                 | | 5                 | | 12                |                     |
 | | [ View all > ]    | | [ View all > ]    | | [ View all > ]    | | [ View all > ]    |                     |
 | +-------------------+ +-------------------+ +-------------------+ +-------------------+                     |
@@ -157,10 +157,11 @@ Lab 4 introduces role-appropriate operational dashboards and ticket execution wo
 
 #### Key UI Components & Interactions:
 1. **Metric Cards (4 Cards)**:
+   - All metrics are scoped strictly to tickets owned by the authenticated Requester (`user.id` / `requesterProfileId`).
    - `My Open Tickets`: Sum of tickets in `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` $\rightarrow$ links to `/my-tickets?status=open_all`.
-   - `Waiting for Me`: Count of tickets where status is `WAITING_FOR_REQUESTER` requiring Requester feedback $\rightarrow$ links to `/my-tickets?status=WAITING_FOR_REQUESTER`.
-   - `Resolved`: Count of tickets formally marked `RESOLVED` by IT Staff $\rightarrow$ links to `/my-tickets?status=RESOLVED`.
-   - `Closed`: Count of terminal `CLOSED` tickets $\rightarrow$ links to `/my-tickets?status=CLOSED`.
+   - `Waiting for Requester`: Count of tickets where status is `WAITING_FOR_REQUESTER` requiring Requester feedback $\rightarrow$ links to `/my-tickets?status=WAITING_FOR_REQUESTER`. **Note**: This is an operational subset of `My Open Tickets` (its count is included inside `My Open Tickets`).
+   - `Resolved`: Count of tickets formally marked `RESOLVED` by IT Staff (strictly excludes `CLOSED`) $\rightarrow$ links to `/my-tickets?status=RESOLVED`.
+   - `Closed`: Count of terminal `CLOSED` tickets (strictly excludes `RESOLVED`) $\rightarrow$ links to `/my-tickets?status=CLOSED`.
 2. **Recent Tickets & Recently Resolved Panels**:
    - `My Recent Tickets`: Displays up to 5 most recently updated tickets owned by the requester with status badges and timestamps (`take: 5`).
    - `Recently Resolved Tickets`: Strictly limited to the top 5 most recently resolved tickets owned by the requester (`status = 'RESOLVED'`, ordered by `updatedAt DESC`, `take: 5`). Clicking any row navigates to `/my-tickets/:id`. The header link `View all` links to `/my-tickets?status=RESOLVED`. Empty state: Displays *"No recently resolved tickets"*.
@@ -242,7 +243,7 @@ The Actions Taken section is rendered directly below the main ticket information
   - `Follow-Up Note` dynamically gains an asterisk `*`, displays helper text *"Please describe the required follow-up step"*, and validates non-empty whitespace before allowing submission.
 - Stale update detection:
   - If another user updated the ticket while the modal was open, saving displays an alert:  
-    *⚠️ "This ticket has been updated by another user. Please refresh to load the latest state."*
+    *âš ï¸ "This ticket has been updated by another user. Please refresh to load the latest state."*
 
 ---
 
@@ -254,7 +255,7 @@ On the IT Staff Ticket Detail page, the Status Transition block enforces permitt
    If the requester clicked "Problem Appears Resolved", an advisory alert banner appears at the top of Ticket Detail:
    ```text
    +---------------------------------------------------------------------------------------+
-   | ℹ️ Requester indicated that the problem appears resolved.                              |
+   | â„¹ï¸ Requester indicated that the problem appears resolved.                              |
    | Please review the Actions Taken and formally transition status to Resolved if satisfied.|
    +---------------------------------------------------------------------------------------+
    ```
