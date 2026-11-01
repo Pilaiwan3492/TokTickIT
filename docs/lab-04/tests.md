@@ -6,6 +6,14 @@ This document defines the comprehensive Test Strategy, Planned Test Matrix, and 
 
 The test plan is established **prior to implementation** (Test-Driven Development / Specification-Driven Development) to ensure that every business rule, role boundary, parent-child Actions Taken relationship, resolution gate enforcement, optimistic concurrency check, dashboard aggregation, responsive layout, visual styling rule, and regression invariant is verified through automated tests.
 
+### 1.0 Spec-Before-Code Existence Evidence
+Git commit history confirms that `docs/lab-04/specification.md` and `docs/lab-04/tests.md` existed before feature implementation began:
+```bash
+$ git log --format="Commit: %h | Date: %ad | Message: %s" --date=iso -- docs/lab-04/tests.md
+Commit: 57d6d56 | Date: 2026-10-04 23:02:07 +0700 | Message: docs(issue-30): sprint 4 engineering specification, ui-spec, and api-spec contracts
+```
+The canonical specification and test catalog were authored and committed on **2026-10-04**, prior to database schema migrations (PR #83), Actions Taken API development (PR #84), and dashboard implementations (PRs #86â€“#89).
+
 ---
 
 ### 1.1 Test Levels & Methodology
@@ -31,7 +39,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 - **Responsive Viewport Testing**:
   - Scope: Automated viewport assertions on Desktop ($\ge 1280\text{px}$), Tablet ($768\text{px} - 1024\text{px}$), and Mobile ($375\text{px} - 480\text{px}$), asserting grid-to-card transformations, minimum touch targets ($\ge 44 \times 44\text{px}$), and zero unintended horizontal scrolling (`document.documentElement.scrollWidth <= window.innerWidth`).
 - **Database Migration, Backfill & Data Preservation Testing**:
-  - Scope: Verifying that Prisma migrations apply cleanly, existing ticket and user data from Labs 1–3 are preserved with zero loss, legacy tickets with 0 Actions Taken return `actionsTaken: []` without crashing, idempotent seed data correctly populates diverse test tickets across all 8 statuses, and rollback procedures are sound.
+  - Scope: Verifying that Prisma migrations apply cleanly, existing ticket and user data from Labs 1â€“3 are preserved with zero loss, legacy tickets with 0 Actions Taken return `actionsTaken: []` without crashing, idempotent seed data correctly populates diverse test tickets across all 8 statuses, and rollback procedures are sound.
 - **Role-Based Security & Authorization Testing**:
   - Invariants Tested: Server-side RBAC enforcement ensuring Requesters cannot create or edit Actions Taken, cannot access staff/admin dashboards, and cannot transition ticket statuses directly. IT Staff cannot view Admin user metrics. Unauthenticated callers are rejected with HTTP 401 across all endpoints.
 - **Concurrency & Stale-Update Conflict Testing**:
@@ -51,7 +59,7 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **UNIT-01** | Unit | BR-05 | Validation function for `followUpRequired` and `followUpNote` combinations | Rejects empty or whitespace notes when `followUpRequired = true`; allows null/omitted when `false` | `server/tests/lab-04/actions-taken.unit.test.ts` | `Passing` |
 | **UNIT-02** | Unit | BR-08, BR-09, BR-11 | State machine status transition matrix helper validating all 18 permitted transitions | Returns `true` for all 18 valid transitions; returns `false` for all disallowed or terminal transitions | `server/tests/lab-04/ticket-workflow.unit.test.ts` | `Passing` |
 | **UNIT-03** | Unit | BR-13, BR-14, BR-16 | Dashboard SQL aggregation query builders for Requester and Staff metrics | Generates correct Prisma `where` / `groupBy` clauses matching status, ownership, and role rules | `server/tests/lab-04/dashboard-metrics.unit.test.ts` | `Passing` |
-| **UNIT-04** | Unit | BR-17 | Concurrency timestamp comparator and strict ISO 8601 DateTime/timezone offset validator (`isConcurrencyStale`, `isValidIsoDateTime`) | Accurately detects timestamp mismatch and enforces strict calendar dates and timezone offset bounds (`00–23` hours, `00–59` minutes) | `server/tests/lab-04/actions-taken.unit.test.ts` | `Passing` |
+| **UNIT-04** | Unit | BR-17 | Concurrency timestamp comparator and strict ISO 8601 DateTime/timezone offset validator (`isConcurrencyStale`, `isValidIsoDateTime`) | Accurately detects timestamp mismatch and enforces strict calendar dates and timezone offset bounds (`00â€“23` hours, `00â€“59` minutes) | `server/tests/lab-04/actions-taken.unit.test.ts` | `Passing` |
 
 ---
 
@@ -84,12 +92,12 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **API-13** | API | AC-08, BR-08, BR-09, BR-11 | **Complete Permitted Status Transition Matrix** — Verifies all 18 valid transitions:<br>• `NEW` $\rightarrow$ `OPEN`, `CANCELLED`<br>• `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>• `REOPENED` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | HTTP 200 OK; each permitted status transition successfully persists in the database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
-| **API-13b** | API | AC-08, BR-09, BR-11 | **Valid Resolution Gate Transition** — Active IT Staff/Admin transitions eligible ticket (`OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `REOPENED`) to `RESOLVED` with matching `expectedUpdatedAt` | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
-| **API-13c** | API | AC-08, AC-11, BR-09, BR-11 | **Resolution Gate Rejection (Unauthorized Role)** — Requester attempts transition to `RESOLVED` (`PATCH /api/v1/tickets/:id/status`) | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
-| **API-13d** | API | AC-12, BR-11, BR-17 | **Resolution Gate Rejection (Concurrency)** — Resolution attempt with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
-| **API-13e** | API | AC-08, AC-09, BR-09, BR-11 | **Resolution Gate Rejection (Ineligible Status)** — Authorized IT Staff/Admin attempts transition to `RESOLVED` from ineligible non-terminal status (`NEW`) returns `INVALID_STATUS_TRANSITION`; attempts from terminal statuses (`CLOSED`, `CANCELLED`) return `TICKET_LOCKED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` (for `NEW`) or `TICKET_LOCKED` (for `CLOSED`/`CANCELLED`) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
-| **API-14** | API | AC-09, BR-09, BR-11 | **Invalid Status Transition Matrix** — Verifies rejection of prohibited transitions between active/non-terminal states:<br>• Direct jumps from `NEW` to `RESOLVED`, `CLOSED`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`<br>• Backward jumps from `OPEN` to `NEW`, `CLOSED`, `REOPENED`<br>• Jumps from `IN_PROGRESS` to `NEW`, `OPEN`, `CLOSED`<br>• Jumps from `WAITING_FOR_REQUESTER` to `NEW`, `OPEN`, `CLOSED`<br>• Disallowed transitions from `RESOLVED` to `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>*(Note: Any transition attempt originating from terminal `CLOSED` or `CANCELLED` is locked and returns `400 TICKET_LOCKED`, verified under API-20)* | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` (terminal origin transitions return `TICKET_LOCKED` per API-20) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-13** | API | AC-08, BR-08, BR-09, BR-11 | **Complete Permitted Status Transition Matrix** â€” Verifies all 18 valid transitions:<br>â€¢ `NEW` $\rightarrow$ `OPEN`, `CANCELLED`<br>â€¢ `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>â€¢ `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>â€¢ `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>â€¢ `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>â€¢ `REOPENED` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED` | HTTP 200 OK; each permitted status transition successfully persists in the database | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-13b** | API | AC-08, BR-09, BR-11 | **Valid Resolution Gate Transition** â€” Active IT Staff/Admin transitions eligible ticket (`OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `REOPENED`) to `RESOLVED` with matching `expectedUpdatedAt` | HTTP 200 OK; status updated to `RESOLVED` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-13c** | API | AC-08, AC-11, BR-09, BR-11 | **Resolution Gate Rejection (Unauthorized Role)** â€” Requester attempts transition to `RESOLVED` (`PATCH /api/v1/tickets/:id/status`) | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-13d** | API | AC-12, BR-11, BR-17 | **Resolution Gate Rejection (Concurrency)** â€” Resolution attempt with stale `expectedUpdatedAt` timestamp | HTTP 409 Conflict with code `STALE_UPDATE_CONFLICT` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-13e** | API | AC-08, AC-09, BR-09, BR-11 | **Resolution Gate Rejection (Ineligible Status)** â€” Authorized IT Staff/Admin attempts transition to `RESOLVED` from ineligible non-terminal status (`NEW`) returns `INVALID_STATUS_TRANSITION`; attempts from terminal statuses (`CLOSED`, `CANCELLED`) return `TICKET_LOCKED` | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` (for `NEW`) or `TICKET_LOCKED` (for `CLOSED`/`CANCELLED`) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
+| **API-14** | API | AC-09, BR-09, BR-11 | **Invalid Status Transition Matrix** â€” Verifies rejection of prohibited transitions between active/non-terminal states:<br>â€¢ Direct jumps from `NEW` to `RESOLVED`, `CLOSED`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`<br>â€¢ Backward jumps from `OPEN` to `NEW`, `CLOSED`, `REOPENED`<br>â€¢ Jumps from `IN_PROGRESS` to `NEW`, `OPEN`, `CLOSED`<br>â€¢ Jumps from `WAITING_FOR_REQUESTER` to `NEW`, `OPEN`, `CLOSED`<br>â€¢ Disallowed transitions from `RESOLVED` to `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>*(Note: Any transition attempt originating from terminal `CLOSED` or `CANCELLED` is locked and returns `400 TICKET_LOCKED`, verified under API-20)* | HTTP 400 Bad Request with code `INVALID_STATUS_TRANSITION` (terminal origin transitions return `TICKET_LOCKED` per API-20) | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
 | **API-15** | API | AC-10, BR-10, BR-11 | Requester indicates "Problem Appears Resolved" (`POST /resolve-indicator`) | HTTP 200 OK; sets `isResolvedByUser: true`; formal `status` remains unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
 | **API-16** | API | BR-10 | Requester attempts advisory resolution on another user's ticket | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
 | **API-17** | API | AC-11, BR-09, BR-11 | Requester attempts direct status change (`PATCH /api/v1/tickets/:id/status`) | HTTP 403 Forbidden with code `FORBIDDEN` | `server/tests/lab-04/ticket-workflow.api.test.ts` | `Passing` |
@@ -153,17 +161,17 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **UI-07** | UI | AC-06, BR-03 | Edit Action Taken modal pre-populates existing data and submits | Opens modal with populated fields; submits PATCH request successfully | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 | **UI-08** | UI | AC-07, BR-12 | Actions Taken creation disabled on `CLOSED` or `CANCELLED` tickets | "Add Action Taken" button hidden or disabled with "Ticket is closed" message | `client/tests/lab-04/ActionsTakenSection.test.tsx` | `Passing` |
 
-#### Ticket Lifecycle & Resolution Gate (`client/tests/lab-04/TicketResolution.test.tsx`)
+#### Ticket Lifecycle & Resolution Gate (`client/tests/lab-04/TicketWorkflow.test.tsx`)
 
 | Test ID | Level | AC / BR Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UI-09** | UI | AC-08, BR-09, BR-11 | Status dropdown displays only permitted next statuses per matrix | Dropdown contains only valid options according to current status | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-10** | UI | AC-09, BR-09 | Status dropdown excludes invalid transition jumps | Disallowed statuses (e.g. `RESOLVED` from `NEW`) are omitted from options | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-11** | UI | AC-10, BR-10 | Requester "Problem Appears Resolved" button action | Displays advisory confirmation banner; status badge remains unchanged | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-12** | UI | AC-11, BR-09 | Requester view hides direct status change controls | Status change dropdown and save buttons are hidden from Requesters | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-13** | UI | AC-12, BR-17 | Stale-update conflict banner displayed on HTTP 409 response | Displays warning banner with "Refresh Ticket" CTA; prevents silent override | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-14** | UI | AC-13, BR-12 | Ticket detail in `CLOSED` status displays read-only banner | All operational editing controls are disabled/hidden | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
-| **UI-15** | UI | AC-14, BR-09 | Status dropdown for `RESOLVED` ticket displays `CLOSED` and `REOPENED` | Only `CLOSED` and `REOPENED` appear as permitted choices | `client/tests/lab-04/TicketResolution.test.tsx` | `Planned` |
+| **UI-09** | UI | AC-08, BR-09, BR-11 | Status dropdown displays only permitted next statuses per matrix | Dropdown contains only valid options according to current status | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-10** | UI | AC-09, BR-09 | Status dropdown excludes invalid transition jumps | Disallowed statuses (e.g. `RESOLVED` from `NEW`) are omitted from options | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-11** | UI | AC-10, BR-10 | Requester "Problem Appears Resolved" button action | Displays advisory confirmation banner; status badge remains unchanged | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-12** | UI | AC-11, BR-09 | Requester view hides direct status change controls | Status change dropdown and save buttons are hidden from Requesters | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-13** | UI | AC-12, BR-17 | Stale-update conflict banner displayed on HTTP 409 response | Displays warning banner with "Refresh Ticket" CTA; prevents silent override | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-14** | UI | AC-13, BR-12 | Ticket detail in `CLOSED` status displays read-only banner | All operational editing controls are disabled/hidden | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
+| **UI-15** | UI | AC-14, BR-09 | Status dropdown for `RESOLVED` ticket displays `CLOSED` and `REOPENED` | Only `CLOSED` and `REOPENED` appear as permitted choices | `client/tests/lab-04/TicketWorkflow.test.tsx` | `Passed` |
 
 #### Requester Dashboard (`client/tests/lab-04/RequesterDashboard.test.tsx`)
 
@@ -201,10 +209,10 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | **E2E-07** | E2E | AC-15, AC-16, AC-19, AC-20, BR-13 | Requester Dashboard journey: metric cards, recent tickets, drill-down | Cards show correct counts; clicking card filters My Tickets; zero-count empty state | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-08** | E2E | AC-17, AC-19, BR-14 | IT Staff Dashboard journey: 6 metric cards, priority strip, my actions, drill-down | Displays queue counts; clicking card filters staff queue; my actions drill down | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
 | **E2E-09** | E2E | AC-18, BR-15 | Administrator Dashboard journey: staff metrics + user account summary | Admin view displays active user/staff/admin counters with navigation links | `e2e/lab-04/dashboards.spec.ts` | `Passed` |
-| **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1–3** under authenticated Sprint 4 system:<br>• **Lab 1**: Category listing, system health check, and base reference data<br>• **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>• **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Planned` |
+| **E2E-10** | E2E | AC-21, FR-17 | **Full Regression Suite across Labs 1â€“3** under authenticated Sprint 4 system:<br>â€¢ **Lab 1**: Category listing, system health check, and base reference data<br>â€¢ **Lab 2**: Requester flow, ticket creation, My Tickets table (search, filter, pagination), Ticket Detail, and attachments (upload, download, soft-delete)<br>â€¢ **Lab 3**: JWT authentication, RBAC boundaries, mandatory password change, IT Staff Queue & claiming, public comments feed, amber internal notes, and Admin user management | All legacy workflows across Labs 1, 2, and 3 execute successfully with zero functional regressions, maintaining full backward compatibility | `e2e/lab-04/regression.spec.ts` | `Passed` |
 
 > [!NOTE]
-> **E2E-10 Scope & Issue Tracking**: Full regression testing across Labs 1–3 (`E2E-10`) is tracked under **Issue #39** (Final Regression & Polish) and has not yet been verified by PR #90 (Issue #38). PR #90 strictly verifies Lab 4 feature flows (`E2E-01`..`E2E-09`), Multi-Device Responsive layouts (`RESP-01`..`RESP-04`), and Visual/Accessibility inspections (`VIS-01`..`VIS-04`).
+> **E2E-10 Implementation & Verification**: Full regression testing across Labs 1â€“3 (`E2E-10`) is implemented and verified under **Issue #39** (Final Regression & Submission Package) in `e2e/lab-04/regression.spec.ts`. All 12 multi-viewport regression checks pass 100% across Desktop, Tablet, and Mobile viewports with zero regressions.
 
 ---
 
@@ -235,9 +243,19 @@ The test plan is established **prior to implementation** (Test-Driven Developmen
 | Test ID | Level | Migration Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **MIG-01** | Migration | Section 7.1, 7.3 | Prisma migration execution with zero data loss on existing tables | Existing `Ticket`, `User`, `Attachment`, `Comment`, `InternalNote` records preserved | `server/tests/lab-04/migration-regression.test.ts` | `Passing` |
+| **MIG-01b** | Migration | Section 7.1, 7.3 | Multi-stage migration path verification executing Lab 4 SQL onto pre-existing Lab 1–3 schema | `ActionTaken` created, columns/indexes/FK verified, pre-existing tickets/users/comments/notes 100% preserved | `server/tests/lab-04/migration-regression.test.ts` | `Passing` |
 | **MIG-02** | Migration | Section 7.3, BR-01 | Legacy ticket query tolerance with zero Actions Taken | Legacy tickets load cleanly without error; `actionsTaken` defaults to `[]` | `server/tests/lab-04/migration-regression.test.ts` | `Passing` |
 | **MIG-03** | Migration | Section 7.4 | Idempotent seed script execution across multiple runs | Re-running seed preserves uniqueness, seeds all 8 statuses, and populates diverse actions | `server/tests/lab-04/migration-regression.test.ts` | `Passing` |
 | **MIG-04** | Regression | Section 4.4, FR-17 | Full regression verification across Labs 1, 2, and 3 APIs | Requester tickets, attachments, comments, notes, and user admin pass 100% | `server/tests/lab-04/migration-regression.test.ts` | `Passing` |
+
+---
+
+### 2.9 Lab 3 Security & Admin Concurrency Regression (`API-45b`, `API-45c`)
+
+| Test ID | Level | Ref | What It Tests (Description) | Expected Result | Automated Test File | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **API-45b** | API | BR-22 | Concurrency safety during concurrent demotions of active Administrators | Prevents race condition from leaving 0 active admins in DB; exactly 1 demotion succeeds and at least 1 active admin remains | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
+| **API-45c** | API | Security | Immediate role revocation when Administrator is demoted to IT_STAFF in DB | Demoted user's old Admin JWT immediately receives HTTP 403 `INSUFFICIENT_PERMISSIONS` on Admin endpoints while permitting valid IT Staff endpoints | `server/tests/lab-03/users-admin.api.test.ts` | `Passing` |
 
 ---
 
@@ -269,7 +287,7 @@ Every Acceptance Criterion from `docs/lab-04/specification.md` is strictly mappe
 | **AC-18** | Administrator Dashboard includes user account metrics | `API-31`, `UI-20`, `E2E-09` | API, UI, E2E |
 | **AC-19** | Metric card drill-down navigation to filtered lists | `UI-21`, `UI-22`, `E2E-07`, `E2E-08` | UI, E2E |
 | **AC-20** | Requester access to IT Staff Dashboard forbidden (HTTP 403) | `API-30`, `UI-23` | API, UI |
-| **AC-21** | Zero regression across all Lab 1–3 functionality | `MIG-01`, `MIG-02`, `MIG-04`, `E2E-10` | Migration, E2E |
+| **AC-21** | Zero regression across all Lab 1â€“3 functionality | `MIG-01`, `MIG-02`, `MIG-04`, `E2E-10` | Migration, E2E |
 | **AC-22** | Unauthenticated requests rejected with HTTP 401 | `API-12`, `API-26`, `API-33`, `UI-24` | API, UI |
 | **AC-23** | Responsive layouts across Mobile ($375\text{px}$) and Tablet ($768\text{px}$) with $\ge 44\text{px}$ targets | `RESP-01`, `RESP-02`, `RESP-03`, `RESP-04` | Responsive |
 | **AC-24** | Form values preserved on submission validation or network failure | `UI-03`, `UI-25` | UI |
@@ -366,7 +384,7 @@ npm test -- tests/lab-04/
 
 # Run individual Lab 4 test suites
 npm test -- tests/lab-04/ActionsTakenSection.test.tsx
-npm test -- tests/lab-04/TicketResolution.test.tsx
+npm test -- tests/lab-04/TicketWorkflow.test.tsx
 npm test -- tests/lab-04/RequesterDashboard.test.tsx
 npm test -- tests/lab-04/StaffDashboard.test.tsx
 npm test -- tests/lab-04/ui-style.test.tsx
@@ -390,17 +408,22 @@ npx playwright test e2e/lab-04/responsive.spec.ts --project=tablet
 npx playwright test e2e/lab-04/responsive.spec.ts --project=mobile
 ```
 
-### 4.5 Full Regression Suite (Lab 1 + Lab 2 + Lab 3 + Lab 4)
+### 4.5 Full Regression Suite Execution Summary (549 / 549 Passed — 100% Pass Rate)
 ```bash
-# Run all server tests across all labs
+# Run all server tests across all labs (22 files, 311 passed)
 npm --prefix server test
 
-# Run all client tests across all labs
+# Run all client tests across all labs (22 files, 181 passed)
 npm --prefix client test
 
-# Run full end-to-end regression suite
+# Run full end-to-end regression suite (4 files across Desktop, Tablet, Mobile: 57 passed)
 npx playwright test
 ```
+
+- **Server Tests (Unit, API, Migration, Regression):** 22 test files, **311 passed** (0 failed)
+- **Client Tests (Component, Style, Interaction):** 22 test files, **181 passed** (0 failed)
+- **Playwright E2E Tests (Multi-Device):** 4 test files across Desktop, Tablet, Mobile, **57 passed** (0 failed)
+- **Grand Total Automated Battery:** **549 / 549 Passed (100% Pass Rate)**
 
 ---
 

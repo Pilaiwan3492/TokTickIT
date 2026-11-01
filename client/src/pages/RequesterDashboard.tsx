@@ -206,7 +206,7 @@ export const RequesterDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2: Waiting for Me */}
+        {/* Card 2: Waiting for Requester */}
         <div className="col-12 col-sm-6 col-lg-3">
           <div className="card shadow-sm border-0 h-100 p-3" style={{ backgroundColor: "#FFFFFF" }}>
             <span className="text-secondary small fw-medium mb-1">Waiting for Requester</span>

@@ -446,14 +446,17 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
           .send({ role: "IT_STAFF" }),
       ]);
 
-      // Exactly ONE request must succeed (200) and exactly ONE must fail (400 LAST_ACTIVE_ADMIN_PROTECTED)
-      const statuses = [resA.status, resB.status].sort((a, b) => a - b);
-      expect(statuses).toEqual([200, 400]);
-
-      const failedRes = resA.status === 400 ? resA : resB;
+      // Exactly ONE request must succeed (200) and the other must be rejected (400 or 403)
+      expect([resA.status, resB.status]).toContain(200);
+      const failedRes = resA.status === 200 ? resB : resA;
       const succeededRes = resA.status === 200 ? resA : resB;
 
-      expect(failedRes.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
+      expect([400, 403]).toContain(failedRes.status);
+      if (failedRes.status === 400) {
+        expect(failedRes.body.error.code).toBe("LAST_ACTIVE_ADMIN_PROTECTED");
+      } else {
+        expect(failedRes.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+      }
       expect(succeededRes.body.data.role).toBe("IT_STAFF");
 
       // Verify at least one active Admin still exists in the database
@@ -472,6 +475,60 @@ describe("Administrator User Management API Tests (Lab 3 — Issue 27: API-39..A
       // Clean up test admins
       await prisma.user.deleteMany({
         where: { id: { in: [adminA.id, adminB.id] } },
+      });
+    }
+  });
+
+  // --- API-45c: Role Revocation when Admin is demoted to IT_STAFF in database ---
+  it("API-45c: should reject Admin API requests with HTTP 403 when user is demoted in database despite holding valid Admin JWT", async () => {
+    // 1. Create a test admin
+    const defaultHash = await hashPassword("Password123!");
+    const testAdmin = await prisma.user.create({
+      data: {
+        email: `revocation.admin.${Date.now()}@toktickit.com`,
+        name: "Revocation Admin",
+        role: "ADMIN",
+        isActive: true,
+        passwordHash: defaultHash,
+      },
+    });
+
+    try {
+      // 2. Login as testAdmin and acquire JWT with role: 'ADMIN' in payload
+      const loginRes = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: testAdmin.email, password: "Password123!" });
+      expect(loginRes.status).toBe(200);
+      const adminToken = loginRes.body.data.token;
+
+      // 3. Verify Admin token can initially access Admin APIs
+      const verifyInitialAdmin = await request(app)
+        .get("/api/v1/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(verifyInitialAdmin.status).toBe(200);
+
+      // 4. Another administrator or system demotes testAdmin to IT_STAFF in database
+      await prisma.user.update({
+        where: { id: testAdmin.id },
+        data: { role: "IT_STAFF" },
+      });
+
+      // 5. Use the old Admin JWT to call an Admin API -> MUST be rejected with HTTP 403
+      const resAdminForbidden = await request(app)
+        .get("/api/v1/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(resAdminForbidden.status).toBe(403);
+      expect(resAdminForbidden.body.error.code).toBe("INSUFFICIENT_PERMISSIONS");
+
+      // 6. Verify that an API accessible to IT Staff works normally with this token
+      const resStaffAllowed = await request(app)
+        .get("/api/v1/staff/tickets")
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(resStaffAllowed.status).toBe(200);
+    } finally {
+      // Cleanup
+      await prisma.user.deleteMany({
+        where: { id: testAdmin.id },
       });
     }
   });

@@ -53,7 +53,7 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     const openCardLocator = page.locator('.card').filter({ hasText: "My Open Tickets" });
     const openCardCountText = (await openCardLocator.locator(".display-6").innerText()).trim();
     const openCardCount = Number(openCardCountText);
-    expect(openCardCount).toBe(1);
+    expect(openCardCount).toBe(2);
 
     const resolvedCardLocator = page.locator('.card').filter({ hasText: "Resolved" });
     const resolvedCardCountText = (await resolvedCardLocator.locator(".display-6").innerText()).trim();
@@ -72,8 +72,9 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     // Total tickets count matches metric card count
     await expect(page.locator(`text=of ${openCardCount} tickets`)).toBeVisible();
 
-    // Open ticket for Bob is visible; resolved ticket is excluded
+    // Open tickets for Bob are visible; resolved ticket is excluded
     await expect(page.locator("text=TKT-2026-000002")).toBeVisible();
+    await expect(page.locator("text=TKT-2026-000009")).toBeVisible();
     await expect(page.locator("text=TKT-2026-000005")).not.toBeVisible();
 
     // 5. Query parameters & Filter manipulation: Change filter to "RESOLVED"
@@ -82,10 +83,12 @@ test.describe("Lab 4 Role Dashboards & Drill-down Filters Suite (E2E-07..E2E-09)
     await expect(page.locator(`text=of ${resolvedCardCount} tickets`)).toBeVisible();
     await expect(page.locator("text=TKT-2026-000005")).toBeVisible();
     await expect(page.locator("text=TKT-2026-000002")).not.toBeVisible();
+    await expect(page.locator("text=TKT-2026-000009")).not.toBeVisible();
     // Reset to "All Statuses"
     await statusSelect.selectOption("");
     await page.waitForTimeout(500);
     await expect(page.locator("text=TKT-2026-000002")).toBeVisible();
+    await expect(page.locator("text=TKT-2026-000009")).toBeVisible();
     await expect(page.locator("text=TKT-2026-000005")).toBeVisible();
 
     // 6. RBAC: Requester attempting to access Staff Queue is redirected or blocked

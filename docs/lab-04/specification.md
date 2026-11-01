@@ -28,17 +28,17 @@ To address this:
   - Backend enforcement rejecting client bypass attempts with HTTP 400 / HTTP 403.
   - Concurrency collision detection returning HTTP 409 `STALE_UPDATE_CONFLICT` when updating outdated ticket versions.
 - **Role-Appropriate Dashboards**:
-  - **Requester Dashboard**: Total open tickets count, tickets waiting for requester count, recently updated tickets, recently resolved tickets, and quick actions (`Create Ticket`, `View My Tickets`).
+  - **Requester Dashboard**: 4 primary metric cards (`My Open Tickets`, `Waiting for Requester`, `Resolved`, `Closed`), recent tickets table (`take: 5`), recently resolved tickets list (`take: 5`), and quick actions (`+ Create Ticket`, `View My Tickets`). All counts are strictly scoped to the authenticated Requester.
   - **IT Staff Dashboard**: Unassigned tickets count, tickets owned by current user count, tickets grouped by status or IT Priority, recent operational tickets queue, and quick actions.
   - **Administrator Dashboard**: Inherits IT Staff operational metrics with concise user-account summary counters (`activeUsers`, `activeStaff`, `activeAdmins`).
   - Backend authoritative queries calculating summary metrics (no raw full collection filtering on the client) with documented empty states and query parameters for accessible drill-down navigation.
 - **Database Schema Evolution, Migration & Backfill**:
-  - PostgreSQL schema evolution via Prisma, safe data migration preserving 100% of data from Labs 1–3, backfill strategy for legacy tickets with zero Actions Taken, and rollback/recovery documentation.
+  - PostgreSQL schema evolution via Prisma, safe data migration preserving 100% of data from Labs 1â€“3, backfill strategy for legacy tickets with zero Actions Taken, and rollback/recovery documentation.
   - Idempotent seed script generating tickets across all 8 statuses, varying counts of Actions Taken (0, 1, multiple), and non-zero/zero dashboard scenarios.
 - **Zen Green UI & Full Application Hardening**:
   - Consistent Zen Green tokens, accessible metric cards, modals, tables, badges, and responsive layouts across Desktop ($\ge 1280\text{px}$), Tablet ($768\text{px} - 1024\text{px}$), and Mobile ($375\text{px} - 480\text{px}$).
   - Accessibility standards: Touch targets $\ge 44\text{px}$, visible keyboard focus indicators, non-color status cues, zero horizontal overflow, and modal focus management.
-  - Zero regression across all Lab 1–3 features: Authentication, RBAC, Requester Tickets, Attachments, Public Comments, Internal Notes, and Administrator User Management.
+  - Zero regression across all Lab 1â€“3 features: Authentication, RBAC, Requester Tickets, Attachments, Public Comments, Internal Notes, and Administrator User Management.
 
 ### 3.2 Explicitly Excluded Scope
 - Automatic SLA countdown timers, breach notification emails, escalation engines, and on-call rotation schedules.
@@ -121,11 +121,13 @@ To address this:
 
 ### 5.3 Role Dashboard Calculation Rules
 - **BR-13 (Requester Dashboard)**:
-  - **My Open Tickets Count**: Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`. Drill-down: `/my-tickets?status=open_all`.
-  - **Waiting for Requester Count**: Sum of tickets owned by requester where `status = 'WAITING_FOR_REQUESTER'`. Drill-down: `/my-tickets?status=WAITING_FOR_REQUESTER`.
-  - **Resolved Tickets Count**: Sum of tickets owned by requester where `status = 'RESOLVED'`. Drill-down: `/my-tickets?status=RESOLVED`.
-  - **Closed Tickets Count**: Sum of tickets owned by requester where `status = 'CLOSED'`. Drill-down: `/my-tickets?status=CLOSED`.
-  - **My Recent Tickets**: Up to 5 most recently updated tickets owned by requester, sorted by `updatedAt DESC`.
+  - **Scoped Ownership Invariant**: All metrics, counts, and ticket listings are strictly scoped to tickets owned by the authenticated Requester (`Ticket.userId = currentUserId` or legacy `Ticket.requesterId = currentProfileId`).
+  - **4 Primary Metric Cards**:
+    - **My Open Tickets Count** (`openTickets`): Sum of tickets owned by requester where `status IN ('NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER')`. Drill-down: `/my-tickets?status=open_all`.
+    - **Waiting for Requester Count** (`waitingForRequester`): Count of tickets owned by requester where `status = 'WAITING_FOR_REQUESTER'`. **Calculation & Invariant Relationship**: This is an operational subset of `My Open Tickets` requiring Requester response; its count is contained within `openTickets` rather than a disjoint status bucket. Drill-down: `/my-tickets?status=WAITING_FOR_REQUESTER`.
+    - **Resolved Tickets Count** (`resolved`): Count of tickets owned by requester where `status = 'RESOLVED'`. Strictly excludes `CLOSED` tickets. Drill-down: `/my-tickets?status=RESOLVED`.
+    - **Closed Tickets Count** (`closed`): Count of terminal tickets owned by requester where `status = 'CLOSED'`. Strictly excludes active `RESOLVED` tickets. Drill-down: `/my-tickets?status=CLOSED`.
+  - **My Recent Tickets**: Up to 5 most recently updated tickets owned by requester, sorted by `updatedAt DESC` (`take: 5`).
   - **Recently Resolved Tickets**: Deterministic list limited to the top 5 most recently resolved tickets owned by requester (`status = 'RESOLVED'`, ordered by `updatedAt DESC`, `take: 5`). Empty behavior: returns `[]` when no resolved tickets exist. Drill-down: `/my-tickets?status=RESOLVED`.
 - **BR-14 (IT Staff Dashboard)**:
   - **Primary Operational Metric Cards (6 Cards)**:
@@ -158,17 +160,17 @@ To address this:
 
 | Operational Capability | Requester | IT Staff | Administrator |
 | :--- | :---: | :---: | :---: |
-| View Own Dashboard (`/dashboard`) | ✅ Own data only | ❌ Redirected | ❌ Redirected |
-| View IT Staff Dashboard (`/dashboard`) | ❌ Forbidden | ✅ Full Queue Metrics | ✅ Full Queue Metrics |
-| View Admin User Summary Metrics | ❌ Forbidden | ❌ Forbidden | ✅ Full Access |
-| View Actions Taken on Owned Ticket | ✅ View Only | ✅ Full View | ✅ Full View |
-| View Actions Taken on Other Tickets | ❌ Forbidden | ✅ Full View | ✅ Full View |
-| Create Action Taken on Ticket | ❌ Forbidden | ✅ Allowed | ✅ Allowed |
-| Edit Action Taken on Ticket | ❌ Forbidden | ✅ Allowed | ✅ Allowed |
-| Mark "Problem Appears Resolved" (Advisory)| ✅ Owned Tickets | ❌ N/A | ❌ N/A |
-| Transition Ticket to `RESOLVED` / `CLOSED`| ❌ Forbidden | ✅ Allowed (Matrix) | ✅ Allowed (Matrix) |
-| Claim / Reassign Ticket Owner | ❌ Forbidden | ✅ Allowed | ✅ Allowed |
-| Manage User Accounts | ❌ Forbidden | ❌ Forbidden | ✅ Full Access |
+| View Own Dashboard (`/dashboard`) | âœ… Own data only | âŒ Redirected | âŒ Redirected |
+| View IT Staff Dashboard (`/dashboard`) | âŒ Forbidden | âœ… Full Queue Metrics | âœ… Full Queue Metrics |
+| View Admin User Summary Metrics | âŒ Forbidden | âŒ Forbidden | âœ… Full Access |
+| View Actions Taken on Owned Ticket | âœ… View Only | âœ… Full View | âœ… Full View |
+| View Actions Taken on Other Tickets | âŒ Forbidden | âœ… Full View | âœ… Full View |
+| Create Action Taken on Ticket | âŒ Forbidden | âœ… Allowed | âœ… Allowed |
+| Edit Action Taken on Ticket | âŒ Forbidden | âœ… Allowed | âœ… Allowed |
+| Mark "Problem Appears Resolved" (Advisory)| âœ… Owned Tickets | âŒ N/A | âŒ N/A |
+| Transition Ticket to `RESOLVED` / `CLOSED`| âŒ Forbidden | âœ… Allowed (Matrix) | âœ… Allowed (Matrix) |
+| Claim / Reassign Ticket Owner | âŒ Forbidden | âœ… Allowed | âœ… Allowed |
+| Manage User Accounts | âŒ Forbidden | âŒ Forbidden | âœ… Full Access |
 
 ---
 
@@ -224,11 +226,11 @@ erDiagram
   - Prisma migration creates the `ActionTaken` table and associated foreign key constraints and indexes.
   - Zero destructive changes: Existing `User`, `Ticket`, `Attachment`, `Comment`, and `InternalNote` tables and columns are strictly preserved.
 - **Legacy Backfill**:
-  - Legacy tickets created during Labs 1–3 possess zero Actions Taken.
+  - Legacy tickets created during Labs 1â€“3 possess zero Actions Taken.
   - No synthetic placeholder actions will be injected; legacy tickets will naturally return an empty array (`actionsTaken: []`).
   - Ticket query serializers and UI components must handle `actionsTaken: []` gracefully without crashing or displaying broken tables.
 - **Rollback & Recovery**:
-  - In the event of an unexpected migration interruption or failure, deployment must halt immediately and recovery must restore the pre-migration schema and data state using the project's approved database recovery procedure. Zero existing Lab 1–3 data may be lost.
+  - In the event of an unexpected migration interruption or failure, deployment must halt immediately and recovery must restore the pre-migration schema and data state using the project's approved database recovery procedure. Zero existing Lab 1â€“3 data may be lost.
 
 ### 7.4 Idempotent Seed Data Strategy
 The updated seed script (`server/prisma/seed.ts`) will:
@@ -307,7 +309,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 - **AC-14**: Given a ticket in `RESOLVED` status, when an IT Staff user transitions it to `REOPENED`, then the status updates to `REOPENED` and active queue processing resumes.
 
 ### 10.3 Role Dashboards Acceptance Criteria
-- **AC-15**: Given an authenticated Requester calling `GET /api/v1/dashboard/requester`, then the response contains authoritative counts for Open, In Progress, Resolved, and Closed tickets owned exclusively by that Requester.
+- **AC-15**: Given an authenticated Requester calling `GET /api/v1/dashboard/requester`, then the response contains authoritative counts for `My Open Tickets` (`openTickets`), `Waiting for Requester` (`waitingForRequester`), `Resolved` (`resolved`), and `Closed` (`closed`) tickets owned exclusively by that Requester.
 - **AC-16**: Given an authenticated Requester with zero tickets, when viewing the Requester Dashboard, then all metric cards display zero counts and the recent tickets list displays an accessible empty state with a "Create Ticket" call to action.
 - **AC-17**: Given an authenticated IT Staff user calling `GET /api/v1/dashboard/staff`, then the response contains authoritative service-desk metrics for Unassigned, Assigned to Me, and counts by Status and IT Priority.
 - **AC-18**: Given an authenticated Administrator calling `GET /api/v1/dashboard/staff`, then the response includes IT Staff operational metrics plus user account summary counts (`activeUsers`, `activeStaff`, `activeAdmins`).
@@ -315,7 +317,7 @@ Refer to [ui-spec.md](./ui-spec.md) for detailed layouts, component structures, 
 - **AC-20**: Given an authenticated Requester attempting to access `GET /api/v1/dashboard/staff`, then the server rejects the request with HTTP 403 `FORBIDDEN`.
 
 ### 10.4 Hardening, Accessibility & Regression Acceptance Criteria
-- **AC-21**: Given an existing user account from earlier labs, when performing authentication and ticket operations, then all Lab 1–3 functionality (attachments, comments, notes, admin user management) continues to operate with zero regressions.
+- **AC-21**: Given an existing user account from earlier labs, when performing authentication and ticket operations, then all Lab 1â€“3 functionality (attachments, comments, notes, admin user management) continues to operate with zero regressions.
 - **AC-22**: Given an unauthenticated user attempting to access dashboard or Actions Taken endpoints, then the server rejects the request with HTTP 401 `SESSION_INVALID`.
 - **AC-23**: Given any dashboard or ticket screen rendered on Mobile ($375\text{px}$) and Tablet ($768\text{px}$), then no horizontal scrollbar is present and all primary touch targets measure at least $44 \times 44\text{px}$.
 - **AC-24**: Given an Action Taken form submission that fails due to network or validation errors, then the entered values are preserved in the form fields.

@@ -178,7 +178,12 @@ export async function resetDatabaseState() {
     await db.user.deleteMany({ where: { id: { in: nonCanonicalUserIds } } });
   }
 
-  // 6. Reset canonical tickets back to seed statuses
+  // 6. Reset canonical tickets back to seed statuses and authoritative ownership
+  const bobUser = await db.user.findUnique({ where: { email: "bob@example.com" } });
+  const bobReq = await db.requesterUser.findFirst({ where: { email: "bob@example.com" } });
+  const adminUser = await db.user.findUnique({ where: { email: "admin@toktickit.com" } });
+  const michaelStaff = await db.user.findUnique({ where: { email: "michael.brown@toktickit.com" } });
+
   await db.ticket.updateMany({
     where: { ticketNo: "TKT-2026-000001" },
     data: {
@@ -196,6 +201,9 @@ export async function resetDatabaseState() {
       status: "OPEN",
       currentStatus: "OPEN",
       isRequesterResolved: false,
+      ...(bobUser && { userId: bobUser.id }),
+      ...(bobReq && { requesterId: bobReq.id }),
+      ...(michaelStaff && { ownerId: michaelStaff.id }),
     },
   });
 
@@ -223,6 +231,21 @@ export async function resetDatabaseState() {
       status: "RESOLVED",
       currentStatus: "RESOLVED",
       isRequesterResolved: true,
+      ...(bobUser && { userId: bobUser.id }),
+      ...(bobReq && { requesterId: bobReq.id }),
+      ...(michaelStaff && { ownerId: michaelStaff.id }),
+    },
+  });
+
+  await db.ticket.updateMany({
+    where: { ticketNo: "TKT-2026-000009" },
+    data: {
+      status: "OPEN",
+      currentStatus: "OPEN",
+      isRequesterResolved: false,
+      ...(bobUser && { userId: bobUser.id }),
+      ...(bobReq && { requesterId: bobReq.id }),
+      ...(adminUser && { ownerId: adminUser.id }),
     },
   });
 
