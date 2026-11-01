@@ -271,24 +271,32 @@ describe("Database Migration & Regression Tests (Lab 4 â€” Issue 32: MIG-01
         const lab4SqlPath = path.join(migrationDir, "20261006000000_add_lab4_actions_taken/migration.sql");
         const lab4Sql = fs.readFileSync(lab4SqlPath, "utf8");
 
-        // 3. Construct baseline Lab 1-3 tables within the isolated schema
-        // This simulates a running Lab 3 database before Lab 4 migration is introduced
-        await prisma.$executeRawUnsafe(`
-          CREATE TABLE "${schemaName}"."Category" (
+        // Helper to execute SQL statements sequentially one by one
+        // (Prevents PostgreSQL "cannot insert multiple commands into a prepared statement" error)
+        const executeStatements = async (statements: string[]) => {
+          for (const rawStmt of statements) {
+            const stmt = rawStmt.trim();
+            if (stmt.length > 0) {
+              await prisma.$executeRawUnsafe(stmt);
+            }
+          }
+        };
+
+        // 3. Construct baseline Lab 1-3 tables within the isolated schema individually
+        await executeStatements([
+          `CREATE TABLE "${schemaName}"."Category" (
             "id" SERIAL NOT NULL PRIMARY KEY,
             "name" TEXT NOT NULL UNIQUE,
             "isActive" BOOLEAN NOT NULL DEFAULT true,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-
-          CREATE TABLE "${schemaName}"."RelatedSystem" (
+          )`,
+          `CREATE TABLE "${schemaName}"."RelatedSystem" (
             "id" SERIAL NOT NULL PRIMARY KEY,
             "name" TEXT NOT NULL UNIQUE,
             "isActive" BOOLEAN NOT NULL DEFAULT true,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-
-          CREATE TABLE "${schemaName}"."User" (
+          )`,
+          `CREATE TABLE "${schemaName}"."User" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "email" TEXT NOT NULL UNIQUE,
             "name" TEXT NOT NULL,
@@ -299,18 +307,16 @@ describe("Database Migration & Regression Tests (Lab 4 â€” Issue 32: MIG-01
             "tokenVersion" INTEGER NOT NULL DEFAULT 0,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" TIMESTAMP(3) NOT NULL
-          );
-
-          CREATE TABLE "${schemaName}"."RequesterUser" (
+          )`,
+          `CREATE TABLE "${schemaName}"."RequesterUser" (
             "id" SERIAL NOT NULL PRIMARY KEY,
             "name" TEXT NOT NULL,
             "email" TEXT NOT NULL UNIQUE,
             "userId" TEXT UNIQUE REFERENCES "${schemaName}"."User"("id"),
             "isActive" BOOLEAN NOT NULL DEFAULT true,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-
-          CREATE TABLE "${schemaName}"."Ticket" (
+          )`,
+          `CREATE TABLE "${schemaName}"."Ticket" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "ticketNo" TEXT NOT NULL UNIQUE,
             "requesterId" INTEGER NOT NULL REFERENCES "${schemaName}"."RequesterUser"("id"),
@@ -327,42 +333,40 @@ describe("Database Migration & Regression Tests (Lab 4 â€” Issue 32: MIG-01
             "isRequesterResolved" BOOLEAN NOT NULL DEFAULT false,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" TIMESTAMP(3) NOT NULL
-          );
-
-          CREATE TABLE "${schemaName}"."Comment" (
+          )`,
+          `CREATE TABLE "${schemaName}"."Comment" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "ticketId" TEXT NOT NULL REFERENCES "${schemaName}"."Ticket"("id") ON DELETE CASCADE,
             "authorId" TEXT NOT NULL REFERENCES "${schemaName}"."User"("id"),
             "content" TEXT NOT NULL,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-
-          CREATE TABLE "${schemaName}"."InternalNote" (
+          )`,
+          `CREATE TABLE "${schemaName}"."InternalNote" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "ticketId" TEXT NOT NULL REFERENCES "${schemaName}"."Ticket"("id") ON DELETE CASCADE,
             "authorId" TEXT NOT NULL REFERENCES "${schemaName}"."User"("id"),
             "content" TEXT NOT NULL,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
+          )`
+        ]);
 
-        // 4. Seed pre-migration legacy data from Labs 1, 2, and 3
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "${schemaName}"."Category" ("id", "name", "isActive") VALUES (1, 'Hardware', true);
-          INSERT INTO "${schemaName}"."RelatedSystem" ("id", "name", "isActive") VALUES (1, 'Email & Calendar', true);
-          INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
-          VALUES ('user-leg-01', 'legacy.user@example.com', 'Legacy User', 'hash123', 'REQUESTER', true, 0, NOW(), NOW());
-          INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
-          VALUES ('user-leg-02', 'legacy.staff@example.com', 'Legacy Staff', 'hash123', 'IT_STAFF', true, 0, NOW(), NOW());
-          INSERT INTO "${schemaName}"."RequesterUser" ("id", "name", "email", "userId", "isActive")
-          VALUES (1, 'Legacy User', 'legacy.user@example.com', 'user-leg-01', true);
-          INSERT INTO "${schemaName}"."Ticket" ("id", "ticketNo", "requesterId", "userId", "categoryId", "relatedSystemId", "summary", "description", "requestedPriority", "currentStatus", "status", "createdAt", "updatedAt")
-          VALUES ('tkt-leg-01', 'TKT-LEGACY-0001', 1, 'user-leg-01', 1, 1, 'Legacy Ticket Before Lab 4', 'Pre-existing ticket description', 'HIGH', 'OPEN', 'OPEN', NOW(), NOW());
-          INSERT INTO "${schemaName}"."Comment" ("id", "ticketId", "authorId", "content", "createdAt")
-          VALUES ('cmt-leg-01', 'tkt-leg-01', 'user-leg-01', 'Legacy comment pre-migration', NOW());
-          INSERT INTO "${schemaName}"."InternalNote" ("id", "ticketId", "authorId", "content", "createdAt")
-          VALUES ('note-leg-01', 'tkt-leg-01', 'user-leg-02', 'Legacy internal note pre-migration', NOW());
-        `);
+        // 4. Seed pre-migration legacy data from Labs 1, 2, and 3 one by one
+        await executeStatements([
+          `INSERT INTO "${schemaName}"."Category" ("id", "name", "isActive") VALUES (1, 'Hardware', true)`,
+          `INSERT INTO "${schemaName}"."RelatedSystem" ("id", "name", "isActive") VALUES (1, 'Email & Calendar', true)`,
+          `INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
+           VALUES ('user-leg-01', 'legacy.user@example.com', 'Legacy User', 'hash123', 'REQUESTER', true, 0, NOW(), NOW())`,
+          `INSERT INTO "${schemaName}"."User" ("id", "email", "name", "passwordHash", "role", "isActive", "tokenVersion", "createdAt", "updatedAt")
+           VALUES ('user-leg-02', 'legacy.staff@example.com', 'Legacy Staff', 'hash123', 'IT_STAFF', true, 0, NOW(), NOW())`,
+          `INSERT INTO "${schemaName}"."RequesterUser" ("id", "name", "email", "userId", "isActive")
+           VALUES (1, 'Legacy User', 'legacy.user@example.com', 'user-leg-01', true)`,
+          `INSERT INTO "${schemaName}"."Ticket" ("id", "ticketNo", "requesterId", "userId", "categoryId", "relatedSystemId", "summary", "description", "requestedPriority", "currentStatus", "status", "createdAt", "updatedAt")
+           VALUES ('tkt-leg-01', 'TKT-LEGACY-0001', 1, 'user-leg-01', 1, 1, 'Legacy Ticket Before Lab 4', 'Pre-existing ticket description', 'HIGH', 'OPEN', 'OPEN', NOW(), NOW())`,
+          `INSERT INTO "${schemaName}"."Comment" ("id", "ticketId", "authorId", "content", "createdAt")
+           VALUES ('cmt-leg-01', 'tkt-leg-01', 'user-leg-01', 'Legacy comment pre-migration', NOW())`,
+          `INSERT INTO "${schemaName}"."InternalNote" ("id", "ticketId", "authorId", "content", "createdAt")
+           VALUES ('note-leg-01', 'tkt-leg-01', 'user-leg-02', 'Legacy internal note pre-migration', NOW())`
+        ]);
 
         // 5. Assert baseline pre-migration counts
         const preTicket: any = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "${schemaName}"."Ticket"`);
@@ -376,9 +380,26 @@ describe("Database Migration & Regression Tests (Lab 4 â€” Issue 32: MIG-01
         expect(preNote[0].count).toBe(1);
 
         // 6. Deploy the authentic Lab 4 migration SQL (server/prisma/migrations/20261006000000_add_lab4_actions_taken/migration.sql)
-        // Set search_path so the migration script targets the isolated schema
-        await prisma.$executeRawUnsafe(`SET search_path TO "${schemaName}", public`);
-        await prisma.$executeRawUnsafe(lab4Sql);
+        // Split SQL into individual statements and execute inside a single transaction with search_path pinned
+        const migrationStatements = lab4Sql
+          .split(";")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+          .map((s) =>
+            s
+              .split("\n")
+              .filter((line) => !line.trim().startsWith("--"))
+              .join("\n")
+              .trim()
+          )
+          .filter((s) => s.length > 0);
+
+        await prisma.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(`SET search_path TO "${schemaName}", public`);
+          for (const stmt of migrationStatements) {
+            await tx.$executeRawUnsafe(stmt);
+          }
+        });
 
         // 7. Verify new ActionTaken table and columns exist in schema
         const columns: any = await prisma.$queryRawUnsafe(`

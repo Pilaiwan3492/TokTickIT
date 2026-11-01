@@ -198,7 +198,7 @@
 - **Formal Peer Review:** PENDING (Awaiting review submission from `@Apichaya251400` on GitHub).
 - **Requested Reviewer:** `@Apichaya251400`
 - **GitHub Approval:** Not yet recorded (Will be recorded upon official GitHub review submission).
-- **CI Status:** PASS / GREEN
+- **CI Status:** PENDING CI RUN (MIG-01b multi-statement fix applied)
 - **Latest Verified Test Count:** 549/549 (Server: 311, Client: 181, E2E: 57)
 - **Merge Readiness:** NOT READY (Blocked on formal GitHub peer review approval).
 

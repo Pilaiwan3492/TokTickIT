@@ -190,7 +190,7 @@ Running 57 tests using 1 worker
 ```
 **Total Automated Verification:** **549 / 549 Passed (100% Pass Rate)**
 
-![Figure 3.2: Terminal output showing 310/310 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
+![Figure 3.2: Terminal output showing 311/311 server tests passing cleanly in Vitest](../../artifacts/lab-04/screenshots/terminal-evidence/10-server-tests-pass.png)
 ![Figure 3.3: Terminal output showing 181/181 client component tests passing cleanly in Vitest + RTL](../../artifacts/lab-04/screenshots/terminal-evidence/11-client-tests-pass.png)
 ![Figure 3.4: Terminal output showing 57/57 Playwright multi-device E2E tests passing](../../artifacts/lab-04/screenshots/terminal-evidence/12-playwright-e2e-pass.png)
 ![Figure 3.5: Terminal output showing server and client compiling with 0 errors](../../artifacts/lab-04/screenshots/terminal-evidence/13-production-build-success.png)
@@ -214,7 +214,7 @@ Running 57 tests using 1 worker
 9. **Full Regression Suite across Labs 1â€“3**: Verified complete backward compatibility for all legacy features without regressions.
 
 ### 2. My Reflection on AI Use
-Developing **TokTickIT Lab 4** highlighted the immense value of combining modern AI coding agents with strict software engineering methodology (Spec DD and TDD). When architectural constraints and business rules were formally established upfront in `specification.md`, the AI agent implemented complex full-stack features with high fidelity, writing 548 automated tests with zero regressions.
+Developing **TokTickIT Lab 4** highlighted the immense value of combining modern AI coding agents with strict software engineering methodology (Spec DD and TDD). When architectural constraints and business rules were formally established upfront in `specification.md`, the AI agent implemented complex full-stack features with high fidelity, writing 549 automated tests with zero regressions.
 
 The experience also underscored that **human engineering judgment remains paramount in handling concurrency, security boundaries, and authentic accessibility**:
 - **Optimistic Concurrency Control**: Preventing dirty writes on parent-child entities required human architectural guidance to ensure that adding an Action Taken checked the parent ticket's `updatedAt` timestamp (`expectedTicketUpdatedAt`), avoiding race conditions against concurrent ticket closures.
